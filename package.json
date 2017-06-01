@@ -1,0 +1,30 @@
+{
+  "name": "regl-scatter2d",
+  "version": "1.0.0",
+  "description": "Scatter2d regl implementation",
+  "main": "index.js",
+  "scripts": {
+    "test": "budo test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gl-vis/regl-scatter2d.git"
+  },
+  "keywords": [
+    "regl",
+    "plotly"
+  ],
+  "author": "Dima Yv <df.creative@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gl-vis/regl-scatter2d/issues"
+  },
+  "homepage": "https://github.com/gl-vis/regl-scatter2d#readme",
+  "dependencies": {
+    "object-assign": "^4.1.1",
+    "regl": "^1.3.0"
+  },
+  "devDependencies": {
+    "enable-mobile": "^1.0.7"
+  }
+}
