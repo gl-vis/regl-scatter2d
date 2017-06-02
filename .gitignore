@@ -61,3 +61,4 @@ instances
 *node_modules
 index.html
 *.psd
+package-lock.json
