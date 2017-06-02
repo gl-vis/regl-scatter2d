@@ -63,41 +63,48 @@ Scatter.prototype.init = function (options) {
     precision mediump float;
 
     attribute vec2 position;
-    attribute vec3 color;
     attribute float size;
 
     uniform vec2 scale, translate;
-
-    varying vec3 fragColor;
 
     void main() {
       gl_PointSize = size;
       gl_Position = vec4((position + translate) * scale * 2. - 1., 0, 1);
       gl_Position.y *= -1.;
-      fragColor = color;
     }`,
 
     frag: `
-    precision lowp float;
-    varying vec3 fragColor;
+    precision mediump float;
+    uniform vec4 color, borderColor;
+    uniform float centerFraction;
+
+    const float fragWeight = 1.0;
+
+    float smoothStep(float x, float y) {
+      return 1.0 / (1.0 + exp(50.0*(x - y)));
+    }
+
     void main() {
-      if (length(gl_PointCoord.xy - 0.5) > 0.5) {
+      float radius = length(2.0*gl_PointCoord.xy-1.0);
+      if(radius > 1.0) {
         discard;
       }
-      gl_FragColor = vec4(fragColor, 1);
+      vec4 baseColor = mix(borderColor, color, smoothStep(radius, centerFraction));
+      float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
+      gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
     }`,
 
     uniforms: {
       scale: regl.this('scale'),
-      translate: regl.this('translate')
+      translate: regl.this('translate'),
+      centerFraction: ctx => this.borderSize === 0 ? 2 : this.size / (this.size + this.borderSize + 1.25),
+      color: regl.prop('color'),
+      borderColor: regl.prop('borderColor')
     },
 
     attributes: {
       size: () => {
         return {constant: this.size}
-      },
-      color: () => {
-        return {constant: this.color}
       },
       // here we are using 'points' proeprty of the mesh
       position: this.buffer
@@ -161,10 +168,17 @@ Scatter.prototype.update = function (options) {
 
 // Then we assign regl commands directly to the prototype of the class
 Scatter.prototype.draw = function () {
+  //TODO: make multipass-render here, by color/glyph pairs
+  //TODO: some events may trigger twice in a single frame, which results in darker frame
   if (!this.dirty) return
   this.dirty = false
 
-  this.drawPoints()
+  this.regl.poll()
+
+  this.drawPoints({
+    color: this.color,
+    borderColor: this.borderColor
+  })
 
   return this
 }

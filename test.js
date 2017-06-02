@@ -8,10 +8,10 @@ const fps = require('fps-indicator')({css:`padding: 1.4rem`})
 const random = require('gauss-random')
 
 let scatter = createScatter({
-  size: 1,
-  color: 'green',
-  // borderSize: 1,
-  // borderColor: [.5,.5,.5,.5]
+  size: 5,
+  color: 'rgba(10, 120, 20, .75)',
+  borderSize: 1,
+  borderColor: [.1,.2,.3,1]
 })
 
 let settings = createSettings([
