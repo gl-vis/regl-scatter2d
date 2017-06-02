@@ -24,6 +24,8 @@ Remake on [gl-scatter2d](), [gl-scatter2d-fancy]() and [gl-scatter2d-sdf](), cov
 | `borderSize` | width of the border around each point in pixels (default `1`) |
 | `borderColor` | color of the border of each point (default `[0,0,0,1]`) |
 | `glyph` | `null` | Glyph to use for marker, can be a single glyph or array. |
+| `scale` | `[0, 0]` | Scale in terms of data units. |
+| `translate` | `[0, 0]` | Translate in terms of data units. |
 | `cluster` | defines whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
 
 **Returns** A new scatter plot object, which is also registered to `plot`

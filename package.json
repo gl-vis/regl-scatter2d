@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/gl-vis/regl-scatter2d#readme",
   "dependencies": {
+    "array-bounds": "^1.0.0",
     "color-rgba": "^1.1.0",
     "fps-indicator": "^1.1.0",
     "object-assign": "^4.1.1",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "enable-mobile": "^1.0.7",
+    "gauss-random": "^1.0.1",
     "pan-zoom": "^2.0.0",
     "settings-panel": "^1.8.17"
   }
