@@ -1,10 +1,11 @@
 'use strict'
 
 const createRegl = require('regl')
-// const pointCluster = require('../point-cluster')
+const pointCluster = require('../point-cluster')
 const extend = require('object-assign')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
+const clamp = require('clamp')
 
 module.exports = Scatter
 
@@ -29,19 +30,34 @@ function Scatter (options) {
   this.init(options)
 }
 
+//last positions raw data
 Scatter.prototype.positions = []
+Scatter.prototype.pointCount = 0
+
+//selected point indexes array
 Scatter.prototype.selection = null
+
+//current viewport settings
 Scatter.prototype.scale = [1, 1]
 Scatter.prototype.translate = [0, 0]
+//TODO
+Scatter.prototype.viewBox = null
+Scatter.prototype.dataBox = null
+
+//point style options
 Scatter.prototype.size = 10
 Scatter.prototype.color = 'rgba(10, 100, 200, .75)'
 Scatter.prototype.borderSize = 1
 Scatter.prototype.borderColor = 'white'
+
+//gl settings
 Scatter.prototype.pixelRatio = window.devicePixelRatio
 Scatter.prototype.gl = null
-Scatter.prototype.viewBox = null
-Scatter.prototype.dataBox = null
-Scatter.prototype.pointCount = 0
+Scatter.prototype.container = null
+Scatter.prototype.canvas = null
+
+//group points for faster rendering of huge number of them
+Scatter.prototype.cluster = true
 
 
 //create drawing methods based on initial options
@@ -122,7 +138,7 @@ Scatter.prototype.init = function (options) {
 }
 
 Scatter.prototype.update = function (options) {
-  let regl = this.regl
+  let regl = this.regl, w = this.canvas.width, h = this.canvas.height
 
   if (options.length != null) options = {positions: options}
 
@@ -143,12 +159,6 @@ Scatter.prototype.update = function (options) {
 
   extend(this, options)
 
-  //update buffer
-  if (positions) {
-    this.buffer(positions)
-    this.pointCount = Math.floor(positions.length / 2)
-  }
-
   //colors
   if (typeof this.color === 'string') {
     this.color = rgba(this.color)
@@ -158,9 +168,48 @@ Scatter.prototype.update = function (options) {
   }
 
   //make sure scale/translate are properly set
-  if (typeof this.translate === 'number') this.translate = [this.translate, this.translate]
-  if (typeof this.scale === 'number') this.scale = [this.scale, this.scale]
+  if (typeof this.translate === 'number') translate = this.translate = [this.translate, this.translate]
+  if (typeof this.scale === 'number') scale = this.scale = [this.scale, this.scale]
 
+  if (scale) {
+    this.scale[0] = Math.max(this.scale[0], 1e-10)
+    this.scale[1] = Math.max(this.scale[1], 1e-10)
+  }
+
+  //update buffer
+  if (positions) {
+    if (this.cluster) {
+      //do clustering
+      //TODO: send clustering to worker
+      //TODO: adjust node size here
+      this.getPoints = pointCluster(positions)
+    }
+    else {
+      this.buffer(positions)
+      this.pointCount = Math.floor(positions.length / 2)
+    }
+  }
+
+  //reobtain points in case if translate/scale/positions changed
+  if (translate || scale || positions) {
+    if (this.cluster) {
+      //TODO: read actual point radius/size here
+      let radius = Array.isArray(this.size) ? (id => this.size) : ( (this.size / Math.max(w, h) ) / this.scale[0])
+      let ids = this.getPoints(radius)
+
+      let subpositions = new Float32Array(ids.length * 2)
+      for (let i = 0, id; i < ids.length; i++) {
+        let id = ids[i]
+        subpositions[i*2] = this.positions[id*2]
+        subpositions[i*2+1] = this.positions[id*2+1]
+      }
+
+      this.buffer(subpositions)
+      this.pointCount = Math.floor(subpositions.length / 2)
+    }
+  }
+
+  //flag redraw required
   this.dirty = true
 
   return this
