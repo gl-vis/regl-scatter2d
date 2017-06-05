@@ -2,11 +2,17 @@
 
 Scatter plot for lots of points.
 
-Remake on [gl-scatter2d](), [gl-scatter2d-fancy]() and [gl-scatter2d-sdf](), covering API of all three.
+Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), [gl-scatter2d-fancy](https://github.com/gl-vis/gl-scatter2d-fancy) and [gl-scatter2d-sdf](https://github.com/gl-vis/gl-scatter2d-sdf). Main improvements:
+
+* [point-cluster](https://github.com/dfcreative/point-cluster) is used instead of [snap-points-2d](https://github.com/gl-vis/snap-points-2d), which extends number of points up to `1e8` and speeds up construction up to ~30%.
+* API covers the API of _gl-scatter2d-*_ components. Multipass rendering enables various colors, glyphs and sizes within single component.
+* gl-plot2d compatible.
 
 ## Usage
 
 ```js
+let regl = require('regl')()
+let scatter = require('regl-scatter2d')({regl})
 ```
 
 ## API

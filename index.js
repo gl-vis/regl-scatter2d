@@ -45,7 +45,7 @@ Scatter.prototype.viewBox = null
 Scatter.prototype.dataBox = null
 
 //point style options
-Scatter.prototype.size = 10
+Scatter.prototype.size = 5
 Scatter.prototype.color = 'rgba(10, 100, 200, .75)'
 Scatter.prototype.borderSize = 1
 Scatter.prototype.borderColor = 'white'
@@ -64,10 +64,15 @@ Scatter.prototype.cluster = true
 Scatter.prototype.init = function (options) {
   let regl = this.regl
 
-  this.buffer = regl.buffer({
+  this.sizeBuffer = regl.buffer({
     usage: 'dynamic',
     type: 'float',
-    data: null
+    buffer: null
+  })
+  this.positionBuffer = regl.buffer({
+    usage: 'dynamic',
+    type: 'float',
+    buffer: null
   })
 
   this.update(options)
@@ -119,11 +124,18 @@ Scatter.prototype.init = function (options) {
     },
 
     attributes: {
+      position: this.positionBuffer,
+      // () => {
+        // return this.positionBuffer
+      // },
+      // size: this.sizeBuffer
       size: () => {
-        return {constant: this.size}
-      },
-      // here we are using 'points' proeprty of the mesh
-      position: this.buffer
+        // if (Array.isArray(this.size)) {
+          return this.sizeBuffer(this.size)
+        // }
+
+        // return {constant: this.size}
+      }
     },
 
     count: regl.this('pointCount'),
@@ -152,32 +164,29 @@ Scatter.prototype.update = function (options) {
     borderSize,
     borderColor,
     pixelRatio,
-    gl,
     viewBox,
-    dataBox
+    dataBox,
+    cluster
   } = options
 
-  extend(this, options)
-
   //colors
-  if (typeof this.color === 'string') {
-    this.color = rgba(this.color)
-  }
-  if (typeof this.borderColor === 'string') {
-    this.borderColor = rgba(this.borderColor)
-  }
+  if (color != null) this.color = rgba(color)
+  if (borderColor != null) this.borderColor = rgba(borderColor)
+
+  if (cluster != null) this.cluster = cluster
 
   //make sure scale/translate are properly set
-  if (typeof this.translate === 'number') translate = this.translate = [this.translate, this.translate]
-  if (typeof this.scale === 'number') scale = this.scale = [this.scale, this.scale]
-
-  if (scale) {
+  if (translate != null) {
+    this.translate = typeof translate === 'number' ? [translate, translate] : translate
+  }
+  if (scale != null) {
+    this.scale = typeof scale === 'number' ? [scale, scale] : scale
     this.scale[0] = Math.max(this.scale[0], 1e-10)
     this.scale[1] = Math.max(this.scale[1], 1e-10)
   }
 
   //update buffer
-  if (positions) {
+  if (positions != null) {
     if (this.cluster) {
       //do clustering
       //TODO: send clustering to worker
@@ -185,13 +194,40 @@ Scatter.prototype.update = function (options) {
       this.getPoints = pointCluster(positions)
     }
     else {
-      this.buffer(positions)
+      this.positionBuffer(positions)
       this.pointCount = Math.floor(positions.length / 2)
     }
+    this.positions = positions
   }
 
+  //sizes
+  if (size != null) {
+    this.size = size
+    if (Array.isArray(size)) {
+      this.sizeBuffer(size)
+    }
+  }
+  //ensure size length is enough
+  if (this.size.length < this.positions.length || typeof this.size === 'number') {
+    size = typeof this.size === 'number' ? this.size : 1
+    if (!Array.isArray(this.size)) this.size = []
+    //fill sizes
+    for (let i = this.size.length, l = this.positions.length/2; i < l; i++) {
+      this.size[i] = size
+    }
+    this.sizeBuffer(this.size)
+  }
+  if (borderSize != null) this.borderSize = borderSize
+
   //reobtain points in case if translate/scale/positions changed
-  if (translate || scale || positions) {
+  if (scale != null || positions != null) {
+    //recalc bounds for the data
+    let bounds = [
+      -this.translate[0], -this.translate[1],
+      .5/this.scale[0] ,
+      .5/this.scale[1]
+    ]
+
     if (this.cluster) {
       //TODO: read actual point radius/size here
       let radius = Array.isArray(this.size) ? (id => this.size) : ( (this.size / Math.max(w, h) ) / this.scale[0])
@@ -203,8 +239,7 @@ Scatter.prototype.update = function (options) {
         subpositions[i*2] = this.positions[id*2]
         subpositions[i*2+1] = this.positions[id*2+1]
       }
-
-      this.buffer(subpositions)
+      this.positionBuffer(subpositions)
       this.pointCount = Math.floor(subpositions.length / 2)
     }
   }
@@ -219,7 +254,9 @@ Scatter.prototype.update = function (options) {
 Scatter.prototype.draw = function () {
   //TODO: make multipass-render here, by color/glyph pairs
   //TODO: some events may trigger twice in a single frame, which results in darker frame
-  if (!this.dirty) return
+  if (!this.dirty || (!this.pointCount)) {
+    return this
+  }
   this.dirty = false
 
   this.regl.poll()

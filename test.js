@@ -88,23 +88,45 @@ function drawSections(maxDepth) {
 
 
 let scatter = createScatter({
-  size: 5,
   color: 'rgba(10, 120, 20, .75)',
   borderSize: 1,
-  cluster: true,
+  cluster: false,
   borderColor: [.1,.2,.3,1]
 })
 
 let settings = createSettings([
-	{type: 'number', label: '№ points', min: 1, max: 1e8, log: true, value: 1e6, change: value => {
+	{type: 'number', label: '№ points', min: 1, max: 1e8, log: true, value: 1e2, change: value => {
 		let positions = generate(value)
+		// let bounds = getBounds(positions)
 		// let positions = [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0]
 		// console.time('cluster')
 		// cluster(positions)
 		// console.timeEnd('cluster')
 
 		// let from = lod[6].offset, to = from + lod[6].count
-		scatter.update(positions).autorange().draw()
+		scatter
+		.update(positions)
+		// .autorange()
+		.draw()
+	}},
+	{type: 'interval', label: 'Size', min: 1, max: 50, value: [5,5], step: .5, change: value => {
+		//same size
+		// if (value[0] === value[1]) {
+		// 	scatter.update({
+		// 		size: value[0]
+		// 	})
+		// 	.draw()
+		// 	return
+		// }
+
+		let sizes = []
+		for (let i = 0, l = scatter.positions.length/2; i < l; i++) {
+			sizes.push(Math.random() * (value[1] - value[0]) + value[0])
+		}
+		scatter.update({
+			size: sizes
+		})
+		.draw()
 	}}
 ], {
 	style: `
@@ -113,7 +135,7 @@ let settings = createSettings([
 	right: 0;
 	width: 300px;
 	margin: auto;
-	min-width: 200px;
+	min-width: 240px;
 	position: absolute;
 	background: none;
 	font-family: Roboto, sans-serif;
@@ -145,7 +167,7 @@ panZoom(canvas, e => {
 	translate[0] += fromPx(e.x, scale[0]) - fromPx(e.x, prevScale[0])
 	translate[1] += fromPx(e.y, scale[1]) - fromPx(e.y, prevScale[1])
 	scatter.update({
-		scale: scale,
+		scale: e.dz ? scale : null,
 		translate: translate
 	})
 
