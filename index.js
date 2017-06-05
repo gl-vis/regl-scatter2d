@@ -118,7 +118,7 @@ Scatter.prototype.init = function (options) {
     uniforms: {
       scale: regl.this('scale'),
       translate: regl.this('translate'),
-      centerFraction: ctx => this.borderSize === 0 ? 2 : this.size / (this.size + this.borderSize + 1.25),
+      centerFraction: 0.5,//ctx => this.borderSize === 0 ? 2 : this.size / (this.size + this.borderSize + 1.25),
       color: regl.prop('color'),
       borderColor: regl.prop('borderColor')
     },
@@ -130,11 +130,10 @@ Scatter.prototype.init = function (options) {
       // },
       // size: this.sizeBuffer
       size: () => {
-        // if (Array.isArray(this.size)) {
-          return this.sizeBuffer(this.size)
-        // }
-
-        // return {constant: this.size}
+        if (Array.isArray(this.size)) {
+          return this.sizeBuffer
+        }
+        return {constant: this.size}
       }
     },
 
@@ -203,20 +202,11 @@ Scatter.prototype.update = function (options) {
   //sizes
   if (size != null) {
     this.size = size
-    if (Array.isArray(size)) {
-      this.sizeBuffer(size)
+    if (Array.isArray(this.size)) {
+      this.sizeBuffer(this.size)
     }
   }
-  //ensure size length is enough
-  if (this.size.length < this.positions.length || typeof this.size === 'number') {
-    size = typeof this.size === 'number' ? this.size : 1
-    if (!Array.isArray(this.size)) this.size = []
-    //fill sizes
-    for (let i = this.size.length, l = this.positions.length/2; i < l; i++) {
-      this.size[i] = size
-    }
-    this.sizeBuffer(this.size)
-  }
+
   if (borderSize != null) this.borderSize = borderSize
 
   //reobtain points in case if translate/scale/positions changed

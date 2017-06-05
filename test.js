@@ -95,7 +95,7 @@ let scatter = createScatter({
 })
 
 let settings = createSettings([
-	{type: 'number', label: '№ points', min: 1, max: 1e8, log: true, value: 1e2, change: value => {
+	{type: 'number', label: '№ points', min: 1, max: 1e8, log: true, value: 1e5, change: value => {
 		let positions = generate(value)
 		// let bounds = getBounds(positions)
 		// let positions = [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0]
@@ -106,7 +106,7 @@ let settings = createSettings([
 		// let from = lod[6].offset, to = from + lod[6].count
 		scatter
 		.update(positions)
-		// .autorange()
+		.autorange()
 		.draw()
 	}},
 	{type: 'interval', label: 'Size', min: 1, max: 50, value: [5,5], step: .5, change: value => {
