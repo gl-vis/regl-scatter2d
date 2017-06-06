@@ -8,6 +8,7 @@ const clamp = require('clamp')
 const atlas = require('font-atlas-sdf')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
+const normalize = require('array-normalize')
 
 module.exports = Scatter
 
@@ -85,6 +86,8 @@ Scatter.prototype.charStep       = 400
 Scatter.prototype.init = function (options) {
   let regl = this.regl
 
+  this.bounds = [-Infinity, -Infinity, Infinity, Infinity]
+
   //textures for glyphs and color palette
   this.charTexture = regl.texture(this.charCanvas)
 
@@ -124,7 +127,7 @@ Scatter.prototype.init = function (options) {
     void main() {
       gl_PointSize = size;
       gl_Position = vec4((position + translate) * scale * 2. - 1., 0, 1);
-      gl_Position.y *= -1.;
+      // gl_Position.y *= -1.;
 
       centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
       fragColor = color;
@@ -184,6 +187,7 @@ Scatter.prototype.init = function (options) {
     primitive: 'points'
   })
 
+  //debug run
   this.drawTest = regl({
     frag: `
     precision mediump float;
@@ -255,6 +259,9 @@ Scatter.prototype.update = function (options) {
       this.pointCount = Math.floor(positions.length / 2)
     }
     this.positions = positions
+
+    //update bounds
+    this.bounds = getBounds(positions, 2)
   }
 
   //sizes
@@ -270,12 +277,6 @@ Scatter.prototype.update = function (options) {
   //reobtain points in case if translate/scale/positions changed
   if (scale != null || positions != null) {
     //recalc bounds for the data
-    let bounds = [
-      -this.translate[0], -this.translate[1],
-      .5/this.scale[0] ,
-      .5/this.scale[1]
-    ]
-
     if (this.cluster) {
       //TODO: read actual point radius/size here
       let radius = Array.isArray(this.size) ? (id => this.size) : ( (this.size / Math.max(w, h) ) / this.scale[0])
@@ -368,11 +369,34 @@ Scatter.prototype.update = function (options) {
 }
 
 // Then we assign regl commands directly to the prototype of the class
-Scatter.prototype.draw = function (options) {
+Scatter.prototype.draw = function () {
   //TODO: make multipass-render here
-  //TODO: some events may trigger twice in a single frame, which results in darker frame
-  this.regl._refresh()
-  this.regl.poll()
+
+  //handle gl-plot2d case
+  //FIXME: get rid of that once regl-plot2d is available
+  if (this.plot) {
+    let bounds = this.bounds
+    let dataBox = this.plot.dataBox
+    let viewBox = this.plot.viewBox
+
+    //hack to support gl-plot2d
+    this.regl._refresh()
+    this.gl.scissor(
+      viewBox[0],
+      viewBox[1],
+      viewBox[2]-viewBox[0],
+      viewBox[3]-viewBox[1])
+    this.gl.viewport(
+      viewBox[0],
+      viewBox[1],
+      viewBox[2]-viewBox[0],
+      viewBox[3]-viewBox[1])
+
+    this.scale[0] = 1 / (dataBox[2] - dataBox[0])
+    this.scale[1] = 1 / (dataBox[3] - dataBox[1])
+    this.translate[0] = -dataBox[0]
+    this.translate[1] = - dataBox[1]
+  }
 
   this.drawPoints()
   // this.drawTest()
@@ -385,7 +409,7 @@ Scatter.prototype.autorange = function (positions) {
   if (!positions) positions = this.positions
   if (!positions || positions.length == 0) return this;
 
-  let bounds = getBounds(positions, 2)
+  let bounds = this.bounds
 
   let scale = [1 / (bounds[2] - bounds[0]), 1 / (bounds[3] - bounds[1])]
 

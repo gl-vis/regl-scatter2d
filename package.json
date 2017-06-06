@@ -1,7 +1,7 @@
 {
   "name": "regl-scatter2d",
   "version": "1.0.0",
-  "description": "Scatter2d regl implementation",
+  "description": "Scatter2d plot built with regl",
   "main": "index.js",
   "scripts": {
     "test": "budo test"
@@ -22,6 +22,7 @@
   "homepage": "https://github.com/gl-vis/regl-scatter2d#readme",
   "dependencies": {
     "array-bounds": "^1.0.0",
+    "array-normalize": "^1.1.2",
     "clamp": "^1.0.1",
     "color-id": "^1.0.3",
     "color-rgba": "^1.1.0",

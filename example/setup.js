@@ -139,7 +139,7 @@ function setup (options) {
     var scale = Math.exp(0.1 * dy / gl.drawingBufferHeight)
 
     var cx = (lastX - plot.viewBox[0]) / (plot.viewBox[2] - plot.viewBox[0]) * (dataBox[2] - dataBox[0]) + dataBox[0]
-    var cy = (plot.viewBox[1] - lastY) / (plot.viewBox[3] - plot.viewBox[1]) * (dataBox[3] - dataBox[1]) + dataBox[3]
+    var cy = (-plot.viewBox[1] + lastY) / (plot.viewBox[3] - plot.viewBox[1]) * (dataBox[3] - dataBox[1]) + dataBox[1]
 
     dataBox[0] = (dataBox[0] - cx) * scale + cx
     dataBox[1] = (dataBox[1] - cy) * scale + cy
