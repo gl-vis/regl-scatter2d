@@ -10,7 +10,7 @@ const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 
 
-let N = 1e5
+let N = 5e4
 let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
@@ -22,7 +22,7 @@ let scatter = createScatter({
 			),
 	// color: 'rgba(0, 10, 10, .3)',
 
-	borderSize: 1,
+	borderSize: 0,
 	cluster: false,
 	borderColor: [.1,.2,.3,1]
 })
@@ -106,7 +106,7 @@ panZoom(canvas, e => {
 	let translate = scatter.translate
 
 	translate[0] += e.dx / scale[0] / w
-	translate[1] += e.dy / scale[1] / h
+	translate[1] -= e.dy / scale[1] / h
 
 	let prevScale = scale.slice()
 

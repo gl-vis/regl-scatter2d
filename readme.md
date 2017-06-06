@@ -37,17 +37,17 @@ scatter.draw()
 |---|---|---|
 | `regl` | `null` | Regl instance to reuse, or new regl is created. |
 | `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created. |
-| `plot` | `null` | [`gl-plot2d`](https://github.com/gl-vis/gl-plot2d) reference, if scatter is going to be used as a part of plot. |
+| `plot` | `null` | [`gl-plot2d`](https://github.com/gl-vis/gl-plot2d) reference, if scatter is going to be used as a part of gl-plot2d. |
 | `pixelRatio` | `window.devicePixelRatio` | Display pixel density property. |
 | `positions` | `[]` | A packed 2*n length array of the unrolled xy coordinates of the points (required) |
-| `size` | `12` | number giving the diameter of a marker in pixels (default `12`) |
-| `color` | `'red'` | color of a marker as a length 4 RGBA array (default `[1,0,0,1]`) |
-| `borderSize` | `1` | width of the border around each point in pixels (default `1`) |
-| `borderColor` | `'black'` | color of the border of each point (default `[0,0,0,1]`) |
-| `glyph` | `null` | Glyph to use for marker, can be a single glyph or array. |
+| `size` | `12` | Number or array giving the diameter of a marker in pixels (default `12`). Array length should correspond to `positions`. |
+| `color` | `'red'` | Color or array with colors of markers as a , eg. `['rgba(0, 0, 100, .75)', 'red', 'green', [0,1,0,.5], ...]` |
+| `borderSize` | `1` | Width of the border around each point in pixels (default `1`) |
+| `borderColor` | `'black'` | Color of the border of each point (default `[0,0,0,1]`) |
+| `glyph` | `null` | Glyph or array with glyphs to use for markers, can be a single glyph or array. |
 | `scale` | `[0, 0]` | Scale in terms of data units. |
 | `translate` | `[0, 0]` | Translate in terms of data units. |
-| `cluster` | `false` | defines whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
+| `cluster` | `false` | Whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
 
 **Returns** A new scatter plot object, which is also registered to `plot`
 
