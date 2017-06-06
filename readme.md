@@ -1,4 +1,4 @@
-# regl-scatter2d
+# regl-scatter2d [![experimental](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)
 
 Scatter plot for lots of points.
 
@@ -12,6 +12,8 @@ Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), [gl-scatter2d-
 -->
 
 ## Usage
+
+[![npm install regl-scatter2d](https://nodei.co/npm/regl-scatter2d.png?mini=true)](https://npmjs.org/package/regl-scatter2d/)
 
 ```js
 let scatter = require('regl-scatter2d')({
