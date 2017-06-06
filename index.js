@@ -8,6 +8,7 @@ const clamp = require('clamp')
 const atlas = require('font-atlas-sdf')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
+const clusterPoints = require('../point-cluster')
 const normalize = require('array-normalize')
 
 module.exports = Scatter
@@ -286,7 +287,7 @@ Scatter.prototype.update = function (options) {
     //recalc bounds for the data
     if (this.cluster) {
       //TODO: read actual point radius/size here
-      let radius = Array.isArray(this.size) ? (id => this.size) : ( (this.size / Math.max(w, h) ) / this.scale[0])
+      let radius = ((this.size[0] || this.size) / Math.max(w, h)) / this.scale[0]
       let ids = this.getPoints(radius)
 
       let subpositions = new Float32Array(ids.length * 2)

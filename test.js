@@ -15,7 +15,7 @@ let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-	size:  Array(N).fill(20).map(x => Math.random() * x),
+	size:  Array(N).fill(15).map(x => Math.random() * x),
 	// size: 10,
 	color: Array(N).fill(0).map(() =>
 				[Math.random(), Math.random(), Math.random(), Math.random()]
@@ -27,7 +27,9 @@ let scatter = createScatter({
 	borderColor: [.1,.2,.3,1]
 })
 .autorange()
-.draw()
+
+
+scatter.draw()
 
 /*
 let settings = createSettings([
@@ -103,8 +105,8 @@ panZoom(canvas, e => {
 	let scale = scatter.scale
 	let translate = scatter.translate
 
-	translate[0] += fromPx(e.dx, scale[0])
-	translate[1] += fromPx(e.dy, scale[1])
+	translate[0] += e.dx / scale[0] / w
+	translate[1] += e.dy / scale[1] / h
 
 	let prevScale = scale.slice()
 
@@ -112,10 +114,10 @@ panZoom(canvas, e => {
 	scale[1] -= scale[1] * e.dz / w
 
 	let rx = e.x / w
-	let ry = e.y / h
+	let ry = (e.y) / h
 
-	translate[0] += fromPx(e.x, scale[0]) - fromPx(e.x, prevScale[0])
-	translate[1] += fromPx(e.y, scale[1]) - fromPx(e.y, prevScale[1])
+	translate[0] += e.x / scale[0] / w - e.x / prevScale[0] / w
+	translate[1] += (h - e.y) / scale[1] / h - (h - e.y) / prevScale[1] / h
 	scatter.update({
 		scale: e.dz ? scale : null,
 		translate: translate
@@ -123,10 +125,6 @@ panZoom(canvas, e => {
 
 	scatter.clear()
 	scatter.draw()
-
-	function fromPx(v, s) {
-		return v / s / w
-	}
 })
 
 

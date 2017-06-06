@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "budo test",
-    "build": "browserify example/points.js -g babelify | indexhtmlify | metadataify | github-cornerify > demo/index.html"
+    "build": "browserify example/points.js -g babelify | indexhtmlify | metadataify | github-cornerify > demo/index.html",
+    "build2": "browserify test.js -g babelify | indexhtmlify | metadataify | github-cornerify > demo/colors.html"
   },
   "repository": {
     "type": "git",
