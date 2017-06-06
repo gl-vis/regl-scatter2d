@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gl-vis/regl-scatter2d.git"
+    "url": "git+https://github.com/dfcreative/regl-scatter2d.git"
   },
   "keywords": [
     "regl",
@@ -18,9 +18,9 @@
   "author": "Dima Yv <df.creative@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gl-vis/regl-scatter2d/issues"
+    "url": "https://github.com/dfcreative/regl-scatter2d/issues"
   },
-  "homepage": "https://github.com/gl-vis/regl-scatter2d#readme",
+  "homepage": "https://github.com/dfcreative/regl-scatter2d#readme",
   "dependencies": {
     "array-bounds": "^1.0.0",
     "array-normalize": "^1.1.2",
