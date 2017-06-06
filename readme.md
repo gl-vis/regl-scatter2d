@@ -4,9 +4,12 @@ Scatter plot for lots of points.
 
 Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), [gl-scatter2d-fancy](https://github.com/gl-vis/gl-scatter2d-fancy) and [gl-scatter2d-sdf](https://github.com/gl-vis/gl-scatter2d-sdf). Main improvements:
 
+## Changes
+
 * [point-cluster](https://github.com/dfcreative/point-cluster) is used instead of [snap-points-2d](https://github.com/gl-vis/snap-points-2d), which extends number of points up to `1e8` and speeds up construction up to ~30%.
 * API covers the API of _gl-scatter2d-*_ components. Multipass rendering enables various colors, glyphs and sizes within single component.
 * gl-plot2d compatible.
+* fancy mode is enabled only for custom glyphs, regular scatter can render various colors/sizes/borders without memory overflow (up to 1e8 points)
 
 ## Usage
 
@@ -23,6 +26,7 @@ let scatter = require('regl-scatter2d')({regl})
 |---|---|---|
 | `regl` | `null` | Regl instance to reuse, or new regl is created. |
 | `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created. |
+| `plot` | `null` | [`gl-plot2d`](https://github.com/gl-vis/gl-plot2d) reference, if scatter is going to be used as a part of plot. |
 | `pixelRatio` | `window.devicePixelRatio` | Display pixel density property. |
 | `positions` | A packed 2*n length array of the unrolled xy coordinates of the points (required) |
 | `size` | number giving the diameter of a marker in pixels (default `12`) |
