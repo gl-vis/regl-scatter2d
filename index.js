@@ -58,6 +58,7 @@ Scatter.prototype.selection = null
 //current viewport settings
 Scatter.prototype.scale = [1, 1]
 Scatter.prototype.translate = [0, 0]
+
 //TODO
 Scatter.prototype.viewBox = null
 Scatter.prototype.dataBox = null
@@ -177,6 +178,12 @@ Scatter.prototype.init = function (options) {
         }
         return {constant: this.color}
       }
+    },
+
+    blend: {
+      enable: true,
+      equation: {rgb: 'add', alpha: 'add'},
+      func: {src: 'one', dst: 'one minus src alpha'}
     },
 
     count: regl.this('pointCount'),
