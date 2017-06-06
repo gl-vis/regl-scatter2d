@@ -40,7 +40,7 @@ scatter.draw()
 | `glyph` | `null` | Glyph to use for marker, can be a single glyph or array. |
 | `scale` | `[0, 0]` | Scale in terms of data units. |
 | `translate` | `[0, 0]` | Translate in terms of data units. |
-| `cluster` | defines whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
+| `cluster` | `false` | defines whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
 
 **Returns** A new scatter plot object, which is also registered to `plot`
 
