@@ -7,11 +7,11 @@ const random = require('gauss-random')
 
 //5e6 is allocation maximum
 // var POINT_COUNT = 3e6
-var POINT_COUNT = 1e4
+var POINT_COUNT = 1e5
 
 var positions = new Float32Array(2 * POINT_COUNT)
 for(var i=0; i<2*POINT_COUNT; ++i) {
-  positions[i] = Math.random()// * 10
+  positions[i] = random()
 }
 
 // positions = [0,0, .25,.25, .5,.5, 1,1, 2, 2, 3, 3]

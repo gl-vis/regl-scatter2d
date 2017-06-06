@@ -325,13 +325,13 @@ Scatter.prototype.update = function (options) {
 
   //aggregate glyphs
   if (glyph != null) {
-    var glyphChars = {}
-    for (var i = 0, l = pointCount, k = 0; i < l; i++) {
-      var char = glyphs[i]
-      if (glyphChars[char] == null) {
-        glyphChars[char] = k++
-      }
-    }
+    // var glyphChars = {}
+    // for (var i = 0, l = this.pointCount, k = 0; i < l; i++) {
+    //   var char = glyphs[i]
+    //   if (glyphChars[char] == null) {
+    //     glyphChars[char] = k++
+    //   }
+    // }
   }
 
 
@@ -408,7 +408,7 @@ Scatter.prototype.draw = function () {
   this.drawPoints()
   // this.drawTest()
 
-  return this
+  return this.pointCount
 }
 
 // adjust scale and transform so to see all the data
@@ -438,14 +438,14 @@ Scatter.prototype.clear = function () {
   return this
 }
 
-Scatter.prototype.pick = function () {
-
+Scatter.prototype.pick = function (x, y, value) {
+  // return this.draw()
+  return null
 }
 
 
 Scatter.prototype.drawPick = function () {
-  //TODO: init regl draw here
-  return this
+  return this.pointCount
 }
 
 Scatter.prototype.dispose = function () {
