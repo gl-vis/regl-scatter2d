@@ -25,6 +25,1343 @@
 <script>
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 /**
+ * @module  point-cluster
+ */
+
+'use strict';
+
+var kdtree = require('kdgrass');
+var extend = require('object-assign');
+var clamp = require('clamp');
+var getBounds = require('array-bounds');
+var snap = require('snap-points-2d');
+
+module.exports = pointCluster;
+
+function pointCluster(points) {
+    var tree = kdtree(points, 1);
+    var dataBounds = getBounds(points, 2);
+
+    return cluster;
+
+    //returns points belonging to certain scale (that is kdtree level)
+    function cluster(dist, bounds) {
+        if (!bounds) bounds = dataBounds;
+
+        var result = [];
+        var r = dist / 2,
+            r2 = r * r,
+            pr2 = Math.PI * r2;
+        var box = dataBounds.slice();
+
+        let maxDepth = 25;
+        getPoints(tree, 0, tree.ids.length - 1, 0, box, 0);
+
+        function getPoints(tree, from, to, axis, box, depth) {
+            var coords = tree.coords,
+                ids = tree.ids,
+                nodeSize = tree.nodeSize;
+            var range = to - from;
+            //median
+            var m = Math.floor((from + to) / 2);
+
+            //if bottom reached - include every point
+            if (range <= nodeSize) {
+                // for (var id = from; id <= to; id++) {
+                // var x = coords[2 * id];
+                // var y = coords[2 * id + 1];
+                // if (x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3])
+                // addPoint(id)
+                // }
+                // addPoint(m)
+                //pick single random from the range
+                // var id = Math.floor(Math.random() * (from - to) + from)
+                return;
+            }
+
+            var x = coords[2 * m];
+            var y = coords[2 * m + 1];
+            result.push(ids[m]);
+
+            //if required radius larger than cluster span - exit
+            if (sq(box) <= pr2) {
+                //TODO: mark points belonging to radius as covered
+                return;
+            }
+
+            // if (x >= bounds[0] && x <= bounds[2] && y >= bounds[1] && y <= bounds[3]) {
+            // var id = Math.floor(Math.random() * range + from)
+            // result.push(ids[m]);
+            // }
+
+            //go deeper
+            axis = (axis + 1) % 2;
+            depth++;
+
+            if (depth <= maxDepth) {
+                getPoints(tree, from, m - 1, axis, [box[0], box[1], axis ? x : box[2], axis ? box[3] : y], depth);
+                getPoints(tree, m + 1, to, axis, [axis ? x : box[0], axis ? box[1] : y, box[2], box[3]], depth);
+            } else {
+                throw 'Max depth reached';
+            }
+        }
+
+        return result;
+    }
+
+    function sq(box) {
+        var dx = box[2] - box[0];
+        var dy = box[3] - box[1];
+        return dx * dy;
+    }
+
+    function maxDist(box) {
+        var max = Math.max(box[2] - box[0], box[3] - box[1]);
+        return max * max;
+    }
+
+    function sqDist(box) {
+        var dx = box[2] - box[0];
+        var dy = box[3] - box[1];
+        return dx * dx + dy * dy;
+    }
+
+    //get points covering the area with defined radius
+    function cover(radius) {
+        var result = [];
+
+        //TODO: in order to reduce scale search, we can limit radius by known data bounds
+        //TODO: point radius may vary for different points, so take that in account, like id => r
+
+        //object is way faster than Set for .has testing on big number of items
+        var marked = {};
+        var ids = tree.ids;
+
+        for (var i = 0, l = ids.length; i < l; i++) {
+            var id = ids[i];
+
+            // if we've already visited the point at this zoom level, skip it
+            if (marked[id]) {
+                continue;
+            }
+            marked[id] = true;
+
+            var x = points[id * 2];
+            var y = points[id * 2 + 1];
+
+            // exclude neighbours from processing
+            var neighborIds = tree.within(x, y, radius);
+            // var neighborIds = tree.range(x-r, y-r, x+r, y+r);
+
+            for (var j = 0; j < neighborIds.length; j++) {
+                var b = neighborIds[j];
+                if (marked[b]) {
+                    continue;
+                }
+                marked[b] = true;
+            }
+
+            // put point for the level
+            result.push(id);
+        }
+
+        return result;
+    }
+}
+
+},{"array-bounds":2,"clamp":4,"kdgrass":6,"object-assign":7,"snap-points-2d":9}],2:[function(require,module,exports){
+'use strict';
+
+module.exports = normalize;
+
+function normalize(arr, dim) {
+	if (!arr || arr.length == null) throw Error('Argument should be an array');
+
+	if (dim == null) dim = 1;else dim = Math.floor(dim);
+
+	var bounds = Array(dim * 2);
+
+	for (var offset = 0; offset < dim; offset++) {
+		var max = -Infinity,
+		    min = Infinity,
+		    i = offset,
+		    l = arr.length;
+
+		for (; i < l; i += dim) {
+			if (arr[i] > max) max = arr[i];
+			if (arr[i] < min) min = arr[i];
+		}
+
+		bounds[offset] = min;
+		bounds[dim + offset] = max;
+	}
+
+	return bounds;
+}
+
+},{}],3:[function(require,module,exports){
+/**
+ * Bit twiddling hacks for JavaScript.
+ *
+ * Author: Mikola Lysenko
+ *
+ * Ported from Stanford bit twiddling hack library:
+ *    http://graphics.stanford.edu/~seander/bithacks.html
+ */
+
+"use strict";"use restrict";
+
+//Number of bits in an integer
+
+var INT_BITS = 32;
+
+//Constants
+exports.INT_BITS = INT_BITS;
+exports.INT_MAX = 0x7fffffff;
+exports.INT_MIN = -1 << INT_BITS - 1;
+
+//Returns -1, 0, +1 depending on sign of x
+exports.sign = function (v) {
+  return (v > 0) - (v < 0);
+};
+
+//Computes absolute value of integer
+exports.abs = function (v) {
+  var mask = v >> INT_BITS - 1;
+  return (v ^ mask) - mask;
+};
+
+//Computes minimum of integers x and y
+exports.min = function (x, y) {
+  return y ^ (x ^ y) & -(x < y);
+};
+
+//Computes maximum of integers x and y
+exports.max = function (x, y) {
+  return x ^ (x ^ y) & -(x < y);
+};
+
+//Checks if a number is a power of two
+exports.isPow2 = function (v) {
+  return !(v & v - 1) && !!v;
+};
+
+//Computes log base 2 of v
+exports.log2 = function (v) {
+  var r, shift;
+  r = (v > 0xFFFF) << 4;v >>>= r;
+  shift = (v > 0xFF) << 3;v >>>= shift;r |= shift;
+  shift = (v > 0xF) << 2;v >>>= shift;r |= shift;
+  shift = (v > 0x3) << 1;v >>>= shift;r |= shift;
+  return r | v >> 1;
+};
+
+//Computes log base 10 of v
+exports.log10 = function (v) {
+  return v >= 1000000000 ? 9 : v >= 100000000 ? 8 : v >= 10000000 ? 7 : v >= 1000000 ? 6 : v >= 100000 ? 5 : v >= 10000 ? 4 : v >= 1000 ? 3 : v >= 100 ? 2 : v >= 10 ? 1 : 0;
+};
+
+//Counts number of bits
+exports.popCount = function (v) {
+  v = v - (v >>> 1 & 0x55555555);
+  v = (v & 0x33333333) + (v >>> 2 & 0x33333333);
+  return (v + (v >>> 4) & 0xF0F0F0F) * 0x1010101 >>> 24;
+};
+
+//Counts number of trailing zeros
+function countTrailingZeros(v) {
+  var c = 32;
+  v &= -v;
+  if (v) c--;
+  if (v & 0x0000FFFF) c -= 16;
+  if (v & 0x00FF00FF) c -= 8;
+  if (v & 0x0F0F0F0F) c -= 4;
+  if (v & 0x33333333) c -= 2;
+  if (v & 0x55555555) c -= 1;
+  return c;
+}
+exports.countTrailingZeros = countTrailingZeros;
+
+//Rounds to next power of 2
+exports.nextPow2 = function (v) {
+  v += v === 0;
+  --v;
+  v |= v >>> 1;
+  v |= v >>> 2;
+  v |= v >>> 4;
+  v |= v >>> 8;
+  v |= v >>> 16;
+  return v + 1;
+};
+
+//Rounds down to previous power of 2
+exports.prevPow2 = function (v) {
+  v |= v >>> 1;
+  v |= v >>> 2;
+  v |= v >>> 4;
+  v |= v >>> 8;
+  v |= v >>> 16;
+  return v - (v >>> 1);
+};
+
+//Computes parity of word
+exports.parity = function (v) {
+  v ^= v >>> 16;
+  v ^= v >>> 8;
+  v ^= v >>> 4;
+  v &= 0xf;
+  return 0x6996 >>> v & 1;
+};
+
+var REVERSE_TABLE = new Array(256);
+
+(function (tab) {
+  for (var i = 0; i < 256; ++i) {
+    var v = i,
+        r = i,
+        s = 7;
+    for (v >>>= 1; v; v >>>= 1) {
+      r <<= 1;
+      r |= v & 1;
+      --s;
+    }
+    tab[i] = r << s & 0xff;
+  }
+})(REVERSE_TABLE);
+
+//Reverse bits in a 32 bit word
+exports.reverse = function (v) {
+  return REVERSE_TABLE[v & 0xff] << 24 | REVERSE_TABLE[v >>> 8 & 0xff] << 16 | REVERSE_TABLE[v >>> 16 & 0xff] << 8 | REVERSE_TABLE[v >>> 24 & 0xff];
+};
+
+//Interleave bits of 2 coordinates with 16 bits.  Useful for fast quadtree codes
+exports.interleave2 = function (x, y) {
+  x &= 0xFFFF;
+  x = (x | x << 8) & 0x00FF00FF;
+  x = (x | x << 4) & 0x0F0F0F0F;
+  x = (x | x << 2) & 0x33333333;
+  x = (x | x << 1) & 0x55555555;
+
+  y &= 0xFFFF;
+  y = (y | y << 8) & 0x00FF00FF;
+  y = (y | y << 4) & 0x0F0F0F0F;
+  y = (y | y << 2) & 0x33333333;
+  y = (y | y << 1) & 0x55555555;
+
+  return x | y << 1;
+};
+
+//Extracts the nth interleaved component
+exports.deinterleave2 = function (v, n) {
+  v = v >>> n & 0x55555555;
+  v = (v | v >>> 1) & 0x33333333;
+  v = (v | v >>> 2) & 0x0F0F0F0F;
+  v = (v | v >>> 4) & 0x00FF00FF;
+  v = (v | v >>> 16) & 0x000FFFF;
+  return v << 16 >> 16;
+};
+
+//Interleave bits of 3 coordinates, each with 10 bits.  Useful for fast octree codes
+exports.interleave3 = function (x, y, z) {
+  x &= 0x3FF;
+  x = (x | x << 16) & 4278190335;
+  x = (x | x << 8) & 251719695;
+  x = (x | x << 4) & 3272356035;
+  x = (x | x << 2) & 1227133513;
+
+  y &= 0x3FF;
+  y = (y | y << 16) & 4278190335;
+  y = (y | y << 8) & 251719695;
+  y = (y | y << 4) & 3272356035;
+  y = (y | y << 2) & 1227133513;
+  x |= y << 1;
+
+  z &= 0x3FF;
+  z = (z | z << 16) & 4278190335;
+  z = (z | z << 8) & 251719695;
+  z = (z | z << 4) & 3272356035;
+  z = (z | z << 2) & 1227133513;
+
+  return x | z << 2;
+};
+
+//Extracts nth interleaved component of a 3-tuple
+exports.deinterleave3 = function (v, n) {
+  v = v >>> n & 1227133513;
+  v = (v | v >>> 2) & 3272356035;
+  v = (v | v >>> 4) & 251719695;
+  v = (v | v >>> 8) & 4278190335;
+  v = (v | v >>> 16) & 0x3FF;
+  return v << 22 >> 22;
+};
+
+//Computes next combination in colexicographic order (this is mistakenly called nextPermutation on the bit twiddling hacks page)
+exports.nextCombination = function (v) {
+  var t = v | v - 1;
+  return t + 1 | (~t & -~t) - 1 >>> countTrailingZeros(v) + 1;
+};
+
+},{}],4:[function(require,module,exports){
+module.exports = clamp;
+
+function clamp(value, min, max) {
+  return min < max ? value < min ? min : value > max ? max : value : value < max ? max : value > min ? min : value;
+}
+
+},{}],5:[function(require,module,exports){
+"use strict";
+
+function dupe_array(count, value, i) {
+  var c = count[i] | 0;
+  if (c <= 0) {
+    return [];
+  }
+  var result = new Array(c),
+      j;
+  if (i === count.length - 1) {
+    for (j = 0; j < c; ++j) {
+      result[j] = value;
+    }
+  } else {
+    for (j = 0; j < c; ++j) {
+      result[j] = dupe_array(count, value, i + 1);
+    }
+  }
+  return result;
+}
+
+function dupe_number(count, value) {
+  var result, i;
+  result = new Array(count);
+  for (i = 0; i < count; ++i) {
+    result[i] = value;
+  }
+  return result;
+}
+
+function dupe(count, value) {
+  if (typeof value === "undefined") {
+    value = 0;
+  }
+  switch (typeof count) {
+    case "number":
+      if (count > 0) {
+        return dupe_number(count | 0, value);
+      }
+      break;
+    case "object":
+      if (typeof count.length === "number") {
+        return dupe_array(count, value, 0);
+      }
+      break;
+  }
+  return [];
+}
+
+module.exports = dupe;
+
+},{}],6:[function(require,module,exports){
+/**
+ * @module  kdgrass
+ *
+ * Static kdbush
+ */
+
+'use strict';
+
+module.exports = KDTree;
+
+//optimized kdbush
+function KDTree(points, nodeSize) {
+    if (!(this instanceof KDTree)) return new KDTree(points, nodeSize);
+
+    this.nodeSize = nodeSize || 64;
+
+    this.coords = points.slice();
+
+    var l = Math.floor(points.length / 2);
+    this.ids = Array(l);
+
+    for (var i = 0; i < l; i++) {
+        this.ids[i] = i;
+    }
+
+    sortKD(this.ids, this.coords, this.nodeSize, 0, this.ids.length - 1, 0);
+}
+
+KDTree.prototype.range = function range(minX, minY, maxX, maxY) {
+    var ids = this.ids,
+        coords = this.coords,
+        nodeSize = this.nodeSize;
+    var stack = [0, ids.length - 1, 0];
+    var result = [];
+    var x, y;
+
+    while (stack.length) {
+        var axis = stack.pop();
+        var right = stack.pop();
+        var left = stack.pop();
+
+        if (right - left <= nodeSize) {
+            for (var i = left; i <= right; i++) {
+                x = coords[2 * i];
+                y = coords[2 * i + 1];
+                if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[i]);
+            }
+            continue;
+        }
+
+        var m = Math.floor((left + right) / 2);
+
+        x = coords[2 * m];
+        y = coords[2 * m + 1];
+
+        if (x >= minX && x <= maxX && y >= minY && y <= maxY) result.push(ids[m]);
+
+        var nextAxis = (axis + 1) % 2;
+
+        if (axis === 0 ? minX <= x : minY <= y) {
+            stack.push(left);
+            stack.push(m - 1);
+            stack.push(nextAxis);
+        }
+        if (axis === 0 ? maxX >= x : maxY >= y) {
+            stack.push(m + 1);
+            stack.push(right);
+            stack.push(nextAxis);
+        }
+    }
+
+    return result;
+};
+
+KDTree.prototype.within = function within(qx, qy, r) {
+    var ids = this.ids,
+        coords = this.coords,
+        nodeSize = this.nodeSize;
+    var stack = [0, ids.length - 1, 0];
+    var result = [];
+    var r2 = r * r;
+
+    while (stack.length) {
+        var axis = stack.pop();
+        var right = stack.pop();
+        var left = stack.pop();
+
+        if (right - left <= nodeSize) {
+            for (var i = left; i <= right; i++) {
+                if (sqDist(coords[2 * i], coords[2 * i + 1], qx, qy) <= r2) result.push(ids[i]);
+            }
+            continue;
+        }
+
+        var m = Math.floor((left + right) / 2);
+
+        var x = coords[2 * m];
+        var y = coords[2 * m + 1];
+
+        if (sqDist(x, y, qx, qy) <= r2) result.push(ids[m]);
+
+        var nextAxis = (axis + 1) % 2;
+
+        if (axis === 0 ? qx - r <= x : qy - r <= y) {
+            stack.push(left);
+            stack.push(m - 1);
+            stack.push(nextAxis);
+        }
+        if (axis === 0 ? qx + r >= x : qy + r >= y) {
+            stack.push(m + 1);
+            stack.push(right);
+            stack.push(nextAxis);
+        }
+    }
+
+    return result;
+};
+
+function sqDist(ax, ay, bx, by) {
+    var dx = ax - bx;
+    var dy = ay - by;
+    return dx * dx + dy * dy;
+}
+
+function sortKD(ids, coords, nodeSize, left, right, depth) {
+    if (right - left <= nodeSize) return;
+
+    var m = Math.floor((left + right) / 2);
+
+    select(ids, coords, m, left, right, depth % 2);
+
+    sortKD(ids, coords, nodeSize, left, m - 1, depth + 1);
+    sortKD(ids, coords, nodeSize, m + 1, right, depth + 1);
+}
+
+function select(ids, coords, k, left, right, inc) {
+
+    while (right > left) {
+        if (right - left > 600) {
+            var n = right - left + 1;
+            var m = k - left + 1;
+            var z = Math.log(n);
+            var s = 0.5 * Math.exp(2 * z / 3);
+            var sd = 0.5 * Math.sqrt(z * s * (n - s) / n) * (m - n / 2 < 0 ? -1 : 1);
+            var newLeft = Math.max(left, Math.floor(k - m * s / n + sd));
+            var newRight = Math.min(right, Math.floor(k + (n - m) * s / n + sd));
+            select(ids, coords, k, newLeft, newRight, inc);
+        }
+
+        var t = coords[2 * k + inc];
+        var i = left;
+        var j = right;
+
+        swapItem(ids, coords, left, k);
+        if (coords[2 * right + inc] > t) swapItem(ids, coords, left, right);
+
+        while (i < j) {
+            swapItem(ids, coords, i, j);
+            i++;
+            j--;
+            while (coords[2 * i + inc] < t) i++;
+            while (coords[2 * j + inc] > t) j--;
+        }
+
+        if (coords[2 * left + inc] === t) swapItem(ids, coords, left, j);else {
+            j++;
+            swapItem(ids, coords, j, right);
+        }
+
+        if (j <= k) left = j + 1;
+        if (k <= j) right = j - 1;
+    }
+}
+
+function swapItem(ids, coords, i, j) {
+    swap(ids, i, j);
+    swap(coords, 2 * i, 2 * j);
+    swap(coords, 2 * i + 1, 2 * j + 1);
+}
+
+function swap(arr, i, j) {
+    var tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+}
+
+},{}],7:[function(require,module,exports){
+/*
+object-assign
+(c) Sindre Sorhus
+@license MIT
+*/
+
+'use strict';
+/* eslint-disable no-unused-vars */
+
+var getOwnPropertySymbols = Object.getOwnPropertySymbols;
+var hasOwnProperty = Object.prototype.hasOwnProperty;
+var propIsEnumerable = Object.prototype.propertyIsEnumerable;
+
+function toObject(val) {
+	if (val === null || val === undefined) {
+		throw new TypeError('Object.assign cannot be called with null or undefined');
+	}
+
+	return Object(val);
+}
+
+function shouldUseNative() {
+	try {
+		if (!Object.assign) {
+			return false;
+		}
+
+		// Detect buggy property enumeration order in older V8 versions.
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
+		var test1 = new String('abc'); // eslint-disable-line no-new-wrappers
+		test1[5] = 'de';
+		if (Object.getOwnPropertyNames(test1)[0] === '5') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test2 = {};
+		for (var i = 0; i < 10; i++) {
+			test2['_' + String.fromCharCode(i)] = i;
+		}
+		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
+			return test2[n];
+		});
+		if (order2.join('') !== '0123456789') {
+			return false;
+		}
+
+		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
+		var test3 = {};
+		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
+			test3[letter] = letter;
+		});
+		if (Object.keys(Object.assign({}, test3)).join('') !== 'abcdefghijklmnopqrst') {
+			return false;
+		}
+
+		return true;
+	} catch (err) {
+		// We don't expect any of the above to throw, but better to be safe.
+		return false;
+	}
+}
+
+module.exports = shouldUseNative() ? Object.assign : function (target, source) {
+	var from;
+	var to = toObject(target);
+	var symbols;
+
+	for (var s = 1; s < arguments.length; s++) {
+		from = Object(arguments[s]);
+
+		for (var key in from) {
+			if (hasOwnProperty.call(from, key)) {
+				to[key] = from[key];
+			}
+		}
+
+		if (getOwnPropertySymbols) {
+			symbols = getOwnPropertySymbols(from);
+			for (var i = 0; i < symbols.length; i++) {
+				if (propIsEnumerable.call(from, symbols[i])) {
+					to[symbols[i]] = from[symbols[i]];
+				}
+			}
+		}
+	}
+
+	return to;
+};
+
+},{}],8:[function(require,module,exports){
+'use strict';
+
+module.exports = sortLevels;
+
+var INSERT_SORT_CUTOFF = 32;
+
+function sortLevels(data_levels, data_points, data_ids, data_weights, n0) {
+  if (n0 <= 4 * INSERT_SORT_CUTOFF) {
+    insertionSort(0, n0 - 1, data_levels, data_points, data_ids, data_weights);
+  } else {
+    quickSort(0, n0 - 1, data_levels, data_points, data_ids, data_weights);
+  }
+}
+
+function insertionSort(left, right, data_levels, data_points, data_ids, data_weights) {
+  for (var i = left + 1; i <= right; ++i) {
+    var a_level = data_levels[i];
+    var a_x = data_points[2 * i];
+    var a_y = data_points[2 * i + 1];
+    var a_id = data_ids[i];
+    var a_weight = data_weights[i];
+
+    var j = i;
+    while (j > left) {
+      var b_level = data_levels[j - 1];
+      var b_x = data_points[2 * (j - 1)];
+      if ((b_level - a_level || a_x - b_x) >= 0) {
+        break;
+      }
+      data_levels[j] = b_level;
+      data_points[2 * j] = b_x;
+      data_points[2 * j + 1] = data_points[2 * j - 1];
+      data_ids[j] = data_ids[j - 1];
+      data_weights[j] = data_weights[j - 1];
+      j -= 1;
+    }
+
+    data_levels[j] = a_level;
+    data_points[2 * j] = a_x;
+    data_points[2 * j + 1] = a_y;
+    data_ids[j] = a_id;
+    data_weights[j] = a_weight;
+  }
+}
+
+function swap(i, j, data_levels, data_points, data_ids, data_weights) {
+  var a_level = data_levels[i];
+  var a_x = data_points[2 * i];
+  var a_y = data_points[2 * i + 1];
+  var a_id = data_ids[i];
+  var a_weight = data_weights[i];
+
+  data_levels[i] = data_levels[j];
+  data_points[2 * i] = data_points[2 * j];
+  data_points[2 * i + 1] = data_points[2 * j + 1];
+  data_ids[i] = data_ids[j];
+  data_weights[i] = data_weights[j];
+
+  data_levels[j] = a_level;
+  data_points[2 * j] = a_x;
+  data_points[2 * j + 1] = a_y;
+  data_ids[j] = a_id;
+  data_weights[j] = a_weight;
+}
+
+function move(i, j, data_levels, data_points, data_ids, data_weights) {
+  data_levels[i] = data_levels[j];
+  data_points[2 * i] = data_points[2 * j];
+  data_points[2 * i + 1] = data_points[2 * j + 1];
+  data_ids[i] = data_ids[j];
+  data_weights[i] = data_weights[j];
+}
+
+function rotate(i, j, k, data_levels, data_points, data_ids, data_weights) {
+  var a_level = data_levels[i];
+  var a_x = data_points[2 * i];
+  var a_y = data_points[2 * i + 1];
+  var a_id = data_ids[i];
+  var a_weight = data_weights[i];
+
+  data_levels[i] = data_levels[j];
+  data_points[2 * i] = data_points[2 * j];
+  data_points[2 * i + 1] = data_points[2 * j + 1];
+  data_ids[i] = data_ids[j];
+  data_weights[i] = data_weights[j];
+
+  data_levels[j] = data_levels[k];
+  data_points[2 * j] = data_points[2 * k];
+  data_points[2 * j + 1] = data_points[2 * k + 1];
+  data_ids[j] = data_ids[k];
+  data_weights[j] = data_weights[k];
+
+  data_levels[k] = a_level;
+  data_points[2 * k] = a_x;
+  data_points[2 * k + 1] = a_y;
+  data_ids[k] = a_id;
+  data_weights[k] = a_weight;
+}
+
+function shufflePivot(i, j, a_level, a_x, a_y, a_id, a_weight, data_levels, data_points, data_ids, data_weights) {
+
+  data_levels[i] = data_levels[j];
+  data_points[2 * i] = data_points[2 * j];
+  data_points[2 * i + 1] = data_points[2 * j + 1];
+  data_ids[i] = data_ids[j];
+  data_weights[i] = data_weights[j];
+
+  data_levels[j] = a_level;
+  data_points[2 * j] = a_x;
+  data_points[2 * j + 1] = a_y;
+  data_ids[j] = a_id;
+  data_weights[j] = a_weight;
+}
+
+function compare(i, j, data_levels, data_points, data_ids) {
+  return (data_levels[i] - data_levels[j] || data_points[2 * j] - data_points[2 * i] || data_ids[i] - data_ids[j]) < 0;
+}
+
+function comparePivot(i, level, x, y, id, data_levels, data_points, data_ids) {
+  return (level - data_levels[i] || data_points[2 * i] - x || id - data_ids[i]) < 0;
+}
+
+function quickSort(left, right, data_levels, data_points, data_ids, data_weights) {
+  var sixth = (right - left + 1) / 6 | 0,
+      index1 = left + sixth,
+      index5 = right - sixth,
+      index3 = left + right >> 1,
+      index2 = index3 - sixth,
+      index4 = index3 + sixth,
+      el1 = index1,
+      el2 = index2,
+      el3 = index3,
+      el4 = index4,
+      el5 = index5,
+      less = left + 1,
+      great = right - 1,
+      tmp = 0;
+  if (compare(el1, el2, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el1;
+    el1 = el2;
+    el2 = tmp;
+  }
+  if (compare(el4, el5, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el4;
+    el4 = el5;
+    el5 = tmp;
+  }
+  if (compare(el1, el3, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el1;
+    el1 = el3;
+    el3 = tmp;
+  }
+  if (compare(el2, el3, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el2;
+    el2 = el3;
+    el3 = tmp;
+  }
+  if (compare(el1, el4, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el1;
+    el1 = el4;
+    el4 = tmp;
+  }
+  if (compare(el3, el4, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el3;
+    el3 = el4;
+    el4 = tmp;
+  }
+  if (compare(el2, el5, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el2;
+    el2 = el5;
+    el5 = tmp;
+  }
+  if (compare(el2, el3, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el2;
+    el2 = el3;
+    el3 = tmp;
+  }
+  if (compare(el4, el5, data_levels, data_points, data_ids, data_weights)) {
+    tmp = el4;
+    el4 = el5;
+    el5 = tmp;
+  }
+
+  var pivot1_level = data_levels[el2];
+  var pivot1_x = data_points[2 * el2];
+  var pivot1_y = data_points[2 * el2 + 1];
+  var pivot1_id = data_ids[el2];
+  var pivot1_weight = data_weights[el2];
+
+  var pivot2_level = data_levels[el4];
+  var pivot2_x = data_points[2 * el4];
+  var pivot2_y = data_points[2 * el4 + 1];
+  var pivot2_id = data_ids[el4];
+  var pivot2_weight = data_weights[el4];
+
+  var ptr0 = el1;
+  var ptr2 = el3;
+  var ptr4 = el5;
+  var ptr5 = index1;
+  var ptr6 = index3;
+  var ptr7 = index5;
+
+  var level_x = data_levels[ptr0];
+  var level_y = data_levels[ptr2];
+  var level_z = data_levels[ptr4];
+  data_levels[ptr5] = level_x;
+  data_levels[ptr6] = level_y;
+  data_levels[ptr7] = level_z;
+
+  for (var i1 = 0; i1 < 2; ++i1) {
+    var x = data_points[2 * ptr0 + i1];
+    var y = data_points[2 * ptr2 + i1];
+    var z = data_points[2 * ptr4 + i1];
+    data_points[2 * ptr5 + i1] = x;
+    data_points[2 * ptr6 + i1] = y;
+    data_points[2 * ptr7 + i1] = z;
+  }
+
+  var id_x = data_ids[ptr0];
+  var id_y = data_ids[ptr2];
+  var id_z = data_ids[ptr4];
+  data_ids[ptr5] = id_x;
+  data_ids[ptr6] = id_y;
+  data_ids[ptr7] = id_z;
+
+  var weight_x = data_weights[ptr0];
+  var weight_y = data_weights[ptr2];
+  var weight_z = data_weights[ptr4];
+  data_weights[ptr5] = weight_x;
+  data_weights[ptr6] = weight_y;
+  data_weights[ptr7] = weight_z;
+
+  move(index2, left, data_levels, data_points, data_ids, data_weights);
+  move(index4, right, data_levels, data_points, data_ids, data_weights);
+  for (var k = less; k <= great; ++k) {
+    if (comparePivot(k, pivot1_level, pivot1_x, pivot1_y, pivot1_id, data_levels, data_points, data_ids)) {
+      if (k !== less) {
+        swap(k, less, data_levels, data_points, data_ids, data_weights);
+      }
+      ++less;
+    } else {
+      if (!comparePivot(k, pivot2_level, pivot2_x, pivot2_y, pivot2_id, data_levels, data_points, data_ids)) {
+        while (true) {
+          if (!comparePivot(great, pivot2_level, pivot2_x, pivot2_y, pivot2_id, data_levels, data_points, data_ids)) {
+            if (--great < k) {
+              break;
+            }
+            continue;
+          } else {
+            if (comparePivot(great, pivot1_level, pivot1_x, pivot1_y, pivot1_id, data_levels, data_points, data_ids)) {
+              rotate(k, less, great, data_levels, data_points, data_ids, data_weights);
+              ++less;
+              --great;
+            } else {
+              swap(k, great, data_levels, data_points, data_ids, data_weights);
+              --great;
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+  shufflePivot(left, less - 1, pivot1_level, pivot1_x, pivot1_y, pivot1_id, pivot1_weight, data_levels, data_points, data_ids, data_weights);
+  shufflePivot(right, great + 1, pivot2_level, pivot2_x, pivot2_y, pivot2_id, pivot2_weight, data_levels, data_points, data_ids, data_weights);
+  if (less - 2 - left <= INSERT_SORT_CUTOFF) {
+    insertionSort(left, less - 2, data_levels, data_points, data_ids, data_weights);
+  } else {
+    quickSort(left, less - 2, data_levels, data_points, data_ids, data_weights);
+  }
+  if (right - (great + 2) <= INSERT_SORT_CUTOFF) {
+    insertionSort(great + 2, right, data_levels, data_points, data_ids, data_weights);
+  } else {
+    quickSort(great + 2, right, data_levels, data_points, data_ids, data_weights);
+  }
+  if (great - less <= INSERT_SORT_CUTOFF) {
+    insertionSort(less, great, data_levels, data_points, data_ids, data_weights);
+  } else {
+    quickSort(less, great, data_levels, data_points, data_ids, data_weights);
+  }
+}
+
+},{}],9:[function(require,module,exports){
+'use strict';
+
+var pool = require('typedarray-pool');
+
+var sortLevels = require('./lib/sort');
+
+module.exports = snapPoints;
+
+function partition(points, ids, start, end, lox, loy, hix, hiy) {
+  var mid = start;
+  for (var i = start; i < end; ++i) {
+    var x = points[2 * i];
+    var y = points[2 * i + 1];
+    var s = ids[i];
+    if (lox <= x && x <= hix && loy <= y && y <= hiy) {
+      if (i === mid) {
+        mid += 1;
+      } else {
+        points[2 * i] = points[2 * mid];
+        points[2 * i + 1] = points[2 * mid + 1];
+        ids[i] = ids[mid];
+        points[2 * mid] = x;
+        points[2 * mid + 1] = y;
+        ids[mid] = s;
+        mid += 1;
+      }
+    }
+  }
+  return mid;
+}
+
+function SnapInterval(pixelSize, offset, count) {
+  this.pixelSize = pixelSize;
+  this.offset = offset;
+  this.count = count;
+}
+
+function snapPoints(points, ids, weights, bounds) {
+  var n = points.length >>> 1;
+  if (n < 1) {
+    return [];
+  }
+
+  var lox = Infinity,
+      loy = Infinity;
+  var hix = -Infinity,
+      hiy = -Infinity;
+  for (var i = 0; i < n; ++i) {
+    var x = points[2 * i];
+    var y = points[2 * i + 1];
+    lox = Math.min(lox, x);
+    hix = Math.max(hix, x);
+    loy = Math.min(loy, y);
+    hiy = Math.max(hiy, y);
+    ids[i] = i;
+  }
+
+  if (lox === hix) {
+    hix += 1 + Math.abs(hix);
+  }
+  if (loy === hiy) {
+    hiy += 1 + Math.abs(hix);
+  }
+
+  //Calculate diameter
+  var scaleX = 1.0 / (hix - lox);
+  var scaleY = 1.0 / (hiy - loy);
+  var diam = Math.max(hix - lox, hiy - loy);
+
+  bounds = bounds || [0, 0, 0, 0];
+
+  bounds[0] = lox;
+  bounds[1] = loy;
+  bounds[2] = hix;
+  bounds[3] = hiy;
+
+  var levels = pool.mallocInt32(n);
+  var ptr = 0;
+
+  function snapRec(x, y, diam, start, end, level) {
+    var diam_2 = diam * 0.5;
+    var offset = start + 1;
+    var count = end - start;
+    weights[ptr] = count;
+    levels[ptr++] = level;
+    for (var i = 0; i < 2; ++i) {
+      for (var j = 0; j < 2; ++j) {
+        var nx = x + i * diam_2;
+        var ny = y + j * diam_2;
+        var nextOffset = partition(points, ids, offset, end, nx, ny, nx + diam_2, ny + diam_2);
+        if (nextOffset === offset) {
+          continue;
+        }
+        if (nextOffset - offset >= Math.max(0.9 * count, 32)) {
+          var mid = end + start >>> 1;
+          snapRec(nx, ny, diam_2, offset, mid, level + 1);
+          offset = mid;
+        }
+        snapRec(nx, ny, diam_2, offset, nextOffset, level + 1);
+        offset = nextOffset;
+      }
+    }
+  }
+  snapRec(lox, loy, diam, 0, n, 0);
+  sortLevels(levels, points, ids, weights, n);
+
+  var lod = [];
+  var lastLevel = 0;
+  var prevOffset = n;
+  for (var ptr = n - 1; ptr >= 0; --ptr) {
+    points[2 * ptr] = (points[2 * ptr] - lox) * scaleX;
+    points[2 * ptr + 1] = (points[2 * ptr + 1] - loy) * scaleY;
+
+    var level = levels[ptr];
+    if (level === lastLevel) {
+      continue;
+    }
+
+    lod.push(new SnapInterval(diam * Math.pow(0.5, level), ptr + 1, prevOffset - (ptr + 1)));
+    prevOffset = ptr + 1;
+
+    lastLevel = level;
+  }
+
+  lod.push(new SnapInterval(diam * Math.pow(0.5, level + 1), 0, prevOffset));
+  pool.free(levels);
+
+  return lod;
+}
+
+},{"./lib/sort":8,"typedarray-pool":10}],10:[function(require,module,exports){
+(function (global,Buffer){
+'use strict';
+
+var bits = require('bit-twiddle');
+var dup = require('dup'
+
+//Legacy pool support
+);if (!global.__TYPEDARRAY_POOL) {
+  global.__TYPEDARRAY_POOL = {
+    UINT8: dup([32, 0]),
+    UINT16: dup([32, 0]),
+    UINT32: dup([32, 0]),
+    INT8: dup([32, 0]),
+    INT16: dup([32, 0]),
+    INT32: dup([32, 0]),
+    FLOAT: dup([32, 0]),
+    DOUBLE: dup([32, 0]),
+    DATA: dup([32, 0]),
+    UINT8C: dup([32, 0]),
+    BUFFER: dup([32, 0])
+  };
+}
+
+var hasUint8C = typeof Uint8ClampedArray !== 'undefined';
+var POOL = global.__TYPEDARRAY_POOL;
+
+//Upgrade pool
+if (!POOL.UINT8C) {
+  POOL.UINT8C = dup([32, 0]);
+}
+if (!POOL.BUFFER) {
+  POOL.BUFFER = dup([32, 0]);
+}
+
+//New technique: Only allocate from ArrayBufferView and Buffer
+var DATA = POOL.DATA,
+    BUFFER = POOL.BUFFER;
+
+exports.free = function free(array) {
+  if (Buffer.isBuffer(array)) {
+    BUFFER[bits.log2(array.length)].push(array);
+  } else {
+    if (Object.prototype.toString.call(array) !== '[object ArrayBuffer]') {
+      array = array.buffer;
+    }
+    if (!array) {
+      return;
+    }
+    var n = array.length || array.byteLength;
+    var log_n = bits.log2(n) | 0;
+    DATA[log_n].push(array);
+  }
+};
+
+function freeArrayBuffer(buffer) {
+  if (!buffer) {
+    return;
+  }
+  var n = buffer.length || buffer.byteLength;
+  var log_n = bits.log2(n);
+  DATA[log_n].push(buffer);
+}
+
+function freeTypedArray(array) {
+  freeArrayBuffer(array.buffer);
+}
+
+exports.freeUint8 = exports.freeUint16 = exports.freeUint32 = exports.freeInt8 = exports.freeInt16 = exports.freeInt32 = exports.freeFloat32 = exports.freeFloat = exports.freeFloat64 = exports.freeDouble = exports.freeUint8Clamped = exports.freeDataView = freeTypedArray;
+
+exports.freeArrayBuffer = freeArrayBuffer;
+
+exports.freeBuffer = function freeBuffer(array) {
+  BUFFER[bits.log2(array.length)].push(array);
+};
+
+exports.malloc = function malloc(n, dtype) {
+  if (dtype === undefined || dtype === 'arraybuffer') {
+    return mallocArrayBuffer(n);
+  } else {
+    switch (dtype) {
+      case 'uint8':
+        return mallocUint8(n);
+      case 'uint16':
+        return mallocUint16(n);
+      case 'uint32':
+        return mallocUint32(n);
+      case 'int8':
+        return mallocInt8(n);
+      case 'int16':
+        return mallocInt16(n);
+      case 'int32':
+        return mallocInt32(n);
+      case 'float':
+      case 'float32':
+        return mallocFloat(n);
+      case 'double':
+      case 'float64':
+        return mallocDouble(n);
+      case 'uint8_clamped':
+        return mallocUint8Clamped(n);
+      case 'buffer':
+        return mallocBuffer(n);
+      case 'data':
+      case 'dataview':
+        return mallocDataView(n);
+
+      default:
+        return null;
+    }
+  }
+  return null;
+};
+
+function mallocArrayBuffer(n) {
+  var n = bits.nextPow2(n);
+  var log_n = bits.log2(n);
+  var d = DATA[log_n];
+  if (d.length > 0) {
+    return d.pop();
+  }
+  return new ArrayBuffer(n);
+}
+exports.mallocArrayBuffer = mallocArrayBuffer;
+
+function mallocUint8(n) {
+  return new Uint8Array(mallocArrayBuffer(n), 0, n);
+}
+exports.mallocUint8 = mallocUint8;
+
+function mallocUint16(n) {
+  return new Uint16Array(mallocArrayBuffer(2 * n), 0, n);
+}
+exports.mallocUint16 = mallocUint16;
+
+function mallocUint32(n) {
+  return new Uint32Array(mallocArrayBuffer(4 * n), 0, n);
+}
+exports.mallocUint32 = mallocUint32;
+
+function mallocInt8(n) {
+  return new Int8Array(mallocArrayBuffer(n), 0, n);
+}
+exports.mallocInt8 = mallocInt8;
+
+function mallocInt16(n) {
+  return new Int16Array(mallocArrayBuffer(2 * n), 0, n);
+}
+exports.mallocInt16 = mallocInt16;
+
+function mallocInt32(n) {
+  return new Int32Array(mallocArrayBuffer(4 * n), 0, n);
+}
+exports.mallocInt32 = mallocInt32;
+
+function mallocFloat(n) {
+  return new Float32Array(mallocArrayBuffer(4 * n), 0, n);
+}
+exports.mallocFloat32 = exports.mallocFloat = mallocFloat;
+
+function mallocDouble(n) {
+  return new Float64Array(mallocArrayBuffer(8 * n), 0, n);
+}
+exports.mallocFloat64 = exports.mallocDouble = mallocDouble;
+
+function mallocUint8Clamped(n) {
+  if (hasUint8C) {
+    return new Uint8ClampedArray(mallocArrayBuffer(n), 0, n);
+  } else {
+    return mallocUint8(n);
+  }
+}
+exports.mallocUint8Clamped = mallocUint8Clamped;
+
+function mallocDataView(n) {
+  return new DataView(mallocArrayBuffer(n), 0, n);
+}
+exports.mallocDataView = mallocDataView;
+
+function mallocBuffer(n) {
+  n = bits.nextPow2(n);
+  var log_n = bits.log2(n);
+  var cache = BUFFER[log_n];
+  if (cache.length > 0) {
+    return cache.pop();
+  }
+  return new Buffer(n);
+}
+exports.mallocBuffer = mallocBuffer;
+
+exports.clearCache = function clearCache() {
+  for (var i = 0; i < 32; ++i) {
+    POOL.UINT8[i].length = 0;
+    POOL.UINT16[i].length = 0;
+    POOL.UINT32[i].length = 0;
+    POOL.INT8[i].length = 0;
+    POOL.INT16[i].length = 0;
+    POOL.INT32[i].length = 0;
+    POOL.FLOAT[i].length = 0;
+    POOL.DOUBLE[i].length = 0;
+    POOL.UINT8C[i].length = 0;
+    DATA[i].length = 0;
+    BUFFER[i].length = 0;
+  }
+};
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
+},{"bit-twiddle":3,"buffer":46,"dup":5}],11:[function(require,module,exports){
+/**
  * Test multiple points
  */
 require('enable-mobile');
@@ -50,7 +1387,7 @@ setup({
   borderColor: [.5, .5, .5, .5]
 });
 
-},{"./setup":2,"enable-mobile":63,"gauss-random":68}],2:[function(require,module,exports){
+},{"./setup":12,"enable-mobile":73,"gauss-random":78}],12:[function(require,module,exports){
 /**
  * Create gl-scatter2d-fancy test-case
  */
@@ -200,7 +1537,7 @@ function setup(options) {
   return scatter;
 }
 
-},{"../":3,"canvas-fit":37,"fps-indicator":65,"gl-plot2d":80,"gl-select-box":82,"gl-spikes2d":91,"mouse-change":109,"mouse-wheel":111}],3:[function(require,module,exports){
+},{"../":13,"canvas-fit":47,"fps-indicator":75,"gl-plot2d":90,"gl-select-box":92,"gl-spikes2d":101,"mouse-change":119,"mouse-wheel":121}],13:[function(require,module,exports){
 'use strict';
 
 const createRegl = require('regl');
@@ -211,6 +1548,7 @@ const clamp = require('clamp');
 const atlas = require('font-atlas-sdf');
 const colorId = require('color-id');
 const snapPoints = require('snap-points-2d');
+const clusterPoints = require('../point-cluster');
 const normalize = require('array-normalize');
 
 module.exports = Scatter;
@@ -489,7 +1827,7 @@ Scatter.prototype.update = function (options) {
     //recalc bounds for the data
     if (this.cluster) {
       //TODO: read actual point radius/size here
-      let radius = Array.isArray(this.size) ? id => this.size : this.size / Math.max(w, h) / this.scale[0];
+      let radius = (this.size[0] || this.size) / Math.max(w, h) / this.scale[0];
       let ids = this.getPoints(radius);
 
       let subpositions = new Float32Array(ids.length * 2);
@@ -674,7 +2012,7 @@ function createCluster(points) {
   };
 }
 
-},{"array-bounds":5,"array-normalize":6,"clamp":43,"color-id":46,"color-rgba":49,"font-atlas-sdf":64,"object-assign":116,"regl":133,"snap-points-2d":151}],4:[function(require,module,exports){
+},{"../point-cluster":1,"array-bounds":15,"array-normalize":16,"clamp":53,"color-id":56,"color-rgba":59,"font-atlas-sdf":74,"object-assign":126,"regl":143,"snap-points-2d":161}],14:[function(require,module,exports){
 var padLeft = require('pad-left');
 
 module.exports = addLineNumbers;
@@ -692,37 +2030,9 @@ function addLineNumbers(string, start, delim) {
   }).join('\n');
 }
 
-},{"pad-left":117}],5:[function(require,module,exports){
-'use strict';
-
-module.exports = normalize;
-
-function normalize(arr, dim) {
-	if (!arr || arr.length == null) throw Error('Argument should be an array');
-
-	if (dim == null) dim = 1;else dim = Math.floor(dim);
-
-	var bounds = Array(dim * 2);
-
-	for (var offset = 0; offset < dim; offset++) {
-		var max = -Infinity,
-		    min = Infinity,
-		    i = offset,
-		    l = arr.length;
-
-		for (; i < l; i += dim) {
-			if (arr[i] > max) max = arr[i];
-			if (arr[i] < min) min = arr[i];
-		}
-
-		bounds[offset] = min;
-		bounds[dim + offset] = max;
-	}
-
-	return bounds;
-}
-
-},{}],6:[function(require,module,exports){
+},{"pad-left":127}],15:[function(require,module,exports){
+arguments[4][2][0].apply(exports,arguments)
+},{"dup":2}],16:[function(require,module,exports){
 'use strict';
 
 var getBounds = require('array-bounds');
@@ -764,7 +2074,7 @@ function normalize(arr, dim, bounds) {
 	return arr;
 }
 
-},{"array-bounds":5}],7:[function(require,module,exports){
+},{"array-bounds":15}],17:[function(require,module,exports){
 'use strict';
 
 module.exports = function (val) {
@@ -775,12 +2085,12 @@ module.exports = function (val) {
 	return Array.isArray(val) ? val : [val];
 };
 
-},{}],8:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 module.exports = function _atob(str) {
   return atob(str);
 };
 
-},{}],9:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 'use strict';
 
 exports.byteLength = byteLength;
@@ -896,7 +2206,7 @@ function fromByteArray(uint8) {
   return parts.join('');
 }
 
-},{}],10:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 'use strict';
 
 var rationalize = require('./lib/rationalize');
@@ -907,7 +2217,7 @@ function add(a, b) {
   return rationalize(a[0].mul(b[1]).add(b[0].mul(a[1])), a[1].mul(b[1]));
 }
 
-},{"./lib/rationalize":20}],11:[function(require,module,exports){
+},{"./lib/rationalize":30}],21:[function(require,module,exports){
 'use strict';
 
 module.exports = cmp;
@@ -916,7 +2226,7 @@ function cmp(a, b) {
     return a[0].mul(b[1]).cmp(b[0].mul(a[1]));
 }
 
-},{}],12:[function(require,module,exports){
+},{}],22:[function(require,module,exports){
 'use strict';
 
 var rationalize = require('./lib/rationalize');
@@ -927,7 +2237,7 @@ function div(a, b) {
   return rationalize(a[0].mul(b[1]), a[1].mul(b[0]));
 }
 
-},{"./lib/rationalize":20}],13:[function(require,module,exports){
+},{"./lib/rationalize":30}],23:[function(require,module,exports){
 'use strict';
 
 var isRat = require('./is-rat');
@@ -989,7 +2299,7 @@ function makeRational(numer, denom) {
   return rationalize(a, b);
 }
 
-},{"./div":12,"./is-rat":14,"./lib/is-bn":18,"./lib/num-to-bn":19,"./lib/rationalize":20,"./lib/str-to-bn":21}],14:[function(require,module,exports){
+},{"./div":22,"./is-rat":24,"./lib/is-bn":28,"./lib/num-to-bn":29,"./lib/rationalize":30,"./lib/str-to-bn":31}],24:[function(require,module,exports){
 'use strict';
 
 var isBN = require('./lib/is-bn');
@@ -1000,7 +2310,7 @@ function isRat(x) {
   return Array.isArray(x) && x.length === 2 && isBN(x[0]) && isBN(x[1]);
 }
 
-},{"./lib/is-bn":18}],15:[function(require,module,exports){
+},{"./lib/is-bn":28}],25:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -1011,7 +2321,7 @@ function sign(x) {
   return x.cmp(new BN(0));
 }
 
-},{"bn.js":28}],16:[function(require,module,exports){
+},{"bn.js":38}],26:[function(require,module,exports){
 'use strict';
 
 var sign = require('./bn-sign');
@@ -1036,7 +2346,7 @@ function bn2num(b) {
   return sign(b) * out;
 }
 
-},{"./bn-sign":15}],17:[function(require,module,exports){
+},{"./bn-sign":25}],27:[function(require,module,exports){
 'use strict';
 
 var db = require('double-bits');
@@ -1057,7 +2367,7 @@ function ctzNumber(x) {
   return h + 32;
 }
 
-},{"bit-twiddle":27,"double-bits":58}],18:[function(require,module,exports){
+},{"bit-twiddle":37,"double-bits":68}],28:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -1070,7 +2380,7 @@ function isBN(x) {
   return x && typeof x === 'object' && Boolean(x.words);
 }
 
-},{"bn.js":28}],19:[function(require,module,exports){
+},{"bn.js":38}],29:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -1087,7 +2397,7 @@ function num2bn(x) {
   }
 }
 
-},{"bn.js":28,"double-bits":58}],20:[function(require,module,exports){
+},{"bn.js":38,"double-bits":68}],30:[function(require,module,exports){
 'use strict';
 
 var num2bn = require('./num-to-bn');
@@ -1115,7 +2425,7 @@ function rationalize(numer, denom) {
   return [numer, denom];
 }
 
-},{"./bn-sign":15,"./num-to-bn":19}],21:[function(require,module,exports){
+},{"./bn-sign":25,"./num-to-bn":29}],31:[function(require,module,exports){
 'use strict';
 
 var BN = require('bn.js');
@@ -1126,7 +2436,7 @@ function str2BN(x) {
   return new BN(x);
 }
 
-},{"bn.js":28}],22:[function(require,module,exports){
+},{"bn.js":38}],32:[function(require,module,exports){
 'use strict';
 
 var rationalize = require('./lib/rationalize');
@@ -1137,7 +2447,7 @@ function mul(a, b) {
   return rationalize(a[0].mul(b[0]), a[1].mul(b[1]));
 }
 
-},{"./lib/rationalize":20}],23:[function(require,module,exports){
+},{"./lib/rationalize":30}],33:[function(require,module,exports){
 'use strict';
 
 var bnsign = require('./lib/bn-sign');
@@ -1148,7 +2458,7 @@ function sign(x) {
   return bnsign(x[0]) * bnsign(x[1]);
 }
 
-},{"./lib/bn-sign":15}],24:[function(require,module,exports){
+},{"./lib/bn-sign":25}],34:[function(require,module,exports){
 'use strict';
 
 var rationalize = require('./lib/rationalize');
@@ -1159,7 +2469,7 @@ function sub(a, b) {
   return rationalize(a[0].mul(b[1]).sub(a[1].mul(b[0])), a[1].mul(b[1]));
 }
 
-},{"./lib/rationalize":20}],25:[function(require,module,exports){
+},{"./lib/rationalize":30}],35:[function(require,module,exports){
 'use strict';
 
 var bn2num = require('./lib/bn-to-num');
@@ -1197,7 +2507,7 @@ function roundRat(f) {
   }
 }
 
-},{"./lib/bn-to-num":16,"./lib/ctz":17}],26:[function(require,module,exports){
+},{"./lib/bn-to-num":26,"./lib/ctz":27}],36:[function(require,module,exports){
 "use strict";
 
 function compileSearch(funcName, predicate, reversed, extraArgs, earlyOut) {
@@ -1245,209 +2555,9 @@ module.exports = {
   eq: compileBoundsSearch("-", true, "EQ", true)
 };
 
-},{}],27:[function(require,module,exports){
-/**
- * Bit twiddling hacks for JavaScript.
- *
- * Author: Mikola Lysenko
- *
- * Ported from Stanford bit twiddling hack library:
- *    http://graphics.stanford.edu/~seander/bithacks.html
- */
-
-"use strict";"use restrict";
-
-//Number of bits in an integer
-
-var INT_BITS = 32;
-
-//Constants
-exports.INT_BITS = INT_BITS;
-exports.INT_MAX = 0x7fffffff;
-exports.INT_MIN = -1 << INT_BITS - 1;
-
-//Returns -1, 0, +1 depending on sign of x
-exports.sign = function (v) {
-  return (v > 0) - (v < 0);
-};
-
-//Computes absolute value of integer
-exports.abs = function (v) {
-  var mask = v >> INT_BITS - 1;
-  return (v ^ mask) - mask;
-};
-
-//Computes minimum of integers x and y
-exports.min = function (x, y) {
-  return y ^ (x ^ y) & -(x < y);
-};
-
-//Computes maximum of integers x and y
-exports.max = function (x, y) {
-  return x ^ (x ^ y) & -(x < y);
-};
-
-//Checks if a number is a power of two
-exports.isPow2 = function (v) {
-  return !(v & v - 1) && !!v;
-};
-
-//Computes log base 2 of v
-exports.log2 = function (v) {
-  var r, shift;
-  r = (v > 0xFFFF) << 4;v >>>= r;
-  shift = (v > 0xFF) << 3;v >>>= shift;r |= shift;
-  shift = (v > 0xF) << 2;v >>>= shift;r |= shift;
-  shift = (v > 0x3) << 1;v >>>= shift;r |= shift;
-  return r | v >> 1;
-};
-
-//Computes log base 10 of v
-exports.log10 = function (v) {
-  return v >= 1000000000 ? 9 : v >= 100000000 ? 8 : v >= 10000000 ? 7 : v >= 1000000 ? 6 : v >= 100000 ? 5 : v >= 10000 ? 4 : v >= 1000 ? 3 : v >= 100 ? 2 : v >= 10 ? 1 : 0;
-};
-
-//Counts number of bits
-exports.popCount = function (v) {
-  v = v - (v >>> 1 & 0x55555555);
-  v = (v & 0x33333333) + (v >>> 2 & 0x33333333);
-  return (v + (v >>> 4) & 0xF0F0F0F) * 0x1010101 >>> 24;
-};
-
-//Counts number of trailing zeros
-function countTrailingZeros(v) {
-  var c = 32;
-  v &= -v;
-  if (v) c--;
-  if (v & 0x0000FFFF) c -= 16;
-  if (v & 0x00FF00FF) c -= 8;
-  if (v & 0x0F0F0F0F) c -= 4;
-  if (v & 0x33333333) c -= 2;
-  if (v & 0x55555555) c -= 1;
-  return c;
-}
-exports.countTrailingZeros = countTrailingZeros;
-
-//Rounds to next power of 2
-exports.nextPow2 = function (v) {
-  v += v === 0;
-  --v;
-  v |= v >>> 1;
-  v |= v >>> 2;
-  v |= v >>> 4;
-  v |= v >>> 8;
-  v |= v >>> 16;
-  return v + 1;
-};
-
-//Rounds down to previous power of 2
-exports.prevPow2 = function (v) {
-  v |= v >>> 1;
-  v |= v >>> 2;
-  v |= v >>> 4;
-  v |= v >>> 8;
-  v |= v >>> 16;
-  return v - (v >>> 1);
-};
-
-//Computes parity of word
-exports.parity = function (v) {
-  v ^= v >>> 16;
-  v ^= v >>> 8;
-  v ^= v >>> 4;
-  v &= 0xf;
-  return 0x6996 >>> v & 1;
-};
-
-var REVERSE_TABLE = new Array(256);
-
-(function (tab) {
-  for (var i = 0; i < 256; ++i) {
-    var v = i,
-        r = i,
-        s = 7;
-    for (v >>>= 1; v; v >>>= 1) {
-      r <<= 1;
-      r |= v & 1;
-      --s;
-    }
-    tab[i] = r << s & 0xff;
-  }
-})(REVERSE_TABLE);
-
-//Reverse bits in a 32 bit word
-exports.reverse = function (v) {
-  return REVERSE_TABLE[v & 0xff] << 24 | REVERSE_TABLE[v >>> 8 & 0xff] << 16 | REVERSE_TABLE[v >>> 16 & 0xff] << 8 | REVERSE_TABLE[v >>> 24 & 0xff];
-};
-
-//Interleave bits of 2 coordinates with 16 bits.  Useful for fast quadtree codes
-exports.interleave2 = function (x, y) {
-  x &= 0xFFFF;
-  x = (x | x << 8) & 0x00FF00FF;
-  x = (x | x << 4) & 0x0F0F0F0F;
-  x = (x | x << 2) & 0x33333333;
-  x = (x | x << 1) & 0x55555555;
-
-  y &= 0xFFFF;
-  y = (y | y << 8) & 0x00FF00FF;
-  y = (y | y << 4) & 0x0F0F0F0F;
-  y = (y | y << 2) & 0x33333333;
-  y = (y | y << 1) & 0x55555555;
-
-  return x | y << 1;
-};
-
-//Extracts the nth interleaved component
-exports.deinterleave2 = function (v, n) {
-  v = v >>> n & 0x55555555;
-  v = (v | v >>> 1) & 0x33333333;
-  v = (v | v >>> 2) & 0x0F0F0F0F;
-  v = (v | v >>> 4) & 0x00FF00FF;
-  v = (v | v >>> 16) & 0x000FFFF;
-  return v << 16 >> 16;
-};
-
-//Interleave bits of 3 coordinates, each with 10 bits.  Useful for fast octree codes
-exports.interleave3 = function (x, y, z) {
-  x &= 0x3FF;
-  x = (x | x << 16) & 4278190335;
-  x = (x | x << 8) & 251719695;
-  x = (x | x << 4) & 3272356035;
-  x = (x | x << 2) & 1227133513;
-
-  y &= 0x3FF;
-  y = (y | y << 16) & 4278190335;
-  y = (y | y << 8) & 251719695;
-  y = (y | y << 4) & 3272356035;
-  y = (y | y << 2) & 1227133513;
-  x |= y << 1;
-
-  z &= 0x3FF;
-  z = (z | z << 16) & 4278190335;
-  z = (z | z << 8) & 251719695;
-  z = (z | z << 4) & 3272356035;
-  z = (z | z << 2) & 1227133513;
-
-  return x | z << 2;
-};
-
-//Extracts nth interleaved component of a 3-tuple
-exports.deinterleave3 = function (v, n) {
-  v = v >>> n & 1227133513;
-  v = (v | v >>> 2) & 3272356035;
-  v = (v | v >>> 4) & 251719695;
-  v = (v | v >>> 8) & 4278190335;
-  v = (v | v >>> 16) & 0x3FF;
-  return v << 22 >> 22;
-};
-
-//Computes next combination in colexicographic order (this is mistakenly called nextPermutation on the bit twiddling hacks page)
-exports.nextCombination = function (v) {
-  var t = v | v - 1;
-  return t + 1 | (~t & -~t) - 1 >>> countTrailingZeros(v) + 1;
-};
-
-},{}],28:[function(require,module,exports){
+},{}],37:[function(require,module,exports){
+arguments[4][3][0].apply(exports,arguments)
+},{"dup":3}],38:[function(require,module,exports){
 (function (module, exports) {
   'use strict';
 
@@ -4808,7 +5918,7 @@ exports.nextCombination = function (v) {
   };
 })(typeof module === 'undefined' || module, this);
 
-},{}],29:[function(require,module,exports){
+},{}],39:[function(require,module,exports){
 'use strict';
 
 module.exports = boxIntersectWrapper;
@@ -4938,7 +6048,7 @@ function boxIntersectWrapper(arg0, arg1, arg2) {
   }
 }
 
-},{"./lib/intersect":31,"./lib/sweep":35,"typedarray-pool":162}],30:[function(require,module,exports){
+},{"./lib/intersect":41,"./lib/sweep":45,"typedarray-pool":172}],40:[function(require,module,exports){
 'use strict';
 
 var DIMENSION = 'd';
@@ -5048,7 +6158,7 @@ function bruteForcePlanner(full) {
 exports.partial = bruteForcePlanner(false);
 exports.full = bruteForcePlanner(true);
 
-},{}],31:[function(require,module,exports){
+},{}],41:[function(require,module,exports){
 'use strict';
 
 module.exports = boxIntersectIter;
@@ -5399,7 +6509,7 @@ function boxIntersectIter(d, visit, initFull, xSize, xBoxes, xIndex, ySize, yBox
   }
 }
 
-},{"./brute":30,"./median":32,"./partition":33,"./sweep":35,"bit-twiddle":27,"typedarray-pool":162}],32:[function(require,module,exports){
+},{"./brute":40,"./median":42,"./partition":43,"./sweep":45,"bit-twiddle":37,"typedarray-pool":172}],42:[function(require,module,exports){
 'use strict';
 
 module.exports = findMedian;
@@ -5533,7 +6643,7 @@ function findMedian(d, axis, start, end, boxes, ids) {
   return partitionStartLessThan(d, axis, start, mid, boxes, ids, boxes[elemSize * mid + axis]);
 }
 
-},{"./partition":33}],33:[function(require,module,exports){
+},{"./partition":43}],43:[function(require,module,exports){
 'use strict';
 
 module.exports = genPartition;
@@ -5553,7 +6663,7 @@ function genPartition(predicate, args) {
   return Function.apply(void 0, fargs);
 }
 
-},{}],34:[function(require,module,exports){
+},{}],44:[function(require,module,exports){
 'use strict';
 
 //This code is extracted from ndarray-sort
@@ -5791,7 +6901,7 @@ function quickSort(left, right, data) {
   }
 }
 
-},{}],35:[function(require,module,exports){
+},{}],45:[function(require,module,exports){
 'use strict';
 
 module.exports = {
@@ -6210,7 +7320,7 @@ function scanComplete(d, axis, visit, redStart, redEnd, red, redIndex, blueStart
   }
 }
 
-},{"./sort":34,"bit-twiddle":27,"typedarray-pool":162}],36:[function(require,module,exports){
+},{"./sort":44,"bit-twiddle":37,"typedarray-pool":172}],46:[function(require,module,exports){
 /*!
  * The buffer module from node.js, for the browser.
  *
@@ -7871,7 +8981,7 @@ function numberIsNaN(obj) {
   return obj !== obj; // eslint-disable-line no-self-compare
 }
 
-},{"base64-js":9,"ieee754":101}],37:[function(require,module,exports){
+},{"base64-js":19,"ieee754":111}],47:[function(require,module,exports){
 var size = require('element-size');
 
 module.exports = fit;
@@ -7920,7 +9030,7 @@ function fit(canvas, parent, scale) {
   }
 }
 
-},{"element-size":61}],38:[function(require,module,exports){
+},{"element-size":71}],48:[function(require,module,exports){
 'use strict';
 
 var monotoneTriangulate = require('./lib/monotone');
@@ -8003,7 +9113,7 @@ function cdt2d(points, edges, options) {
   }
 }
 
-},{"./lib/delaunay":39,"./lib/filter":40,"./lib/monotone":41,"./lib/triangulation":42}],39:[function(require,module,exports){
+},{"./lib/delaunay":49,"./lib/filter":50,"./lib/monotone":51,"./lib/triangulation":52}],49:[function(require,module,exports){
 'use strict';
 
 var inCircle = require('robust-in-sphere')[4];
@@ -8122,7 +9232,7 @@ function delaunayRefine(points, triangulation) {
   }
 }
 
-},{"binary-search-bounds":26,"robust-in-sphere":136}],40:[function(require,module,exports){
+},{"binary-search-bounds":36,"robust-in-sphere":146}],50:[function(require,module,exports){
 'use strict';
 
 var bsearch = require('binary-search-bounds');
@@ -8300,7 +9410,7 @@ function classifyFaces(triangulation, target, infinity) {
   return result;
 }
 
-},{"binary-search-bounds":26}],41:[function(require,module,exports){
+},{"binary-search-bounds":36}],51:[function(require,module,exports){
 'use strict';
 
 var bsearch = require('binary-search-bounds');
@@ -8469,7 +9579,7 @@ function monotoneTriangulate(points, edges) {
   return cells;
 }
 
-},{"binary-search-bounds":26,"robust-orientation":137}],42:[function(require,module,exports){
+},{"binary-search-bounds":36,"robust-orientation":147}],52:[function(require,module,exports){
 'use strict';
 
 var bsearch = require('binary-search-bounds');
@@ -8575,14 +9685,9 @@ function createTriangulation(numVerts, edges) {
   return new Triangulation(stars, edges);
 }
 
-},{"binary-search-bounds":26}],43:[function(require,module,exports){
-module.exports = clamp;
-
-function clamp(value, min, max) {
-  return min < max ? value < min ? min : value > max ? max : value : value < max ? max : value > min ? min : value;
-}
-
-},{}],44:[function(require,module,exports){
+},{"binary-search-bounds":36}],53:[function(require,module,exports){
+arguments[4][4][0].apply(exports,arguments)
+},{"dup":4}],54:[function(require,module,exports){
 'use strict';
 
 module.exports = cleanPSLG;
@@ -8937,7 +10042,7 @@ function cleanPSLG(points, edges, colors) {
   return modified;
 }
 
-},{"./lib/rat-seg-intersect":45,"big-rat":13,"big-rat/cmp":11,"big-rat/to-float":25,"box-intersect":29,"nextafter":115,"rat-vec":130,"robust-segment-intersect":140,"union-find":163}],45:[function(require,module,exports){
+},{"./lib/rat-seg-intersect":55,"big-rat":23,"big-rat/cmp":21,"big-rat/to-float":35,"box-intersect":39,"nextafter":125,"rat-vec":140,"robust-segment-intersect":150,"union-find":173}],55:[function(require,module,exports){
 'use strict';
 
 module.exports = solveIntersection;
@@ -8981,7 +10086,7 @@ function solveIntersection(a, b, c, d) {
   return r;
 }
 
-},{"big-rat/div":12,"big-rat/mul":22,"big-rat/sign":23,"big-rat/sub":24,"rat-vec/add":129,"rat-vec/muls":131,"rat-vec/sub":132}],46:[function(require,module,exports){
+},{"big-rat/div":22,"big-rat/mul":32,"big-rat/sign":33,"big-rat/sub":34,"rat-vec/add":139,"rat-vec/muls":141,"rat-vec/sub":142}],56:[function(require,module,exports){
 /** @module  color-number */
 
 'use strict';
@@ -9018,7 +10123,7 @@ function toNumber(rgba, normalized) {
 	return n;
 }
 
-},{"clamp":43}],47:[function(require,module,exports){
+},{"clamp":53}],57:[function(require,module,exports){
 module.exports = {
 	"aliceblue": [240, 248, 255],
 	"antiquewhite": [250, 235, 215],
@@ -9170,7 +10275,7 @@ module.exports = {
 	"yellowgreen": [154, 205, 50]
 };
 
-},{}],48:[function(require,module,exports){
+},{}],58:[function(require,module,exports){
 /**
  * @module color-parse
  */
@@ -9330,7 +10435,7 @@ function parse(cstr) {
 	};
 }
 
-},{"color-name":47,"is-plain-obj":108}],49:[function(require,module,exports){
+},{"color-name":57,"is-plain-obj":118}],59:[function(require,module,exports){
 /** @module  color-rgba */
 
 'use strict';
@@ -9370,7 +10475,7 @@ module.exports = function rgba(color, normalize) {
 	return values;
 };
 
-},{"clamp":43,"color-parse":48,"color-space/hsl":50}],50:[function(require,module,exports){
+},{"clamp":53,"color-parse":58,"color-space/hsl":60}],60:[function(require,module,exports){
 /**
  * @module color-space/hsl
  */
@@ -9474,7 +10579,7 @@ rgb.hsl = function (rgb) {
 	return [h, s * 100, l * 100];
 };
 
-},{"./rgb":51}],51:[function(require,module,exports){
+},{"./rgb":61}],61:[function(require,module,exports){
 /**
  * RGB space.
  *
@@ -9490,7 +10595,7 @@ module.exports = {
 	alias: ['RGB']
 };
 
-},{}],52:[function(require,module,exports){
+},{}],62:[function(require,module,exports){
 "use strict";
 
 module.exports = compareAngle;
@@ -9575,7 +10680,7 @@ function compareAngle(a, b, c, d) {
   }
 }
 
-},{"robust-orientation":137,"robust-product":138,"robust-sum":142,"signum":53,"two-sum":160}],53:[function(require,module,exports){
+},{"robust-orientation":147,"robust-product":148,"robust-sum":152,"signum":63,"two-sum":170}],63:[function(require,module,exports){
 "use strict";
 
 module.exports = function signum(x) {
@@ -9588,7 +10693,7 @@ module.exports = function signum(x) {
   return 0.0;
 };
 
-},{}],54:[function(require,module,exports){
+},{}],64:[function(require,module,exports){
 "use strict";
 
 var createThunk = require("./lib/thunk.js");
@@ -9699,7 +10804,7 @@ function compileCwise(user_args) {
 
 module.exports = compileCwise;
 
-},{"./lib/thunk.js":56}],55:[function(require,module,exports){
+},{"./lib/thunk.js":66}],65:[function(require,module,exports){
 "use strict";
 
 var uniq = require("uniq"
@@ -10079,7 +11184,7 @@ function generateCWiseOp(proc, typesig) {
 }
 module.exports = generateCWiseOp;
 
-},{"uniq":164}],56:[function(require,module,exports){
+},{"uniq":174}],66:[function(require,module,exports){
 "use strict";
 
 // The function below is called when constructing a cwise function object, and does the following:
@@ -10166,10 +11271,10 @@ function createThunk(proc) {
 
 module.exports = createThunk;
 
-},{"./compile.js":55}],57:[function(require,module,exports){
+},{"./compile.js":65}],67:[function(require,module,exports){
 module.exports = require("cwise-compiler");
 
-},{"cwise-compiler":54}],58:[function(require,module,exports){
+},{"cwise-compiler":64}],68:[function(require,module,exports){
 (function (Buffer){
 var hasTypedArrays = false;
 if (typeof Float64Array !== "undefined") {
@@ -10274,59 +11379,9 @@ module.exports.denormalized = function (n) {
 };
 
 }).call(this,require("buffer").Buffer)
-},{"buffer":36}],59:[function(require,module,exports){
-"use strict";
-
-function dupe_array(count, value, i) {
-  var c = count[i] | 0;
-  if (c <= 0) {
-    return [];
-  }
-  var result = new Array(c),
-      j;
-  if (i === count.length - 1) {
-    for (j = 0; j < c; ++j) {
-      result[j] = value;
-    }
-  } else {
-    for (j = 0; j < c; ++j) {
-      result[j] = dupe_array(count, value, i + 1);
-    }
-  }
-  return result;
-}
-
-function dupe_number(count, value) {
-  var result, i;
-  result = new Array(count);
-  for (i = 0; i < count; ++i) {
-    result[i] = value;
-  }
-  return result;
-}
-
-function dupe(count, value) {
-  if (typeof value === "undefined") {
-    value = 0;
-  }
-  switch (typeof count) {
-    case "number":
-      if (count > 0) {
-        return dupe_number(count | 0, value);
-      }
-      break;
-    case "object":
-      if (typeof count.length === "number") {
-        return dupe_array(count, value, 0);
-      }
-      break;
-  }
-  return [];
-}
-
-module.exports = dupe;
-
-},{}],60:[function(require,module,exports){
+},{"buffer":46}],69:[function(require,module,exports){
+arguments[4][5][0].apply(exports,arguments)
+},{"dup":5}],70:[function(require,module,exports){
 "use strict";
 
 module.exports = edgeToAdjacency;
@@ -10361,7 +11416,7 @@ function edgeToAdjacency(edges, numVertices) {
   return adj;
 }
 
-},{"uniq":164}],61:[function(require,module,exports){
+},{"uniq":174}],71:[function(require,module,exports){
 module.exports = getSize;
 
 function getSize(element) {
@@ -10393,7 +11448,7 @@ function parse(prop) {
   return parseFloat(prop) || 0;
 }
 
-},{}],62:[function(require,module,exports){
+},{}],72:[function(require,module,exports){
 if (!Array.prototype.fill) {
     Array.prototype.fill = function (value) {
 
@@ -10432,7 +11487,7 @@ if (!Array.prototype.fill) {
     };
 }
 
-},{}],63:[function(require,module,exports){
+},{}],73:[function(require,module,exports){
 require('./arr-fill');
 require('typedarray-methods');
 require('get-float-time-domain-data');
@@ -10470,7 +11525,7 @@ function addMeta(obj) {
 	}
 }
 
-},{"./arr-fill":62,"get-float-time-domain-data":69,"insert-styles":102,"typedarray-methods":161}],64:[function(require,module,exports){
+},{"./arr-fill":72,"get-float-time-domain-data":79,"insert-styles":112,"typedarray-methods":171}],74:[function(require,module,exports){
 'use strict';
 
 var SDF = require('tiny-sdf');
@@ -10596,7 +11651,7 @@ function atlas(options) {
 	}
 }
 
-},{"tiny-sdf":155}],65:[function(require,module,exports){
+},{"tiny-sdf":165}],75:[function(require,module,exports){
 /**
  * @module fps-indicator
  */
@@ -10728,7 +11783,7 @@ function fps(opts) {
 	});
 }
 
-},{"raf":128,"right-now":135,"to-css":156}],66:[function(require,module,exports){
+},{"raf":138,"right-now":145,"to-css":166}],76:[function(require,module,exports){
 "use strict";
 
 module.exports = createRBTree;
@@ -11735,7 +12790,7 @@ function createRBTree(compare) {
   return new RedBlackTree(compare || defaultCompare, null);
 }
 
-},{}],67:[function(require,module,exports){
+},{}],77:[function(require,module,exports){
 // transliterated from the python snippet here:
 // http://en.wikipedia.org/wiki/Lanczos_approximation
 
@@ -11772,7 +12827,7 @@ module.exports = function gamma(z) {
 
 module.exports.log = lngamma;
 
-},{}],68:[function(require,module,exports){
+},{}],78:[function(require,module,exports){
 'use strict';
 
 module.exports = gaussRandom;
@@ -11781,7 +12836,7 @@ function gaussRandom() {
   return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random());
 }
 
-},{}],69:[function(require,module,exports){
+},{}],79:[function(require,module,exports){
 (function (global){
 "use strict";
 
@@ -11796,7 +12851,7 @@ if (global.AnalyserNode && !global.AnalyserNode.prototype.getFloatTimeDomainData
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],70:[function(require,module,exports){
+},{}],80:[function(require,module,exports){
 "use strict";
 
 var pool = require("typedarray-pool");
@@ -11947,7 +13002,7 @@ function createBuffer(gl, data, type, usage) {
 
 module.exports = createBuffer;
 
-},{"ndarray":114,"ndarray-ops":113,"typedarray-pool":162}],71:[function(require,module,exports){
+},{"ndarray":124,"ndarray-ops":123,"typedarray-pool":172}],81:[function(require,module,exports){
 module.exports = {
   0: 'NONE',
   1: 'ONE',
@@ -12247,14 +13302,14 @@ module.exports = {
   37444: 'BROWSER_DEFAULT_WEBGL'
 };
 
-},{}],72:[function(require,module,exports){
+},{}],82:[function(require,module,exports){
 var gl10 = require('./1.0/numbers');
 
 module.exports = function lookupConstant(number) {
   return gl10[number];
 };
 
-},{"./1.0/numbers":71}],73:[function(require,module,exports){
+},{"./1.0/numbers":81}],83:[function(require,module,exports){
 'use strict';
 
 var createTexture = require('gl-texture2d');
@@ -12705,7 +13760,7 @@ function createFBO(gl, width, height, options) {
   return new Framebuffer(gl, width, height, colorType, numColors, useDepth, useStencil, WEBGL_draw_buffers);
 }
 
-},{"gl-texture2d":92}],74:[function(require,module,exports){
+},{"gl-texture2d":102}],84:[function(require,module,exports){
 
 var sprintf = require('sprintf-js').sprintf;
 var glConstants = require('gl-constants/lookup');
@@ -12759,7 +13814,7 @@ function formatCompilerError(errLog, src, type) {
     };
 }
 
-},{"add-line-numbers":4,"gl-constants/lookup":72,"glsl-shader-name":93,"sprintf-js":152}],75:[function(require,module,exports){
+},{"add-line-numbers":14,"gl-constants/lookup":82,"glsl-shader-name":103,"sprintf-js":162}],85:[function(require,module,exports){
 'use strict';
 
 module.exports = createBoxes;
@@ -12818,7 +13873,7 @@ function createBoxes(plot) {
   return new Boxes(plot, vbo, shader);
 }
 
-},{"./shaders":78,"gl-buffer":70,"gl-shader":84}],76:[function(require,module,exports){
+},{"./shaders":88,"gl-buffer":80,"gl-shader":94}],86:[function(require,module,exports){
 'use strict';
 
 module.exports = createGrid;
@@ -13065,7 +14120,7 @@ function createGrid(plot) {
   return grid;
 }
 
-},{"./shaders":78,"binary-search-bounds":26,"gl-buffer":70,"gl-shader":84}],77:[function(require,module,exports){
+},{"./shaders":88,"binary-search-bounds":36,"gl-buffer":80,"gl-shader":94}],87:[function(require,module,exports){
 'use strict';
 
 module.exports = createLines;
@@ -13126,7 +14181,7 @@ function createLines(plot) {
   return lines;
 }
 
-},{"./shaders":78,"gl-buffer":70,"gl-shader":84}],78:[function(require,module,exports){
+},{"./shaders":88,"gl-buffer":80,"gl-shader":94}],88:[function(require,module,exports){
 'use strict';
 
 var FRAGMENT = "precision lowp float;\n#define GLSLIFY 1\nuniform vec4 color;\nvoid main() {\n  gl_FragColor = vec4(color.xyz * color.w, color.w);\n}\n";
@@ -13142,7 +14197,7 @@ module.exports = {
   tickVert: "precision mediump float;\n#define GLSLIFY 1\n\nattribute vec3 dataCoord;\n\nuniform vec2 dataAxis, dataShift, dataScale, screenOffset, tickScale;\n\nvoid main() {\n  vec2 pos = dataAxis * (dataScale * dataCoord.x + dataShift);\n  gl_Position = vec4(pos + tickScale*dataCoord.yz + screenOffset, 0, 1);\n}\n"
 };
 
-},{}],79:[function(require,module,exports){
+},{}],89:[function(require,module,exports){
 'use strict';
 
 module.exports = createTextElements;
@@ -13403,7 +14458,7 @@ function createTextElements(plot) {
   return text;
 }
 
-},{"./shaders":78,"binary-search-bounds":26,"gl-buffer":70,"gl-shader":84,"text-cache":154}],80:[function(require,module,exports){
+},{"./shaders":88,"binary-search-bounds":36,"gl-buffer":80,"gl-shader":94,"text-cache":164}],90:[function(require,module,exports){
 'use strict';
 
 module.exports = createGLPlot2D;
@@ -13896,13 +14951,13 @@ function createGLPlot2D(options) {
   return plot;
 }
 
-},{"./lib/box":75,"./lib/grid":76,"./lib/line":77,"./lib/text":79,"gl-select-static":83}],81:[function(require,module,exports){
+},{"./lib/box":85,"./lib/grid":86,"./lib/line":87,"./lib/text":89,"gl-select-static":93}],91:[function(require,module,exports){
 'use strict';
 
 exports.boxVertex = "precision mediump float;\n#define GLSLIFY 1\n\nattribute vec2 vertex;\n\nuniform vec2 cornerA, cornerB;\n\nvoid main() {\n  gl_Position = vec4(mix(cornerA, cornerB, vertex), 0, 1);\n}\n";
 exports.boxFragment = "precision mediump float;\n#define GLSLIFY 1\n\nuniform vec4 color;\n\nvoid main() {\n  gl_FragColor = color;\n}\n";
 
-},{}],82:[function(require,module,exports){
+},{}],92:[function(require,module,exports){
 'use strict';
 
 var createShader = require('gl-shader');
@@ -14024,7 +15079,7 @@ function createSelectBox(plot, options) {
   return selectBox;
 }
 
-},{"./lib/shaders":81,"gl-buffer":70,"gl-shader":84}],83:[function(require,module,exports){
+},{"./lib/shaders":91,"gl-buffer":80,"gl-shader":94}],93:[function(require,module,exports){
 'use strict';
 
 module.exports = createSelectBuffer;
@@ -14170,7 +15225,7 @@ function createSelectBuffer(gl, shape) {
   return new SelectBuffer(gl, fbo, buffer);
 }
 
-},{"bit-twiddle":27,"cwise/lib/wrapper":57,"gl-fbo":73,"ndarray":114,"typedarray-pool":162}],84:[function(require,module,exports){
+},{"bit-twiddle":37,"cwise/lib/wrapper":67,"gl-fbo":83,"ndarray":124,"typedarray-pool":172}],94:[function(require,module,exports){
 'use strict';
 
 var createUniformWrapper = require('./lib/create-uniforms');
@@ -14390,7 +15445,7 @@ function createShader(gl, vertSource, fragSource, uniforms, attributes) {
 
 module.exports = createShader;
 
-},{"./lib/GLError":85,"./lib/create-attributes":86,"./lib/create-uniforms":87,"./lib/reflect":88,"./lib/runtime-reflect":89,"./lib/shader-cache":90}],85:[function(require,module,exports){
+},{"./lib/GLError":95,"./lib/create-attributes":96,"./lib/create-uniforms":97,"./lib/reflect":98,"./lib/runtime-reflect":99,"./lib/shader-cache":100}],95:[function(require,module,exports){
 function GLError(rawError, shortMessage, longMessage) {
     this.shortMessage = shortMessage || '';
     this.longMessage = longMessage || '';
@@ -14403,7 +15458,7 @@ GLError.prototype.name = 'GLError';
 GLError.prototype.constructor = GLError;
 module.exports = GLError;
 
-},{}],86:[function(require,module,exports){
+},{}],96:[function(require,module,exports){
 'use strict';
 
 module.exports = createAttributeWrapper;
@@ -14588,7 +15643,7 @@ function createAttributeWrapper(gl, wrapper, attributes, locations) {
   return obj;
 }
 
-},{"./GLError":85}],87:[function(require,module,exports){
+},{"./GLError":95}],97:[function(require,module,exports){
 'use strict';
 
 var coallesceUniforms = require('./reflect');
@@ -14777,7 +15832,7 @@ function createUniformWrapper(gl, wrapper, uniforms, locations) {
   };
 }
 
-},{"./GLError":85,"./reflect":88}],88:[function(require,module,exports){
+},{"./GLError":95,"./reflect":98}],98:[function(require,module,exports){
 'use strict';
 
 module.exports = makeReflectTypes;
@@ -14836,7 +15891,7 @@ function makeReflectTypes(uniforms, useIndex) {
   return obj;
 }
 
-},{}],89:[function(require,module,exports){
+},{}],99:[function(require,module,exports){
 'use strict';
 
 exports.uniforms = runtimeUniforms;
@@ -14916,7 +15971,7 @@ function runtimeAttributes(gl, program) {
   return result;
 }
 
-},{}],90:[function(require,module,exports){
+},{}],100:[function(require,module,exports){
 'use strict';
 
 exports.shader = getShaderReference;
@@ -15042,7 +16097,7 @@ function createProgram(gl, vref, fref, attribs, locations) {
   return getCache(gl).getProgram(vref, fref, attribs, locations);
 }
 
-},{"./GLError":85,"gl-format-compiler-error":74,"weakmap-shim":169}],91:[function(require,module,exports){
+},{"./GLError":95,"gl-format-compiler-error":84,"weakmap-shim":179}],101:[function(require,module,exports){
 'use strict';
 
 module.exports = createSpikes2D;
@@ -15112,7 +16167,7 @@ function createSpikes2D(plot, options) {
   return spikes;
 }
 
-},{}],92:[function(require,module,exports){
+},{}],102:[function(require,module,exports){
 'use strict';
 
 var ndarray = require('ndarray');
@@ -15641,7 +16696,7 @@ function createTexture2D(gl) {
   throw new Error('gl-texture2d: Invalid arguments for texture2d constructor');
 }
 
-},{"ndarray":114,"ndarray-ops":113,"typedarray-pool":162}],93:[function(require,module,exports){
+},{"ndarray":124,"ndarray-ops":123,"typedarray-pool":172}],103:[function(require,module,exports){
 var tokenize = require('glsl-tokenizer');
 var atob = require('atob-lite');
 
@@ -15664,7 +16719,7 @@ function getName(src) {
   }
 }
 
-},{"atob-lite":8,"glsl-tokenizer":100}],94:[function(require,module,exports){
+},{"atob-lite":18,"glsl-tokenizer":110}],104:[function(require,module,exports){
 module.exports = tokenize;
 
 var literals100 = require('./lib/literals'),
@@ -16029,7 +17084,7 @@ function tokenize(opt) {
   }
 }
 
-},{"./lib/builtins":96,"./lib/builtins-300es":95,"./lib/literals":98,"./lib/literals-300es":97,"./lib/operators":99}],95:[function(require,module,exports){
+},{"./lib/builtins":106,"./lib/builtins-300es":105,"./lib/literals":108,"./lib/literals-300es":107,"./lib/operators":109}],105:[function(require,module,exports){
 // 300es builtins/reserved words that were previously valid in v100
 var v100 = require('./builtins'
 
@@ -16046,17 +17101,17 @@ module.exports = v100.concat([
 // other builtins
 , 'trunc', 'round', 'roundEven', 'isnan', 'isinf', 'floatBitsToInt', 'floatBitsToUint', 'intBitsToFloat', 'uintBitsToFloat', 'packSnorm2x16', 'unpackSnorm2x16', 'packUnorm2x16', 'unpackUnorm2x16', 'packHalf2x16', 'unpackHalf2x16', 'outerProduct', 'transpose', 'determinant', 'inverse', 'texture', 'textureSize', 'textureProj', 'textureLod', 'textureOffset', 'texelFetch', 'texelFetchOffset', 'textureProjOffset', 'textureLodOffset', 'textureProjLod', 'textureProjLodOffset', 'textureGrad', 'textureGradOffset', 'textureProjGrad', 'textureProjGradOffset']);
 
-},{"./builtins":96}],96:[function(require,module,exports){
+},{"./builtins":106}],106:[function(require,module,exports){
 module.exports = [
 // Keep this list sorted
 'abs', 'acos', 'all', 'any', 'asin', 'atan', 'ceil', 'clamp', 'cos', 'cross', 'dFdx', 'dFdy', 'degrees', 'distance', 'dot', 'equal', 'exp', 'exp2', 'faceforward', 'floor', 'fract', 'gl_BackColor', 'gl_BackLightModelProduct', 'gl_BackLightProduct', 'gl_BackMaterial', 'gl_BackSecondaryColor', 'gl_ClipPlane', 'gl_ClipVertex', 'gl_Color', 'gl_DepthRange', 'gl_DepthRangeParameters', 'gl_EyePlaneQ', 'gl_EyePlaneR', 'gl_EyePlaneS', 'gl_EyePlaneT', 'gl_Fog', 'gl_FogCoord', 'gl_FogFragCoord', 'gl_FogParameters', 'gl_FragColor', 'gl_FragCoord', 'gl_FragData', 'gl_FragDepth', 'gl_FragDepthEXT', 'gl_FrontColor', 'gl_FrontFacing', 'gl_FrontLightModelProduct', 'gl_FrontLightProduct', 'gl_FrontMaterial', 'gl_FrontSecondaryColor', 'gl_LightModel', 'gl_LightModelParameters', 'gl_LightModelProducts', 'gl_LightProducts', 'gl_LightSource', 'gl_LightSourceParameters', 'gl_MaterialParameters', 'gl_MaxClipPlanes', 'gl_MaxCombinedTextureImageUnits', 'gl_MaxDrawBuffers', 'gl_MaxFragmentUniformComponents', 'gl_MaxLights', 'gl_MaxTextureCoords', 'gl_MaxTextureImageUnits', 'gl_MaxTextureUnits', 'gl_MaxVaryingFloats', 'gl_MaxVertexAttribs', 'gl_MaxVertexTextureImageUnits', 'gl_MaxVertexUniformComponents', 'gl_ModelViewMatrix', 'gl_ModelViewMatrixInverse', 'gl_ModelViewMatrixInverseTranspose', 'gl_ModelViewMatrixTranspose', 'gl_ModelViewProjectionMatrix', 'gl_ModelViewProjectionMatrixInverse', 'gl_ModelViewProjectionMatrixInverseTranspose', 'gl_ModelViewProjectionMatrixTranspose', 'gl_MultiTexCoord0', 'gl_MultiTexCoord1', 'gl_MultiTexCoord2', 'gl_MultiTexCoord3', 'gl_MultiTexCoord4', 'gl_MultiTexCoord5', 'gl_MultiTexCoord6', 'gl_MultiTexCoord7', 'gl_Normal', 'gl_NormalMatrix', 'gl_NormalScale', 'gl_ObjectPlaneQ', 'gl_ObjectPlaneR', 'gl_ObjectPlaneS', 'gl_ObjectPlaneT', 'gl_Point', 'gl_PointCoord', 'gl_PointParameters', 'gl_PointSize', 'gl_Position', 'gl_ProjectionMatrix', 'gl_ProjectionMatrixInverse', 'gl_ProjectionMatrixInverseTranspose', 'gl_ProjectionMatrixTranspose', 'gl_SecondaryColor', 'gl_TexCoord', 'gl_TextureEnvColor', 'gl_TextureMatrix', 'gl_TextureMatrixInverse', 'gl_TextureMatrixInverseTranspose', 'gl_TextureMatrixTranspose', 'gl_Vertex', 'greaterThan', 'greaterThanEqual', 'inversesqrt', 'length', 'lessThan', 'lessThanEqual', 'log', 'log2', 'matrixCompMult', 'max', 'min', 'mix', 'mod', 'normalize', 'not', 'notEqual', 'pow', 'radians', 'reflect', 'refract', 'sign', 'sin', 'smoothstep', 'sqrt', 'step', 'tan', 'texture2D', 'texture2DLod', 'texture2DProj', 'texture2DProjLod', 'textureCube', 'textureCubeLod', 'texture2DLodEXT', 'texture2DProjLodEXT', 'textureCubeLodEXT', 'texture2DGradEXT', 'texture2DProjGradEXT', 'textureCubeGradEXT'];
 
-},{}],97:[function(require,module,exports){
+},{}],107:[function(require,module,exports){
 var v100 = require('./literals');
 
 module.exports = v100.slice().concat(['layout', 'centroid', 'smooth', 'case', 'mat2x2', 'mat2x3', 'mat2x4', 'mat3x2', 'mat3x3', 'mat3x4', 'mat4x2', 'mat4x3', 'mat4x4', 'uint', 'uvec2', 'uvec3', 'uvec4', 'samplerCubeShadow', 'sampler2DArray', 'sampler2DArrayShadow', 'isampler2D', 'isampler3D', 'isamplerCube', 'isampler2DArray', 'usampler2D', 'usampler3D', 'usamplerCube', 'usampler2DArray', 'coherent', 'restrict', 'readonly', 'writeonly', 'resource', 'atomic_uint', 'noperspective', 'patch', 'sample', 'subroutine', 'common', 'partition', 'active', 'filter', 'image1D', 'image2D', 'image3D', 'imageCube', 'iimage1D', 'iimage2D', 'iimage3D', 'iimageCube', 'uimage1D', 'uimage2D', 'uimage3D', 'uimageCube', 'image1DArray', 'image2DArray', 'iimage1DArray', 'iimage2DArray', 'uimage1DArray', 'uimage2DArray', 'image1DShadow', 'image2DShadow', 'image1DArrayShadow', 'image2DArrayShadow', 'imageBuffer', 'iimageBuffer', 'uimageBuffer', 'sampler1DArray', 'sampler1DArrayShadow', 'isampler1D', 'isampler1DArray', 'usampler1D', 'usampler1DArray', 'isampler2DRect', 'usampler2DRect', 'samplerBuffer', 'isamplerBuffer', 'usamplerBuffer', 'sampler2DMS', 'isampler2DMS', 'usampler2DMS', 'sampler2DMSArray', 'isampler2DMSArray', 'usampler2DMSArray']);
 
-},{"./literals":98}],98:[function(require,module,exports){
+},{"./literals":108}],108:[function(require,module,exports){
 module.exports = [
 // current
 'precision', 'highp', 'mediump', 'lowp', 'attribute', 'const', 'uniform', 'varying', 'break', 'continue', 'do', 'for', 'while', 'if', 'else', 'in', 'out', 'inout', 'float', 'int', 'void', 'bool', 'true', 'false', 'discard', 'return', 'mat2', 'mat3', 'mat4', 'vec2', 'vec3', 'vec4', 'ivec2', 'ivec3', 'ivec4', 'bvec2', 'bvec3', 'bvec4', 'sampler1D', 'sampler2D', 'sampler3D', 'samplerCube', 'sampler1DShadow', 'sampler2DShadow', 'struct'
@@ -16064,10 +17119,10 @@ module.exports = [
 // future
 , 'asm', 'class', 'union', 'enum', 'typedef', 'template', 'this', 'packed', 'goto', 'switch', 'default', 'inline', 'noinline', 'volatile', 'public', 'static', 'extern', 'external', 'interface', 'long', 'short', 'double', 'half', 'fixed', 'unsigned', 'input', 'output', 'hvec2', 'hvec3', 'hvec4', 'dvec2', 'dvec3', 'dvec4', 'fvec2', 'fvec3', 'fvec4', 'sampler2DRect', 'sampler3DRect', 'sampler2DRectShadow', 'sizeof', 'cast', 'namespace', 'using'];
 
-},{}],99:[function(require,module,exports){
+},{}],109:[function(require,module,exports){
 module.exports = ['<<=', '>>=', '++', '--', '<<', '>>', '<=', '>=', '==', '!=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '&=', '^^', '^=', '|=', '(', ')', '[', ']', '.', '!', '~', '*', '/', '%', '+', '-', '<', '>', '&', '^', '|', '?', ':', '=', ',', ';', '{', '}'];
 
-},{}],100:[function(require,module,exports){
+},{}],110:[function(require,module,exports){
 var tokenize = require('./index');
 
 module.exports = tokenizeString;
@@ -16082,7 +17137,7 @@ function tokenizeString(str, opt) {
   return tokens;
 }
 
-},{"./index":94}],101:[function(require,module,exports){
+},{"./index":104}],111:[function(require,module,exports){
 exports.read = function (buffer, offset, isLE, mLen, nBytes) {
   var e, m;
   var eLen = nBytes * 8 - mLen - 1;
@@ -16168,7 +17223,7 @@ exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
   buffer[offset + i - d] |= s * 128;
 };
 
-},{}],102:[function(require,module,exports){
+},{}],112:[function(require,module,exports){
 (function (global){
 'use strict';
 
@@ -16204,7 +17259,7 @@ function createStyle(id) {
 }
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],103:[function(require,module,exports){
+},{}],113:[function(require,module,exports){
 "use strict";
 
 var bounds = require("binary-search-bounds");
@@ -16585,7 +17640,7 @@ function createWrapper(intervals) {
   return new IntervalTree(createIntervalTree(intervals));
 }
 
-},{"binary-search-bounds":104}],104:[function(require,module,exports){
+},{"binary-search-bounds":114}],114:[function(require,module,exports){
 "use strict";
 
 function compileSearch(funcName, predicate, reversed, extraArgs, useNdarray, earlyOut) {
@@ -16639,7 +17694,7 @@ module.exports = {
   eq: compileBoundsSearch("-", true, "EQ", true)
 };
 
-},{}],105:[function(require,module,exports){
+},{}],115:[function(require,module,exports){
 "use strict";
 
 function invertPermutation(pi, result) {
@@ -16652,7 +17707,7 @@ function invertPermutation(pi, result) {
 
 module.exports = invertPermutation;
 
-},{}],106:[function(require,module,exports){
+},{}],116:[function(require,module,exports){
 "use strict";
 
 function iota(n) {
@@ -16665,7 +17720,7 @@ function iota(n) {
 
 module.exports = iota;
 
-},{}],107:[function(require,module,exports){
+},{}],117:[function(require,module,exports){
 /*!
  * Determine if an object is a Buffer
  *
@@ -16688,7 +17743,7 @@ function isSlowBuffer(obj) {
   return typeof obj.readFloatLE === 'function' && typeof obj.slice === 'function' && isBuffer(obj.slice(0, 0));
 }
 
-},{}],108:[function(require,module,exports){
+},{}],118:[function(require,module,exports){
 'use strict';
 
 var toString = Object.prototype.toString;
@@ -16698,7 +17753,7 @@ module.exports = function (x) {
 	return toString.call(x) === '[object Object]' && (prototype = Object.getPrototypeOf(x), prototype === null || prototype === Object.getPrototypeOf({}));
 };
 
-},{}],109:[function(require,module,exports){
+},{}],119:[function(require,module,exports){
 'use strict';
 
 module.exports = mouseListen;
@@ -16906,7 +17961,7 @@ function mouseListen(element, callback) {
   return result;
 }
 
-},{"mouse-event":110}],110:[function(require,module,exports){
+},{"mouse-event":120}],120:[function(require,module,exports){
 'use strict';
 
 function mouseButtons(ev) {
@@ -16968,7 +18023,7 @@ function mouseRelativeY(ev) {
 }
 exports.y = mouseRelativeY;
 
-},{}],111:[function(require,module,exports){
+},{}],121:[function(require,module,exports){
 'use strict';
 
 var toPX = require('to-px');
@@ -17010,7 +18065,7 @@ function mouseWheelListen(element, callback, noScroll) {
   return listener;
 }
 
-},{"to-px":157}],112:[function(require,module,exports){
+},{"to-px":167}],122:[function(require,module,exports){
 "use strict";
 
 var pool = require("typedarray-pool");
@@ -17389,7 +18444,7 @@ function createSurfaceExtractor(args) {
   return compileSurfaceProcedure(args.vertex, args.cell, args.phase, scalars, order, typesig);
 }
 
-},{"typedarray-pool":162}],113:[function(require,module,exports){
+},{"typedarray-pool":172}],123:[function(require,module,exports){
 "use strict";
 
 var compile = require("cwise-compiler");
@@ -17799,7 +18854,7 @@ exports.equals = compile({
   funcName: "equals"
 });
 
-},{"cwise-compiler":54}],114:[function(require,module,exports){
+},{"cwise-compiler":64}],124:[function(require,module,exports){
 var iota = require("iota-array");
 var isBuffer = require("is-buffer");
 
@@ -18124,7 +19179,7 @@ function wrappedNDArrayCtor(data, shape, stride, offset) {
 
 module.exports = wrappedNDArrayCtor;
 
-},{"iota-array":106,"is-buffer":107}],115:[function(require,module,exports){
+},{"iota-array":116,"is-buffer":117}],125:[function(require,module,exports){
 "use strict";
 
 var doubleBits = require("double-bits");
@@ -18168,99 +19223,9 @@ function nextafter(x, y) {
   return doubleBits.pack(lo, hi);
 }
 
-},{"double-bits":58}],116:[function(require,module,exports){
-/*
-object-assign
-(c) Sindre Sorhus
-@license MIT
-*/
-
-'use strict';
-/* eslint-disable no-unused-vars */
-
-var getOwnPropertySymbols = Object.getOwnPropertySymbols;
-var hasOwnProperty = Object.prototype.hasOwnProperty;
-var propIsEnumerable = Object.prototype.propertyIsEnumerable;
-
-function toObject(val) {
-	if (val === null || val === undefined) {
-		throw new TypeError('Object.assign cannot be called with null or undefined');
-	}
-
-	return Object(val);
-}
-
-function shouldUseNative() {
-	try {
-		if (!Object.assign) {
-			return false;
-		}
-
-		// Detect buggy property enumeration order in older V8 versions.
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=4118
-		var test1 = new String('abc'); // eslint-disable-line no-new-wrappers
-		test1[5] = 'de';
-		if (Object.getOwnPropertyNames(test1)[0] === '5') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test2 = {};
-		for (var i = 0; i < 10; i++) {
-			test2['_' + String.fromCharCode(i)] = i;
-		}
-		var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
-			return test2[n];
-		});
-		if (order2.join('') !== '0123456789') {
-			return false;
-		}
-
-		// https://bugs.chromium.org/p/v8/issues/detail?id=3056
-		var test3 = {};
-		'abcdefghijklmnopqrst'.split('').forEach(function (letter) {
-			test3[letter] = letter;
-		});
-		if (Object.keys(Object.assign({}, test3)).join('') !== 'abcdefghijklmnopqrst') {
-			return false;
-		}
-
-		return true;
-	} catch (err) {
-		// We don't expect any of the above to throw, but better to be safe.
-		return false;
-	}
-}
-
-module.exports = shouldUseNative() ? Object.assign : function (target, source) {
-	var from;
-	var to = toObject(target);
-	var symbols;
-
-	for (var s = 1; s < arguments.length; s++) {
-		from = Object(arguments[s]);
-
-		for (var key in from) {
-			if (hasOwnProperty.call(from, key)) {
-				to[key] = from[key];
-			}
-		}
-
-		if (getOwnPropertySymbols) {
-			symbols = getOwnPropertySymbols(from);
-			for (var i = 0; i < symbols.length; i++) {
-				if (propIsEnumerable.call(from, symbols[i])) {
-					to[symbols[i]] = from[symbols[i]];
-				}
-			}
-		}
-	}
-
-	return to;
-};
-
-},{}],117:[function(require,module,exports){
+},{"double-bits":68}],126:[function(require,module,exports){
+arguments[4][7][0].apply(exports,arguments)
+},{"dup":7}],127:[function(require,module,exports){
 /*!
  * pad-left <https://github.com/jonschlinkert/pad-left>
  *
@@ -18277,7 +19242,7 @@ module.exports = function padLeft(str, num, ch) {
   return repeat(ch, num) + str;
 };
 
-},{"repeat-string":134}],118:[function(require,module,exports){
+},{"repeat-string":144}],128:[function(require,module,exports){
 module.exports = function parseUnit(str, out) {
     if (!out) out = [0, ''];
 
@@ -18288,7 +19253,7 @@ module.exports = function parseUnit(str, out) {
     return out;
 };
 
-},{}],119:[function(require,module,exports){
+},{}],129:[function(require,module,exports){
 (function (process){
 // Generated by CoffeeScript 1.12.2
 (function () {
@@ -18327,7 +19292,7 @@ module.exports = function parseUnit(str, out) {
 
 
 }).call(this,require('_process'))
-},{"_process":127}],120:[function(require,module,exports){
+},{"_process":137}],130:[function(require,module,exports){
 "use strict";
 
 module.exports = permutationSign;
@@ -18380,7 +19345,7 @@ function permutationSign(p) {
   }
 }
 
-},{"typedarray-pool":162}],121:[function(require,module,exports){
+},{"typedarray-pool":172}],131:[function(require,module,exports){
 "use strict";
 
 var pool = require("typedarray-pool");
@@ -18475,7 +19440,7 @@ function unrank(n, r, p) {
 exports.rank = rank;
 exports.unrank = unrank;
 
-},{"invert-permutation":105,"typedarray-pool":162}],122:[function(require,module,exports){
+},{"invert-permutation":115,"typedarray-pool":172}],132:[function(require,module,exports){
 "use strict";
 
 module.exports = planarDual;
@@ -18603,7 +19568,7 @@ function planarDual(cells, positions) {
   return cycles;
 }
 
-},{"compare-angle":52}],123:[function(require,module,exports){
+},{"compare-angle":62}],133:[function(require,module,exports){
 'use strict';
 
 module.exports = trimLeaves;
@@ -18660,7 +19625,7 @@ function trimLeaves(edges, positions) {
   return [nedges, npositions];
 }
 
-},{"edges-to-adjacency-list":60}],124:[function(require,module,exports){
+},{"edges-to-adjacency-list":70}],134:[function(require,module,exports){
 'use strict';
 
 module.exports = planarGraphToPolyline;
@@ -18864,9 +19829,9 @@ function planarGraphToPolyline(edges, positions) {
   return result;
 }
 
-},{"./lib/trim-leaves":123,"edges-to-adjacency-list":60,"planar-dual":122,"point-in-big-polygon":126,"robust-sum":142,"two-product":159,"uniq":164}],125:[function(require,module,exports){
-arguments[4][104][0].apply(exports,arguments)
-},{"dup":104}],126:[function(require,module,exports){
+},{"./lib/trim-leaves":133,"edges-to-adjacency-list":70,"planar-dual":132,"point-in-big-polygon":136,"robust-sum":152,"two-product":169,"uniq":174}],135:[function(require,module,exports){
+arguments[4][114][0].apply(exports,arguments)
+},{"dup":114}],136:[function(require,module,exports){
 module.exports = preprocessPolygon;
 
 var orient = require('robust-orientation')[3];
@@ -19017,7 +19982,7 @@ function preprocessPolygon(loops) {
   }
 }
 
-},{"binary-search-bounds":125,"interval-tree-1d":103,"robust-orientation":137,"slab-decomposition":149}],127:[function(require,module,exports){
+},{"binary-search-bounds":135,"interval-tree-1d":113,"robust-orientation":147,"slab-decomposition":159}],137:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -19204,7 +20169,7 @@ process.umask = function () {
     return 0;
 };
 
-},{}],128:[function(require,module,exports){
+},{}],138:[function(require,module,exports){
 (function (global){
 var now = require('performance-now'),
     root = typeof window === 'undefined' ? global : window,
@@ -19281,7 +20246,7 @@ module.exports.polyfill = function () {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"performance-now":119}],129:[function(require,module,exports){
+},{"performance-now":129}],139:[function(require,module,exports){
 'use strict';
 
 var bnadd = require('big-rat/add');
@@ -19297,7 +20262,7 @@ function add(a, b) {
   return r;
 }
 
-},{"big-rat/add":10}],130:[function(require,module,exports){
+},{"big-rat/add":20}],140:[function(require,module,exports){
 'use strict';
 
 module.exports = float2rat;
@@ -19312,7 +20277,7 @@ function float2rat(v) {
   return result;
 }
 
-},{"big-rat":13}],131:[function(require,module,exports){
+},{"big-rat":23}],141:[function(require,module,exports){
 'use strict';
 
 var rat = require('big-rat');
@@ -19330,7 +20295,7 @@ function muls(a, x) {
   return r;
 }
 
-},{"big-rat":13,"big-rat/mul":22}],132:[function(require,module,exports){
+},{"big-rat":23,"big-rat/mul":32}],142:[function(require,module,exports){
 'use strict';
 
 var bnsub = require('big-rat/sub');
@@ -19346,7 +20311,7 @@ function sub(a, b) {
   return r;
 }
 
-},{"big-rat/sub":24}],133:[function(require,module,exports){
+},{"big-rat/sub":34}],143:[function(require,module,exports){
 (function (global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() : typeof define === 'function' && define.amd ? define(factory) : global.createREGL = factory();
 })(this, function () {
@@ -27613,7 +28578,7 @@ function sub(a, b) {
 });
 
 
-},{}],134:[function(require,module,exports){
+},{}],144:[function(require,module,exports){
 /*!
  * repeat-string <https://github.com/jonschlinkert/repeat-string>
  *
@@ -27685,7 +28650,7 @@ function repeat(str, num) {
   return res;
 }
 
-},{}],135:[function(require,module,exports){
+},{}],145:[function(require,module,exports){
 (function (global){
 module.exports = global.performance && global.performance.now ? function now() {
   return performance.now();
@@ -27694,7 +28659,7 @@ module.exports = global.performance && global.performance.now ? function now() {
 };
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],136:[function(require,module,exports){
+},{}],146:[function(require,module,exports){
 "use strict";
 
 var twoProduct = require("two-product");
@@ -27863,7 +28828,7 @@ function generateInSphereTest() {
 
 generateInSphereTest();
 
-},{"robust-scale":139,"robust-subtract":141,"robust-sum":142,"two-product":159}],137:[function(require,module,exports){
+},{"robust-scale":149,"robust-subtract":151,"robust-sum":152,"two-product":169}],147:[function(require,module,exports){
 "use strict";
 
 var twoProduct = require("two-product");
@@ -28047,7 +29012,7 @@ function generateOrientationProc() {
 
 generateOrientationProc();
 
-},{"robust-scale":139,"robust-subtract":141,"robust-sum":142,"two-product":159}],138:[function(require,module,exports){
+},{"robust-scale":149,"robust-subtract":151,"robust-sum":152,"two-product":169}],148:[function(require,module,exports){
 "use strict";
 
 var robustSum = require("robust-sum");
@@ -28078,7 +29043,7 @@ function robustProduct(a, b) {
   return r;
 }
 
-},{"robust-scale":139,"robust-sum":142}],139:[function(require,module,exports){
+},{"robust-scale":149,"robust-sum":152}],149:[function(require,module,exports){
 "use strict";
 
 var twoProduct = require("two-product");
@@ -28130,7 +29095,7 @@ function scaleLinearExpansion(e, scale) {
   return g;
 }
 
-},{"two-product":159,"two-sum":160}],140:[function(require,module,exports){
+},{"two-product":169,"two-sum":170}],150:[function(require,module,exports){
 "use strict";
 
 module.exports = segmentsIntersect;
@@ -28179,7 +29144,7 @@ function segmentsIntersect(a0, a1, b0, b1) {
   return true;
 }
 
-},{"robust-orientation":137}],141:[function(require,module,exports){
+},{"robust-orientation":147}],151:[function(require,module,exports){
 "use strict";
 
 module.exports = robustSubtract;
@@ -28337,7 +29302,7 @@ function robustSubtract(e, f) {
   return g;
 }
 
-},{}],142:[function(require,module,exports){
+},{}],152:[function(require,module,exports){
 "use strict";
 
 module.exports = linearExpansionSum;
@@ -28495,9 +29460,9 @@ function linearExpansionSum(e, f) {
   return g;
 }
 
-},{}],143:[function(require,module,exports){
-arguments[4][27][0].apply(exports,arguments)
-},{"dup":27}],144:[function(require,module,exports){
+},{}],153:[function(require,module,exports){
+arguments[4][3][0].apply(exports,arguments)
+},{"dup":3}],154:[function(require,module,exports){
 "use strict";"use restrict";
 
 module.exports = UnionFind;
@@ -28553,7 +29518,7 @@ UnionFind.prototype.link = function (x, y) {
   }
 };
 
-},{}],145:[function(require,module,exports){
+},{}],155:[function(require,module,exports){
 "use strict";"use restrict";
 
 var bits = require("bit-twiddle"),
@@ -28897,7 +29862,7 @@ function connectedComponents(cells, vertex_count) {
 }
 exports.connectedComponents = connectedComponents;
 
-},{"bit-twiddle":143,"union-find":144}],146:[function(require,module,exports){
+},{"bit-twiddle":153,"union-find":154}],156:[function(require,module,exports){
 "use strict";
 
 module.exports = simplifyPolygon;
@@ -29170,7 +30135,7 @@ function simplifyPolygon(cells, positions, minArea) {
   };
 }
 
-},{"robust-orientation":137,"simplicial-complex":145}],147:[function(require,module,exports){
+},{"robust-orientation":147,"simplicial-complex":155}],157:[function(require,module,exports){
 "use strict";
 
 module.exports = orderSegments;
@@ -29267,9 +30232,9 @@ function orderSegments(b, a) {
   return ar[0] - br[0];
 }
 
-},{"robust-orientation":137}],148:[function(require,module,exports){
-arguments[4][104][0].apply(exports,arguments)
-},{"dup":104}],149:[function(require,module,exports){
+},{"robust-orientation":147}],158:[function(require,module,exports){
+arguments[4][114][0].apply(exports,arguments)
+},{"dup":114}],159:[function(require,module,exports){
 "use strict";
 
 module.exports = createSlabDecomposition;
@@ -29484,421 +30449,11 @@ function createSlabDecomposition(segments) {
   return new SlabDecomposition(slabs, lines, horizontal);
 }
 
-},{"./lib/order-segments":147,"binary-search-bounds":148,"functional-red-black-tree":66,"robust-orientation":137}],150:[function(require,module,exports){
-'use strict';
-
-module.exports = sortLevels;
-
-var INSERT_SORT_CUTOFF = 32;
-
-function sortLevels(data_levels, data_points, data_ids, data_weights, n0) {
-  if (n0 <= 4 * INSERT_SORT_CUTOFF) {
-    insertionSort(0, n0 - 1, data_levels, data_points, data_ids, data_weights);
-  } else {
-    quickSort(0, n0 - 1, data_levels, data_points, data_ids, data_weights);
-  }
-}
-
-function insertionSort(left, right, data_levels, data_points, data_ids, data_weights) {
-  for (var i = left + 1; i <= right; ++i) {
-    var a_level = data_levels[i];
-    var a_x = data_points[2 * i];
-    var a_y = data_points[2 * i + 1];
-    var a_id = data_ids[i];
-    var a_weight = data_weights[i];
-
-    var j = i;
-    while (j > left) {
-      var b_level = data_levels[j - 1];
-      var b_x = data_points[2 * (j - 1)];
-      if ((b_level - a_level || a_x - b_x) >= 0) {
-        break;
-      }
-      data_levels[j] = b_level;
-      data_points[2 * j] = b_x;
-      data_points[2 * j + 1] = data_points[2 * j - 1];
-      data_ids[j] = data_ids[j - 1];
-      data_weights[j] = data_weights[j - 1];
-      j -= 1;
-    }
-
-    data_levels[j] = a_level;
-    data_points[2 * j] = a_x;
-    data_points[2 * j + 1] = a_y;
-    data_ids[j] = a_id;
-    data_weights[j] = a_weight;
-  }
-}
-
-function swap(i, j, data_levels, data_points, data_ids, data_weights) {
-  var a_level = data_levels[i];
-  var a_x = data_points[2 * i];
-  var a_y = data_points[2 * i + 1];
-  var a_id = data_ids[i];
-  var a_weight = data_weights[i];
-
-  data_levels[i] = data_levels[j];
-  data_points[2 * i] = data_points[2 * j];
-  data_points[2 * i + 1] = data_points[2 * j + 1];
-  data_ids[i] = data_ids[j];
-  data_weights[i] = data_weights[j];
-
-  data_levels[j] = a_level;
-  data_points[2 * j] = a_x;
-  data_points[2 * j + 1] = a_y;
-  data_ids[j] = a_id;
-  data_weights[j] = a_weight;
-}
-
-function move(i, j, data_levels, data_points, data_ids, data_weights) {
-  data_levels[i] = data_levels[j];
-  data_points[2 * i] = data_points[2 * j];
-  data_points[2 * i + 1] = data_points[2 * j + 1];
-  data_ids[i] = data_ids[j];
-  data_weights[i] = data_weights[j];
-}
-
-function rotate(i, j, k, data_levels, data_points, data_ids, data_weights) {
-  var a_level = data_levels[i];
-  var a_x = data_points[2 * i];
-  var a_y = data_points[2 * i + 1];
-  var a_id = data_ids[i];
-  var a_weight = data_weights[i];
-
-  data_levels[i] = data_levels[j];
-  data_points[2 * i] = data_points[2 * j];
-  data_points[2 * i + 1] = data_points[2 * j + 1];
-  data_ids[i] = data_ids[j];
-  data_weights[i] = data_weights[j];
-
-  data_levels[j] = data_levels[k];
-  data_points[2 * j] = data_points[2 * k];
-  data_points[2 * j + 1] = data_points[2 * k + 1];
-  data_ids[j] = data_ids[k];
-  data_weights[j] = data_weights[k];
-
-  data_levels[k] = a_level;
-  data_points[2 * k] = a_x;
-  data_points[2 * k + 1] = a_y;
-  data_ids[k] = a_id;
-  data_weights[k] = a_weight;
-}
-
-function shufflePivot(i, j, a_level, a_x, a_y, a_id, a_weight, data_levels, data_points, data_ids, data_weights) {
-
-  data_levels[i] = data_levels[j];
-  data_points[2 * i] = data_points[2 * j];
-  data_points[2 * i + 1] = data_points[2 * j + 1];
-  data_ids[i] = data_ids[j];
-  data_weights[i] = data_weights[j];
-
-  data_levels[j] = a_level;
-  data_points[2 * j] = a_x;
-  data_points[2 * j + 1] = a_y;
-  data_ids[j] = a_id;
-  data_weights[j] = a_weight;
-}
-
-function compare(i, j, data_levels, data_points, data_ids) {
-  return (data_levels[i] - data_levels[j] || data_points[2 * j] - data_points[2 * i] || data_ids[i] - data_ids[j]) < 0;
-}
-
-function comparePivot(i, level, x, y, id, data_levels, data_points, data_ids) {
-  return (level - data_levels[i] || data_points[2 * i] - x || id - data_ids[i]) < 0;
-}
-
-function quickSort(left, right, data_levels, data_points, data_ids, data_weights) {
-  var sixth = (right - left + 1) / 6 | 0,
-      index1 = left + sixth,
-      index5 = right - sixth,
-      index3 = left + right >> 1,
-      index2 = index3 - sixth,
-      index4 = index3 + sixth,
-      el1 = index1,
-      el2 = index2,
-      el3 = index3,
-      el4 = index4,
-      el5 = index5,
-      less = left + 1,
-      great = right - 1,
-      tmp = 0;
-  if (compare(el1, el2, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el1;
-    el1 = el2;
-    el2 = tmp;
-  }
-  if (compare(el4, el5, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el4;
-    el4 = el5;
-    el5 = tmp;
-  }
-  if (compare(el1, el3, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el1;
-    el1 = el3;
-    el3 = tmp;
-  }
-  if (compare(el2, el3, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el2;
-    el2 = el3;
-    el3 = tmp;
-  }
-  if (compare(el1, el4, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el1;
-    el1 = el4;
-    el4 = tmp;
-  }
-  if (compare(el3, el4, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el3;
-    el3 = el4;
-    el4 = tmp;
-  }
-  if (compare(el2, el5, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el2;
-    el2 = el5;
-    el5 = tmp;
-  }
-  if (compare(el2, el3, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el2;
-    el2 = el3;
-    el3 = tmp;
-  }
-  if (compare(el4, el5, data_levels, data_points, data_ids, data_weights)) {
-    tmp = el4;
-    el4 = el5;
-    el5 = tmp;
-  }
-
-  var pivot1_level = data_levels[el2];
-  var pivot1_x = data_points[2 * el2];
-  var pivot1_y = data_points[2 * el2 + 1];
-  var pivot1_id = data_ids[el2];
-  var pivot1_weight = data_weights[el2];
-
-  var pivot2_level = data_levels[el4];
-  var pivot2_x = data_points[2 * el4];
-  var pivot2_y = data_points[2 * el4 + 1];
-  var pivot2_id = data_ids[el4];
-  var pivot2_weight = data_weights[el4];
-
-  var ptr0 = el1;
-  var ptr2 = el3;
-  var ptr4 = el5;
-  var ptr5 = index1;
-  var ptr6 = index3;
-  var ptr7 = index5;
-
-  var level_x = data_levels[ptr0];
-  var level_y = data_levels[ptr2];
-  var level_z = data_levels[ptr4];
-  data_levels[ptr5] = level_x;
-  data_levels[ptr6] = level_y;
-  data_levels[ptr7] = level_z;
-
-  for (var i1 = 0; i1 < 2; ++i1) {
-    var x = data_points[2 * ptr0 + i1];
-    var y = data_points[2 * ptr2 + i1];
-    var z = data_points[2 * ptr4 + i1];
-    data_points[2 * ptr5 + i1] = x;
-    data_points[2 * ptr6 + i1] = y;
-    data_points[2 * ptr7 + i1] = z;
-  }
-
-  var id_x = data_ids[ptr0];
-  var id_y = data_ids[ptr2];
-  var id_z = data_ids[ptr4];
-  data_ids[ptr5] = id_x;
-  data_ids[ptr6] = id_y;
-  data_ids[ptr7] = id_z;
-
-  var weight_x = data_weights[ptr0];
-  var weight_y = data_weights[ptr2];
-  var weight_z = data_weights[ptr4];
-  data_weights[ptr5] = weight_x;
-  data_weights[ptr6] = weight_y;
-  data_weights[ptr7] = weight_z;
-
-  move(index2, left, data_levels, data_points, data_ids, data_weights);
-  move(index4, right, data_levels, data_points, data_ids, data_weights);
-  for (var k = less; k <= great; ++k) {
-    if (comparePivot(k, pivot1_level, pivot1_x, pivot1_y, pivot1_id, data_levels, data_points, data_ids)) {
-      if (k !== less) {
-        swap(k, less, data_levels, data_points, data_ids, data_weights);
-      }
-      ++less;
-    } else {
-      if (!comparePivot(k, pivot2_level, pivot2_x, pivot2_y, pivot2_id, data_levels, data_points, data_ids)) {
-        while (true) {
-          if (!comparePivot(great, pivot2_level, pivot2_x, pivot2_y, pivot2_id, data_levels, data_points, data_ids)) {
-            if (--great < k) {
-              break;
-            }
-            continue;
-          } else {
-            if (comparePivot(great, pivot1_level, pivot1_x, pivot1_y, pivot1_id, data_levels, data_points, data_ids)) {
-              rotate(k, less, great, data_levels, data_points, data_ids, data_weights);
-              ++less;
-              --great;
-            } else {
-              swap(k, great, data_levels, data_points, data_ids, data_weights);
-              --great;
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
-  shufflePivot(left, less - 1, pivot1_level, pivot1_x, pivot1_y, pivot1_id, pivot1_weight, data_levels, data_points, data_ids, data_weights);
-  shufflePivot(right, great + 1, pivot2_level, pivot2_x, pivot2_y, pivot2_id, pivot2_weight, data_levels, data_points, data_ids, data_weights);
-  if (less - 2 - left <= INSERT_SORT_CUTOFF) {
-    insertionSort(left, less - 2, data_levels, data_points, data_ids, data_weights);
-  } else {
-    quickSort(left, less - 2, data_levels, data_points, data_ids, data_weights);
-  }
-  if (right - (great + 2) <= INSERT_SORT_CUTOFF) {
-    insertionSort(great + 2, right, data_levels, data_points, data_ids, data_weights);
-  } else {
-    quickSort(great + 2, right, data_levels, data_points, data_ids, data_weights);
-  }
-  if (great - less <= INSERT_SORT_CUTOFF) {
-    insertionSort(less, great, data_levels, data_points, data_ids, data_weights);
-  } else {
-    quickSort(less, great, data_levels, data_points, data_ids, data_weights);
-  }
-}
-
-},{}],151:[function(require,module,exports){
-'use strict';
-
-var pool = require('typedarray-pool');
-
-var sortLevels = require('./lib/sort');
-
-module.exports = snapPoints;
-
-function partition(points, ids, start, end, lox, loy, hix, hiy) {
-  var mid = start;
-  for (var i = start; i < end; ++i) {
-    var x = points[2 * i];
-    var y = points[2 * i + 1];
-    var s = ids[i];
-    if (lox <= x && x <= hix && loy <= y && y <= hiy) {
-      if (i === mid) {
-        mid += 1;
-      } else {
-        points[2 * i] = points[2 * mid];
-        points[2 * i + 1] = points[2 * mid + 1];
-        ids[i] = ids[mid];
-        points[2 * mid] = x;
-        points[2 * mid + 1] = y;
-        ids[mid] = s;
-        mid += 1;
-      }
-    }
-  }
-  return mid;
-}
-
-function SnapInterval(pixelSize, offset, count) {
-  this.pixelSize = pixelSize;
-  this.offset = offset;
-  this.count = count;
-}
-
-function snapPoints(points, ids, weights, bounds) {
-  var n = points.length >>> 1;
-  if (n < 1) {
-    return [];
-  }
-
-  var lox = Infinity,
-      loy = Infinity;
-  var hix = -Infinity,
-      hiy = -Infinity;
-  for (var i = 0; i < n; ++i) {
-    var x = points[2 * i];
-    var y = points[2 * i + 1];
-    lox = Math.min(lox, x);
-    hix = Math.max(hix, x);
-    loy = Math.min(loy, y);
-    hiy = Math.max(hiy, y);
-    ids[i] = i;
-  }
-
-  if (lox === hix) {
-    hix += 1 + Math.abs(hix);
-  }
-  if (loy === hiy) {
-    hiy += 1 + Math.abs(hix);
-  }
-
-  //Calculate diameter
-  var scaleX = 1.0 / (hix - lox);
-  var scaleY = 1.0 / (hiy - loy);
-  var diam = Math.max(hix - lox, hiy - loy);
-
-  bounds = bounds || [0, 0, 0, 0];
-
-  bounds[0] = lox;
-  bounds[1] = loy;
-  bounds[2] = hix;
-  bounds[3] = hiy;
-
-  var levels = pool.mallocInt32(n);
-  var ptr = 0;
-
-  function snapRec(x, y, diam, start, end, level) {
-    var diam_2 = diam * 0.5;
-    var offset = start + 1;
-    var count = end - start;
-    weights[ptr] = count;
-    levels[ptr++] = level;
-    for (var i = 0; i < 2; ++i) {
-      for (var j = 0; j < 2; ++j) {
-        var nx = x + i * diam_2;
-        var ny = y + j * diam_2;
-        var nextOffset = partition(points, ids, offset, end, nx, ny, nx + diam_2, ny + diam_2);
-        if (nextOffset === offset) {
-          continue;
-        }
-        if (nextOffset - offset >= Math.max(0.9 * count, 32)) {
-          var mid = end + start >>> 1;
-          snapRec(nx, ny, diam_2, offset, mid, level + 1);
-          offset = mid;
-        }
-        snapRec(nx, ny, diam_2, offset, nextOffset, level + 1);
-        offset = nextOffset;
-      }
-    }
-  }
-  snapRec(lox, loy, diam, 0, n, 0);
-  sortLevels(levels, points, ids, weights, n);
-
-  var lod = [];
-  var lastLevel = 0;
-  var prevOffset = n;
-  for (var ptr = n - 1; ptr >= 0; --ptr) {
-    points[2 * ptr] = (points[2 * ptr] - lox) * scaleX;
-    points[2 * ptr + 1] = (points[2 * ptr + 1] - loy) * scaleY;
-
-    var level = levels[ptr];
-    if (level === lastLevel) {
-      continue;
-    }
-
-    lod.push(new SnapInterval(diam * Math.pow(0.5, level), ptr + 1, prevOffset - (ptr + 1)));
-    prevOffset = ptr + 1;
-
-    lastLevel = level;
-  }
-
-  lod.push(new SnapInterval(diam * Math.pow(0.5, level + 1), 0, prevOffset));
-  pool.free(levels);
-
-  return lod;
-}
-
-},{"./lib/sort":150,"typedarray-pool":162}],152:[function(require,module,exports){
+},{"./lib/order-segments":157,"binary-search-bounds":158,"functional-red-black-tree":76,"robust-orientation":147}],160:[function(require,module,exports){
+arguments[4][8][0].apply(exports,arguments)
+},{"dup":8}],161:[function(require,module,exports){
+arguments[4][9][0].apply(exports,arguments)
+},{"./lib/sort":160,"dup":9,"typedarray-pool":172}],162:[function(require,module,exports){
 /* global window, exports, define */
 
 !function () {
@@ -30125,7 +30680,7 @@ function snapPoints(points, ids, weights, bounds) {
     /* eslint-enable quote-props */
 }();
 
-},{}],153:[function(require,module,exports){
+},{}],163:[function(require,module,exports){
 "use strict";
 
 module.exports = surfaceNets;
@@ -30323,7 +30878,7 @@ function surfaceNets(array, level) {
   return proc(array, level);
 }
 
-},{"ndarray-extract-contour":112,"triangulate-hypercube":158,"zero-crossings":171}],154:[function(require,module,exports){
+},{"ndarray-extract-contour":122,"triangulate-hypercube":168,"zero-crossings":181}],164:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -30413,7 +30968,7 @@ function textGet(font, text, opts) {
 }
 
 }).call(this,require('_process'))
-},{"_process":127,"vectorize-text":165}],155:[function(require,module,exports){
+},{"_process":137,"vectorize-text":175}],165:[function(require,module,exports){
 'use strict';
 
 module.exports = TinySDF;
@@ -30522,7 +31077,7 @@ function edt1d(f, d, v, z, n) {
     }
 }
 
-},{}],156:[function(require,module,exports){
+},{}],166:[function(require,module,exports){
 'use strict';
 
 var repeatString = require('repeat-string');
@@ -30651,7 +31206,7 @@ function isAtRule(prop) {
 	return prop.indexOf('@') === 0;
 }
 
-},{"arrify":7,"object-assign":116,"repeat-string":134}],157:[function(require,module,exports){
+},{"arrify":17,"object-assign":126,"repeat-string":144}],167:[function(require,module,exports){
 'use strict';
 
 var parseUnit = require('parse-unit');
@@ -30714,7 +31269,7 @@ function toPX(str, element) {
   return 1;
 }
 
-},{"parse-unit":118}],158:[function(require,module,exports){
+},{"parse-unit":128}],168:[function(require,module,exports){
 "use strict";
 
 module.exports = triangulateCube;
@@ -30749,7 +31304,7 @@ function triangulateCube(dimension) {
   return result;
 }
 
-},{"gamma":67,"permutation-parity":120,"permutation-rank":121}],159:[function(require,module,exports){
+},{"gamma":77,"permutation-parity":130,"permutation-rank":131}],169:[function(require,module,exports){
 "use strict";
 
 module.exports = twoProduct;
@@ -30784,7 +31339,7 @@ function twoProduct(a, b, result) {
   return [y, x];
 }
 
-},{}],160:[function(require,module,exports){
+},{}],170:[function(require,module,exports){
 "use strict";
 
 module.exports = fastTwoSum;
@@ -30803,7 +31358,7 @@ function fastTwoSum(a, b, result) {
 	return [ar + br, x];
 }
 
-},{}],161:[function(require,module,exports){
+},{}],171:[function(require,module,exports){
 
 /**
  * @module typedarray-polyfill
@@ -30872,214 +31427,9 @@ if (typeof TypedArray !== 'undefined') {
     }
 }
 
-},{}],162:[function(require,module,exports){
-(function (global,Buffer){
-'use strict';
-
-var bits = require('bit-twiddle');
-var dup = require('dup'
-
-//Legacy pool support
-);if (!global.__TYPEDARRAY_POOL) {
-  global.__TYPEDARRAY_POOL = {
-    UINT8: dup([32, 0]),
-    UINT16: dup([32, 0]),
-    UINT32: dup([32, 0]),
-    INT8: dup([32, 0]),
-    INT16: dup([32, 0]),
-    INT32: dup([32, 0]),
-    FLOAT: dup([32, 0]),
-    DOUBLE: dup([32, 0]),
-    DATA: dup([32, 0]),
-    UINT8C: dup([32, 0]),
-    BUFFER: dup([32, 0])
-  };
-}
-
-var hasUint8C = typeof Uint8ClampedArray !== 'undefined';
-var POOL = global.__TYPEDARRAY_POOL;
-
-//Upgrade pool
-if (!POOL.UINT8C) {
-  POOL.UINT8C = dup([32, 0]);
-}
-if (!POOL.BUFFER) {
-  POOL.BUFFER = dup([32, 0]);
-}
-
-//New technique: Only allocate from ArrayBufferView and Buffer
-var DATA = POOL.DATA,
-    BUFFER = POOL.BUFFER;
-
-exports.free = function free(array) {
-  if (Buffer.isBuffer(array)) {
-    BUFFER[bits.log2(array.length)].push(array);
-  } else {
-    if (Object.prototype.toString.call(array) !== '[object ArrayBuffer]') {
-      array = array.buffer;
-    }
-    if (!array) {
-      return;
-    }
-    var n = array.length || array.byteLength;
-    var log_n = bits.log2(n) | 0;
-    DATA[log_n].push(array);
-  }
-};
-
-function freeArrayBuffer(buffer) {
-  if (!buffer) {
-    return;
-  }
-  var n = buffer.length || buffer.byteLength;
-  var log_n = bits.log2(n);
-  DATA[log_n].push(buffer);
-}
-
-function freeTypedArray(array) {
-  freeArrayBuffer(array.buffer);
-}
-
-exports.freeUint8 = exports.freeUint16 = exports.freeUint32 = exports.freeInt8 = exports.freeInt16 = exports.freeInt32 = exports.freeFloat32 = exports.freeFloat = exports.freeFloat64 = exports.freeDouble = exports.freeUint8Clamped = exports.freeDataView = freeTypedArray;
-
-exports.freeArrayBuffer = freeArrayBuffer;
-
-exports.freeBuffer = function freeBuffer(array) {
-  BUFFER[bits.log2(array.length)].push(array);
-};
-
-exports.malloc = function malloc(n, dtype) {
-  if (dtype === undefined || dtype === 'arraybuffer') {
-    return mallocArrayBuffer(n);
-  } else {
-    switch (dtype) {
-      case 'uint8':
-        return mallocUint8(n);
-      case 'uint16':
-        return mallocUint16(n);
-      case 'uint32':
-        return mallocUint32(n);
-      case 'int8':
-        return mallocInt8(n);
-      case 'int16':
-        return mallocInt16(n);
-      case 'int32':
-        return mallocInt32(n);
-      case 'float':
-      case 'float32':
-        return mallocFloat(n);
-      case 'double':
-      case 'float64':
-        return mallocDouble(n);
-      case 'uint8_clamped':
-        return mallocUint8Clamped(n);
-      case 'buffer':
-        return mallocBuffer(n);
-      case 'data':
-      case 'dataview':
-        return mallocDataView(n);
-
-      default:
-        return null;
-    }
-  }
-  return null;
-};
-
-function mallocArrayBuffer(n) {
-  var n = bits.nextPow2(n);
-  var log_n = bits.log2(n);
-  var d = DATA[log_n];
-  if (d.length > 0) {
-    return d.pop();
-  }
-  return new ArrayBuffer(n);
-}
-exports.mallocArrayBuffer = mallocArrayBuffer;
-
-function mallocUint8(n) {
-  return new Uint8Array(mallocArrayBuffer(n), 0, n);
-}
-exports.mallocUint8 = mallocUint8;
-
-function mallocUint16(n) {
-  return new Uint16Array(mallocArrayBuffer(2 * n), 0, n);
-}
-exports.mallocUint16 = mallocUint16;
-
-function mallocUint32(n) {
-  return new Uint32Array(mallocArrayBuffer(4 * n), 0, n);
-}
-exports.mallocUint32 = mallocUint32;
-
-function mallocInt8(n) {
-  return new Int8Array(mallocArrayBuffer(n), 0, n);
-}
-exports.mallocInt8 = mallocInt8;
-
-function mallocInt16(n) {
-  return new Int16Array(mallocArrayBuffer(2 * n), 0, n);
-}
-exports.mallocInt16 = mallocInt16;
-
-function mallocInt32(n) {
-  return new Int32Array(mallocArrayBuffer(4 * n), 0, n);
-}
-exports.mallocInt32 = mallocInt32;
-
-function mallocFloat(n) {
-  return new Float32Array(mallocArrayBuffer(4 * n), 0, n);
-}
-exports.mallocFloat32 = exports.mallocFloat = mallocFloat;
-
-function mallocDouble(n) {
-  return new Float64Array(mallocArrayBuffer(8 * n), 0, n);
-}
-exports.mallocFloat64 = exports.mallocDouble = mallocDouble;
-
-function mallocUint8Clamped(n) {
-  if (hasUint8C) {
-    return new Uint8ClampedArray(mallocArrayBuffer(n), 0, n);
-  } else {
-    return mallocUint8(n);
-  }
-}
-exports.mallocUint8Clamped = mallocUint8Clamped;
-
-function mallocDataView(n) {
-  return new DataView(mallocArrayBuffer(n), 0, n);
-}
-exports.mallocDataView = mallocDataView;
-
-function mallocBuffer(n) {
-  n = bits.nextPow2(n);
-  var log_n = bits.log2(n);
-  var cache = BUFFER[log_n];
-  if (cache.length > 0) {
-    return cache.pop();
-  }
-  return new Buffer(n);
-}
-exports.mallocBuffer = mallocBuffer;
-
-exports.clearCache = function clearCache() {
-  for (var i = 0; i < 32; ++i) {
-    POOL.UINT8[i].length = 0;
-    POOL.UINT16[i].length = 0;
-    POOL.UINT32[i].length = 0;
-    POOL.INT8[i].length = 0;
-    POOL.INT16[i].length = 0;
-    POOL.INT32[i].length = 0;
-    POOL.FLOAT[i].length = 0;
-    POOL.DOUBLE[i].length = 0;
-    POOL.UINT8C[i].length = 0;
-    DATA[i].length = 0;
-    BUFFER[i].length = 0;
-  }
-};
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {},require("buffer").Buffer)
-},{"bit-twiddle":27,"buffer":36,"dup":59}],163:[function(require,module,exports){
+},{}],172:[function(require,module,exports){
+arguments[4][10][0].apply(exports,arguments)
+},{"bit-twiddle":37,"buffer":46,"dup":10}],173:[function(require,module,exports){
 "use strict";"use restrict";
 
 module.exports = UnionFind;
@@ -31143,7 +31493,7 @@ proto.link = function (x, y) {
   }
 };
 
-},{}],164:[function(require,module,exports){
+},{}],174:[function(require,module,exports){
 "use strict";
 
 function unique_pred(list, compare) {
@@ -31204,7 +31554,7 @@ function unique(list, compare, sorted) {
 
 module.exports = unique;
 
-},{}],165:[function(require,module,exports){
+},{}],175:[function(require,module,exports){
 "use strict";
 
 module.exports = createText;
@@ -31227,7 +31577,7 @@ function createText(str, options) {
   return vectorizeText(str, options.canvas || defaultCanvas, options.context || defaultContext, options);
 }
 
-},{"./lib/vtext":166}],166:[function(require,module,exports){
+},{"./lib/vtext":176}],176:[function(require,module,exports){
 "use strict";
 
 module.exports = vectorizeText;
@@ -31433,7 +31783,7 @@ function vectorizeText(str, canvas, context, options) {
   return processPixels(pixels, options, size);
 }
 
-},{"cdt2d":38,"clean-pslg":44,"ndarray":114,"planar-graph-to-polyline":124,"simplify-planar-graph":146,"surface-nets":153}],167:[function(require,module,exports){
+},{"cdt2d":48,"clean-pslg":54,"ndarray":124,"planar-graph-to-polyline":134,"simplify-planar-graph":156,"surface-nets":163}],177:[function(require,module,exports){
 var hiddenStore = require('./hidden-store.js');
 
 module.exports = createStore;
@@ -31451,7 +31801,7 @@ function createStore() {
     };
 }
 
-},{"./hidden-store.js":168}],168:[function(require,module,exports){
+},{"./hidden-store.js":178}],178:[function(require,module,exports){
 module.exports = hiddenStore;
 
 function hiddenStore(obj, key) {
@@ -31468,7 +31818,7 @@ function hiddenStore(obj, key) {
     return store;
 }
 
-},{}],169:[function(require,module,exports){
+},{}],179:[function(require,module,exports){
 // Original - @Gozola.
 // https://gist.github.com/Gozala/1269991
 // This is a reimplemented version (with a few bug fixes).
@@ -31498,7 +31848,7 @@ function weakMap() {
     };
 }
 
-},{"./create-store.js":167}],170:[function(require,module,exports){
+},{"./create-store.js":177}],180:[function(require,module,exports){
 module.exports = require('cwise-compiler')({
     args: ['array', {
         offset: [1],
@@ -31550,7 +31900,7 @@ module.exports = require('cwise-compiler')({
     funcName: 'zeroCrossings'
 });
 
-},{"cwise-compiler":54}],171:[function(require,module,exports){
+},{"cwise-compiler":64}],181:[function(require,module,exports){
 "use strict";
 
 module.exports = findZeroCrossings;
@@ -31564,6 +31914,6 @@ function findZeroCrossings(array, level) {
   return cross;
 }
 
-},{"./lib/zc-core":170}]},{},[1]);
+},{"./lib/zc-core":180}]},{},[11]);
 </script>
 </html>
