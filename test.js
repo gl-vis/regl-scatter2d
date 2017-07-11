@@ -10,7 +10,7 @@ const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 
 
-let N = 5e4
+let N = 1e5
 let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
@@ -22,14 +22,12 @@ let scatter = createScatter({
 			),
 	// color: 'rgba(0, 10, 10, .3)',
 
-	borderSize: 0,
-	cluster: false,
+	borderSize: 1,
 	borderColor: [.1,.2,.3,1]
 })
-.autorange()
 
 
-scatter.draw()
+scatter()
 
 /*
 let settings = createSettings([

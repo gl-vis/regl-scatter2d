@@ -2,19 +2,7 @@
 
 Scatter plot for lots of points.
 
-Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), [gl-scatter2d-fancy](https://github.com/gl-vis/gl-scatter2d-fancy) and [gl-scatter2d-sdf](https://github.com/gl-vis/gl-scatter2d-sdf).
-
-Demos:
-
-* [points](https://dfcreative.github.com/regl-scatter2d)
-* [colors/sizes](https://dfcreative.github.com/regl-scatter2d/colors)
-
-<!--
-* [point-cluster](https://github.com/dfcreative/point-cluster) is used instead of [snap-points-2d](https://github.com/gl-vis/snap-points-2d), which extends number of points up to `1e8` and speeds up construction up to ~30%.
-* API covers the API of _gl-scatter2d-*_ components. Multipass rendering enables various colors, glyphs and sizes within single component.
-* gl-plot2d compatible.
-* fancy mode is enabled only for custom glyphs, regular scatter can render various colors/sizes/borders without memory overflow (up to 1e8 points)
--->
+Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), covering other scatter-related components.
 
 ## Usage
 
@@ -26,45 +14,35 @@ let scatter = require('regl-scatter2d')({
 	color: 'rgba(0, 100, 200, .75)'
 })
 
-scatter.draw()
+scatter()
 ```
 
 ## API
 
-#### `let scatter = require('regl-scatter2d')(options)`
+#### `drawScatter = require('regl-scatter2d')(options)`
 
-| Option | Default | Description |
+| Property | Default | Description |
 |---|---|---|
-| `regl` | `null` | Regl instance to reuse, or new regl is created. |
+| `regl` | `null` | Regl instance to reuse, otherwise new regl is created. |
 | `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created. |
-| `plot` | `null` | [`gl-plot2d`](https://github.com/gl-vis/gl-plot2d) reference, if scatter is going to be used as a part of gl-plot2d. |
-| `pixelRatio` | `window.devicePixelRatio` | Display pixel density property. |
-| `positions` | `[]` | A packed 2*n length array of the unrolled xy coordinates of the points (required) |
-| `size` | `12` | Number or array giving the diameter of a marker in pixels (default `12`). Array length should correspond to `positions`. |
-| `color` | `'red'` | Color or array with colors of markers as a , eg. `['rgba(0, 0, 100, .75)', 'red', 'green', [0,1,0,.5], ...]` |
-| `borderSize` | `1` | Width of the border around each point in pixels (default `1`) |
-| `borderColor` | `'black'` | Color of the border of each point (default `[0,0,0,1]`) |
-| `glyph` | `null` | Glyph or array with glyphs to use for markers, can be a single glyph or array. |
-| `scale` | `[0, 0]` | Scale in terms of data units. |
-| `translate` | `[0, 0]` | Translate in terms of data units. |
-| `cluster` | `false` | Whether points should be clustered to optimize rendering of huge number of points. (see [point-cluster](https://github.com/dfcreative/point-cluster)) |
 
-**Returns** A new scatter plot object, which is also registered to `plot`
+The rest of options is passed into `drawScatter` method.
 
-#### `scatter.update(options)`
+#### `drawScatter(positions|options?)`
 
-Updates the scatter plot params with options above.
+Redraw scatter. Takes over new options.
 
-#### `scatter.draw()`
-
-Draws data into canvas.
-
-#### `scatter.dispose()`
-
-Destroys the scatter plot and all associated resources.
+| Property | Default | Description |
+|---|---|---|
+| `positions` | `[]` | A packed 2*n length array of the unrolled xy coordinates of the points. |
+| `size` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`. |
+| `color` | `'red'` | Color or array with marker colors. Each color can be a css-color string or an array with float `0..1` values. |
+| `border` | `'1px black'` | Border css-declaration, can be set up separately as `borderSize` and `borderColor`. |
+| `glyph` | `null` | Glyph or array with glyphs to use for markers. |
+| `range` | `null` | Data bounds limiting visible data. If `null`, the range is detected from the positions. |
 
 ## License
 
 (c) 2017 Dima Yv. MIT License
 
-Development supported by plot.ly
+Development supported by plot.ly.
