@@ -10,8 +10,8 @@ const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 
 
-let N = 1e5
-let range = [-1, -1, 1, 1]
+let N = 1e6
+let range = [-10, -10, 10, 10]
 let zoom = .004
 
 let scatter = createScatter({
@@ -107,10 +107,11 @@ panZoom(document.body.lastChild, e => {
 	let rx = e.x / w
 	let ry = e.y / h
 
+	let xrange = range[2] - range[0],
+		yrange = range[3] - range[1]
+
 	if (e.dz) {
 		let dz = e.dz / w
-		let xrange = range[2] - range[0],
-			yrange = range[3] - range[1]
 		range[0] -= rx * xrange * dz
 		range[2] += (1 - rx) * xrange * dz
 
@@ -118,10 +119,10 @@ panZoom(document.body.lastChild, e => {
 		range[3] += ry * yrange * dz
 	}
 
-	range[0] -= zoom * e.dx
-	range[2] -= zoom * e.dx
-	range[1] += zoom * e.dy
-	range[3] += zoom * e.dy
+	range[0] -= xrange * e.dx / w
+	range[2] -= xrange * e.dx / w
+	range[1] += yrange * e.dy / h
+	range[3] += yrange * e.dy / h
 
 	scatter({range: range})
 })
@@ -131,7 +132,7 @@ function generate(N) {
 	var positions = new Float32Array(2 * N)
 
 	for(var i=0; i<2*N; ++i) {
-	  positions[i] = Math.random()*2 - 1
+	  positions[i] = random()
 	}
 
 	return positions

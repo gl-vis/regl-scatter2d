@@ -242,14 +242,16 @@ function Scatter (options) {
     if (!options.range && !range) options.range = bounds
     if (options.range) {
       range = options.range
+      let xrange = range[2] - range[0]
+      let yrange = range[3] - range[1]
 
       scale = [
-        (bounds[2] - bounds[0]) / (range[2] - range[0]),
-        (bounds[3] - bounds[1]) / (range[3] - range[1])
+        (bounds[2] - bounds[0]) / xrange,
+        (bounds[3] - bounds[1]) / yrange
       ]
       translate = [
-        (bounds[0] - range[0]) / (range[2] - range[0]),
-        (bounds[1] - range[1]) / (range[3] - range[1])
+        (bounds[0] - range[0]) / xrange,
+        (bounds[1] - range[1]) / yrange
       ]
     }
 
