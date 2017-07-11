@@ -11,6 +11,9 @@ const rgba = require('color-rgba')
 
 
 let N = 1e5
+let range = [-1, -1, 1, 1]
+let zoom = .004
+
 let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
@@ -22,6 +25,7 @@ let scatter = createScatter({
 			),
 	// color: 'rgba(0, 10, 10, .3)',
 
+	range: range,
 	borderSize: 1,
 	borderColor: [.1,.2,.3,1]
 })
@@ -96,33 +100,30 @@ let settings = createSettings([
 
 
 //interactions
-let canvas = scatter.canvas
-panZoom(canvas, e => {
-	let w = canvas.width
-	let h = canvas.height
-	let scale = scatter.scale
-	let translate = scatter.translate
-
-	translate[0] += e.dx / scale[0] / w
-	translate[1] -= e.dy / scale[1] / h
-
-	let prevScale = scale.slice()
-
-	scale[0] -= scale[0] * e.dz / w
-	scale[1] -= scale[1] * e.dz / w
+panZoom(document.body.lastChild, e => {
+	let w = document.body.lastChild.offsetWidth
+	let h = document.body.lastChild.offsetHeight
 
 	let rx = e.x / w
-	let ry = (e.y) / h
+	let ry = e.y / h
 
-	translate[0] += e.x / scale[0] / w - e.x / prevScale[0] / w
-	translate[1] += (h - e.y) / scale[1] / h - (h - e.y) / prevScale[1] / h
-	scatter.update({
-		scale: e.dz ? scale : null,
-		translate: translate
-	})
+	if (e.dz) {
+		let dz = e.dz / w
+		let xrange = range[2] - range[0],
+			yrange = range[3] - range[1]
+		range[0] -= rx * xrange * dz
+		range[2] += (1 - rx) * xrange * dz
 
-	scatter.clear()
-	scatter.draw()
+		range[1] -= (1 - ry) * yrange * dz
+		range[3] += ry * yrange * dz
+	}
+
+	range[0] -= zoom * e.dx
+	range[2] -= zoom * e.dx
+	range[1] += zoom * e.dy
+	range[3] += zoom * e.dy
+
+	scatter({range: range})
 })
 
 
@@ -130,7 +131,7 @@ function generate(N) {
 	var positions = new Float32Array(2 * N)
 
 	for(var i=0; i<2*N; ++i) {
-	  positions[i] = random()
+	  positions[i] = Math.random()*2 - 1
 	}
 
 	return positions

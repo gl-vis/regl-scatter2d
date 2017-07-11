@@ -20,6 +20,7 @@ function Scatter (options) {
       range, size, color, borderSize, borderColor,
       positions, count, selection, bounds,
       scale, translate,
+      dirty = true,
       charCanvas, charTexture, sizeBuffer, positionBuffer, colorBuffer,
       drawPoints, glyphs
 
@@ -82,7 +83,7 @@ function Scatter (options) {
 
     void main() {
       gl_PointSize = size;
-      gl_Position = vec4((position + translate) * scale * 2. - 1., 0, 1);
+      gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
       centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
       fragColor = color;
@@ -148,10 +149,19 @@ function Scatter (options) {
     primitive: 'points'
   })
 
+  //clean dirty flag every frame
+  regl.frame(ctx => {
+    dirty = true
+  })
+
+  //main draw method
   function draw (opts) {
     if (opts) update(opts)
 
+    if (!dirty) return
+
     drawPoints()
+    dirty = false
   }
 
   function update (options) {
@@ -232,11 +242,16 @@ function Scatter (options) {
     if (!options.range && !range) options.range = bounds
     if (options.range) {
       range = options.range
-      translate = [0,0]
-      scale = [1,1]
+
+      scale = [
+        (bounds[2] - bounds[0]) / (range[2] - range[0]),
+        (bounds[3] - bounds[1]) / (range[3] - range[1])
+      ]
+      translate = [
+        (bounds[0] - range[0]) / (range[2] - range[0]),
+        (bounds[1] - range[1]) / (range[3] - range[1])
+      ]
     }
-
-
 
     //update atlas
     /*
