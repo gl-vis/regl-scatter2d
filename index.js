@@ -17,11 +17,14 @@ function Scatter (options) {
 
   // persistent variables
   let regl, gl, canvas, plot,
-      range, size, color, borderSize, borderColor,
+      range,
+      size = 5,
+      borderSize = 1, borderColor = [0, 0, 0, 1],
       positions, count, selection, bounds,
       scale, translate,
       dirty = true,
-      charCanvas, charTexture, sizeBuffer, positionBuffer, colorBuffer,
+      charCanvas, charTexture, sizeBuffer, positionBuffer,
+      paletteTexture, palette, colorIdx, colorBuffer,
       drawPoints, glyphs
 
 
@@ -30,12 +33,8 @@ function Scatter (options) {
 
   // container/gl/canvas case
   else {
-    regl = createRegl({
-      pixelRatio: options.pixelRatio || global.devicePixelRatio,
-      gl: options.gl,
-      container: options.container,
-      canvas: options.canvas
-    })
+    if (!options.pixelRatio) options.pixelRatio = global.devicePixelRatio
+    regl = createRegl(options)
   }
 
   // compatibility
@@ -46,8 +45,19 @@ function Scatter (options) {
   charCanvas = document.createElement('canvas')
   charTexture = regl.texture(charCanvas)
 
+  //texture with color palette
+  paletteTexture = regl.texture({
+    type: 'uint8',
+    format: 'rgba'
+  })
+
   //buffers to reuse
   sizeBuffer = regl.buffer({
+    usage: 'dynamic',
+    type: 'float',
+    data: null
+  })
+  colorBuffer = regl.buffer({
     usage: 'dynamic',
     type: 'float',
     data: null
@@ -55,11 +65,6 @@ function Scatter (options) {
   positionBuffer = regl.buffer({
     usage: 'dynamic',
     type: 'float',
-    data: null
-  })
-  colorBuffer = regl.buffer({
-    usage: 'dynamic',
-    type: 'uint8',
     data: null
   })
 
@@ -73,15 +78,18 @@ function Scatter (options) {
 
     attribute vec2 position;
     attribute float size;
-    attribute vec4 color;
+    attribute float colorIdx;
 
     uniform vec2 scale, translate;
-    uniform float borderSize;
+    uniform float borderSize, paletteSize;
+    uniform sampler2D palette;
 
     varying vec4 fragColor;
     varying float centerFraction;
 
     void main() {
+      vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
+
       gl_PointSize = size;
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
@@ -113,6 +121,8 @@ function Scatter (options) {
     }`,
 
     uniforms: {
+      palette: paletteTexture,
+      paletteSize: () => palette.length/4,
       scale: () => scale,
       translate: () => translate,
       borderColor: () => borderColor,
@@ -127,11 +137,11 @@ function Scatter (options) {
         }
         return {constant: size}
       },
-      color: () => {
-        if (Array.isArray(color[0])) {
+      colorIdx: () => {
+        if (Array.isArray(colorIdx)) {
           return colorBuffer
         }
-        return {constant: color}
+        return {constant: colorIdx}
       }
     },
 
@@ -206,23 +216,60 @@ function Scatter (options) {
 
     //process colors
     if (options.colors) options.color = options.color
-    if (options.color) {
-      color = options.color
 
-      //ensure colors are arrays
-      if (Array.isArray(color) && (Array.isArray(color[0]) || typeof color[0] === 'string')) {
-        for (let i = 0; i < count; i++) {
-          if (color[i] != null) {
-            color[i] = rgba(color[i])
-          }
-          else {
-            color[i] = 'black'
-          }
+    //palette colors case
+    if (options.palette || (palette && options.color && (typeof options.color[0] === 'number' || typeof options.color === 'number'))) {
+      //generate palette
+      if (!palette || options.palette) {
+        palette = []
+        for (let i = 0, l = options.palette.length; i < l; i++) {
+          let colors = rgba(options.palette[i], false)
+          colors[3] *= 255.
+          palette[i*4] = colors[0]
+          palette[i*4+1] = colors[1]
+          palette[i*4+2] = colors[2]
+          palette[i*4+3] = colors[3]
         }
-        colorBuffer(color)
+        paletteTexture({
+          height: 1,
+          width: palette.length/4,
+          data: palette
+        })
       }
-      else if (typeof color === 'string') {
-        color = rgba(color)
+
+      //update color indexes
+      if (options.color) {
+        colorIdx = options.color
+      }
+      if (Array.isArray(colorIdx)) colorBuffer(colorIdx)
+    }
+
+    //direct colors case
+    else {
+      if (options.color) {
+        let colors = options.color
+
+        if (Array.isArray(colors) && (Array.isArray(colors[0]) || typeof colors[0] === 'string')) {
+          colorIdx = []
+          let ids = {}, c = 0, palette = []
+          for (let i = 0; i < colors.length; i++) {
+            let color = colors[i] == null ? 'black' : rgba(colors[i])
+            let id = colorId(color)
+            if (ids[id] == null) {
+              palette[c] = color
+              ids[id] = c
+              c++
+            }
+            colorIdx[i] = ids[id]
+          }
+          colorBuffer(colorIdx)
+        }
+        else {
+          palette = rgba(colors)
+          colorIdx = 0
+        }
+
+        paletteTexture(palette)
       }
     }
 

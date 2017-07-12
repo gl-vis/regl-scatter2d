@@ -10,7 +10,7 @@ const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 
 
-let N = 1e6
+let N = 1e4
 let range = [-10, -10, 10, 10]
 let zoom = .004
 

@@ -26,7 +26,7 @@
     "array-bounds": "^1.0.0",
     "array-normalize": "^1.1.2",
     "clamp": "^1.0.1",
-    "color-id": "^1.0.3",
+    "color-id": "^1.1.0",
     "color-rgba": "^1.1.0",
     "font-atlas-sdf": "^1.2.0",
     "object-assign": "^4.1.1",

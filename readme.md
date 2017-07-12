@@ -36,10 +36,11 @@ Redraw scatter. Takes over new options.
 |---|---|---|
 | `positions` | `[]` | A packed 2*n length array of the unrolled xy coordinates of the points. |
 | `size` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`. |
-| `color` | `'red'` | Color or array with marker colors. Each color can be a css-color string or an array with float `0..1` values. |
+| `color` | `'red'` | Color or array with colors. Each color can be a css-color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number pointing at the color in the palette. |
+| `palette` | `null` | List of basic colors, for example `['red', 'green', 'blue', 'black']`. |
 | `border` | `'1px black'` | Border css-declaration, can be set up separately as `borderSize` and `borderColor`. |
 | `glyph` | `null` | Glyph or array with glyphs to use for markers. |
-| `range` | `null` | Data bounds limiting visible data. If `null`, the range is detected from the positions. |
+| `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected from the positions. |
 
 ## License
 
