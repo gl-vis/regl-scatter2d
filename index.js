@@ -19,12 +19,14 @@ function Scatter (options) {
   let regl, gl, canvas, plot,
       range,
       size = 5,
-      borderSize = 1, borderColor = [0, 0, 0, 1],
+      borderSize = 1,
       positions, count, selection, bounds,
       scale, translate,
       dirty = true,
       charCanvas, charTexture, sizeBuffer, positionBuffer,
-      paletteTexture, palette, colorIdx, colorBuffer,
+      paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
+      colorIdx = 0, colorBuffer,
+      borderColorBuffer, borderColorIdx = 1,
       drawPoints, glyphs
 
 
@@ -62,6 +64,11 @@ function Scatter (options) {
     type: 'float',
     data: null
   })
+  borderColorBuffer = regl.buffer({
+    usage: 'dynamic',
+    type: 'float',
+    data: null
+  })
   positionBuffer = regl.buffer({
     usage: 'dynamic',
     type: 'float',
@@ -79,31 +86,33 @@ function Scatter (options) {
     attribute vec2 position;
     attribute float size;
     attribute float colorIdx;
+    attribute float borderColorIdx;
 
     uniform vec2 scale, translate;
     uniform float borderSize, paletteSize;
     uniform sampler2D palette;
 
-    varying vec4 fragColor;
+    varying vec4 fragColor, fragBorderColor;
     varying float centerFraction;
 
     void main() {
       vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
+      vec4 borderColor = texture2D(palette, vec2((borderColorIdx + .5) / paletteSize, 0));
 
       gl_PointSize = size;
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
       centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
       fragColor = color;
+      fragBorderColor = borderColor;
     }`,
 
     frag: `
     precision mediump float;
-    uniform vec4 borderColor;
 
     const float fragWeight = 1.0;
 
-    varying vec4 fragColor;
+    varying vec4 fragColor, fragBorderColor;
     varying float centerFraction;
 
     float smoothStep(float x, float y) {
@@ -115,7 +124,7 @@ function Scatter (options) {
       if(radius > 1.0) {
         discard;
       }
-      vec4 baseColor = mix(borderColor, fragColor, smoothStep(radius, centerFraction));
+      vec4 baseColor = mix(fragBorderColor, fragColor, smoothStep(radius, centerFraction));
       float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
       gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
     }`,
@@ -125,7 +134,6 @@ function Scatter (options) {
       paletteSize: () => palette.length/4,
       scale: () => scale,
       translate: () => translate,
-      borderColor: () => borderColor,
       borderSize: () => borderSize
     },
 
@@ -141,7 +149,13 @@ function Scatter (options) {
         if (Array.isArray(colorIdx)) {
           return colorBuffer
         }
-        return {constant: colorIdx}
+        return {constant: 1}
+      },
+      borderColorIdx: () => {
+        if (Array.isArray(borderColorIdx)) {
+          return borderColorBuffer
+        }
+        return {constant: borderColorIdx}
       }
     },
 
@@ -210,67 +224,43 @@ function Scatter (options) {
     if (options.borderSize != null) {
       borderSize = options.borderSize
     }
-    if (options.borderColor != null) {
-      borderColor = options.borderColor
-    }
 
     //process colors
-    if (options.colors) options.color = options.color
+    if (options.colors) options.color = options.colors
+    if (options.borderColors) options.borderColor = options.borderColors
 
-    //palette colors case
-    if (options.palette || (palette && options.color && (typeof options.color[0] === 'number' || typeof options.color === 'number'))) {
-      //generate palette
-      if (!palette || options.palette) {
-        palette = []
+    if (options.color || options.borderColor || options.palette) {
+      //reset palette if passed
+      if (options.palette) {
+        palette = [], paletteIds = {}, paletteCount = 0
         for (let i = 0, l = options.palette.length; i < l; i++) {
-          let colors = rgba(options.palette[i], false)
-          colors[3] *= 255.
-          palette[i*4] = colors[0]
-          palette[i*4+1] = colors[1]
-          palette[i*4+2] = colors[2]
-          palette[i*4+3] = colors[3]
+          let color = rgba(options.palette[i], false)
+          color[3] *= 255.
+          let id = colorId(color, false)
+          paletteIds[id] = paletteCount
+          paletteCount++
+          palette[i*4] = color[0]
+          palette[i*4+1] = color[1]
+          palette[i*4+2] = color[2]
+          palette[i*4+3] = color[3]
         }
-        paletteTexture({
-          height: 1,
-          width: palette.length/4,
-          data: palette
-        })
       }
 
-      //update color indexes
+      //augment palette, bring colors to indexes
       if (options.color) {
-        colorIdx = options.color
+        colorIdx = updateColor(options.color)
+        if (Array.isArray(colorIdx)) colorBuffer(colorIdx)
       }
-      if (Array.isArray(colorIdx)) colorBuffer(colorIdx)
-    }
-
-    //direct colors case
-    else {
-      if (options.color) {
-        let colors = options.color
-
-        if (Array.isArray(colors) && (Array.isArray(colors[0]) || typeof colors[0] === 'string')) {
-          colorIdx = []
-          let ids = {}, c = 0, palette = []
-          for (let i = 0; i < colors.length; i++) {
-            let color = colors[i] == null ? 'black' : rgba(colors[i])
-            let id = colorId(color)
-            if (ids[id] == null) {
-              palette[c] = color
-              ids[id] = c
-              c++
-            }
-            colorIdx[i] = ids[id]
-          }
-          colorBuffer(colorIdx)
-        }
-        else {
-          palette = rgba(colors)
-          colorIdx = 0
-        }
-
-        paletteTexture(palette)
+      if (options.borderColor) {
+        borderColorIdx = updateColor(options.borderColor)
+        if (Array.isArray(borderColorIdx)) colorBuffer(borderColorIdx)
       }
+
+      paletteTexture({
+        width: palette.length/4,
+        height: 1,
+        data: palette
+      })
     }
 
     //aggregate glyphs
@@ -337,6 +327,40 @@ function Scatter (options) {
       this.chars = chars
     }
     */
+  }
+
+  //update borderColor or color
+  function updateColor(colors) {
+    if (!Array.isArray(colors)) {
+      colors = [colors]
+    }
+
+    let idx = []
+    for (let i = 0; i < colors.length; i++) {
+      let color = colors[i]
+
+      //idx colors
+      if (typeof color === 'number') {
+        idx[i] = color
+        continue
+      }
+
+      color = color == null ? [128, 128, 128, 1] : rgba(color, false)
+      color[3] *= 255;
+      let id = colorId(color, false)
+      if (paletteIds[id] == null) {
+        palette[paletteCount*4] = color[0]
+        palette[paletteCount*4+1] = color[1]
+        palette[paletteCount*4+2] = color[2]
+        palette[paletteCount*4+3] = color[3]
+        paletteIds[id] = paletteCount
+        paletteCount++
+      }
+      idx[i] = paletteIds[id]
+    }
+
+    //keep static index for single-color property
+    return idx.length === 1 ? idx[0] : idx
   }
 
   return draw
