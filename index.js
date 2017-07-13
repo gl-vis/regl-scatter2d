@@ -85,11 +85,12 @@ function Scatter (options) {
 
     attribute vec2 position;
     attribute float size;
+    attribute float borderSize;
     attribute float colorIdx;
     attribute float borderColorIdx;
 
     uniform vec2 scale, translate;
-    uniform float borderSize, paletteSize;
+    uniform float paletteSize;
     uniform sampler2D palette;
 
     varying vec4 fragColor, fragBorderColor;
@@ -133,8 +134,7 @@ function Scatter (options) {
       palette: paletteTexture,
       paletteSize: () => palette.length/4,
       scale: () => scale,
-      translate: () => translate,
-      borderSize: () => borderSize
+      translate: () => translate
     },
 
     attributes: {
@@ -144,6 +144,12 @@ function Scatter (options) {
           return sizeBuffer
         }
         return {constant: size}
+      },
+      borderSize: () => {
+        if (Array.isArray(borderSize)) {
+          return borderSizeBuffer
+        }
+        return {constant: borderSize}
       },
       colorIdx: () => {
         if (Array.isArray(colorIdx)) {
@@ -211,18 +217,22 @@ function Scatter (options) {
     }
 
     //take over borders
-    if (options.borders) options.border = options.borders
-    if (options.border) {
-      throw 'unimpl'
-      if (Array.isArray(border)) {
-        [borderSize, borderColor] = options.border
-      }
-      else {
-        [borderSize, borderColor] = parseBorder(options.border)
-      }
-    }
+    // if (options.borders) options.border = options.borders
+    // if (options.border) {
+    //   throw 'unimpl'
+    //   if (Array.isArray(border)) {
+    //     [borderSize, borderColor] = options.border
+    //   }
+    //   else {
+    //     [borderSize, borderColor] = parseBorder(options.border)
+    //   }
+    // }
+    if (options.borderSizes) options.borderSize = options.borderSizes
     if (options.borderSize != null) {
       borderSize = options.borderSize
+      if (Array.isArray(borderSize)) {
+        borderSizeBuffer(borderSize)
+      }
     }
 
     //process colors
