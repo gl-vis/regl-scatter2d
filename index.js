@@ -171,16 +171,17 @@ function Scatter (options) {
 
     blend: {
       enable: true,
-      // func: {
-      //   srcRGB:   'src alpha',
-      //   srcAlpha: 'src alpha',
-      //   dstRGB:   'one minus src alpha',
-      //   dstAlpha: 'one minus src alpha'
-      // }
-      equation: {rgb: 'add', alpha: 'add'},
-      func: {src: 'one', dst: 'one minus src alpha'}
+      func: {
+        srcRGB:   'src alpha',
+        srcAlpha: 'src alpha',
+        dstRGB:   'one minus src alpha',
+        dstAlpha: 'one minus src alpha'
+      }
     },
 
+    depth: {
+      enable: false
+    },
     count: () => count || 0,
 
     // and same for the selection
