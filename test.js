@@ -15,19 +15,19 @@ let range = [-10, -10, 10, 10]
 let zoom = .004
 
 let scatter = createScatter({
-	positions: generate(N),
-	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
+	// positions: generate(N),
+	positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-	size:  Array(N).fill(15).map(x => Math.random() * x),
-	// size: 10,
-	color: Array(N).fill(0).map(() =>
-				[Math.random(), Math.random(), Math.random(), Math.random()]
-			),
-	// color: 'rgba(0, 10, 10, .3)',
+	// size:  Array(N).fill(15).map(x => Math.random() * x),
+	size: 100,
+	// color: Array(N).fill(0).map(() =>
+	// 			[Math.random()*255, Math.random()*255, Math.random()*255, Math.random()*255]
+	// 		),
+	color: 'rgba(0, 50, 100, .5)',
 
 	range: range,
 	borderSize: 1,
-	borderColor: [.1,.2,.3,1]
+	borderColor: [[.1,.2,.3,1]]
 })
 
 

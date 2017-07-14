@@ -35,8 +35,12 @@ function Scatter (options) {
 
   // container/gl/canvas case
   else {
-    if (!options.pixelRatio) options.pixelRatio = global.devicePixelRatio
-    regl = createRegl(options)
+    let opts = {}
+    opts.pixelRatio = options.pixelRatio || global.devicePixelRatio
+    if (options.canvas) opts.canvas = options.canvas
+    if (options.container) opts.container = options.container
+    if (options.gl) opts.gl = options.gl
+    regl = createRegl(opts)
   }
 
   // compatibility
@@ -61,12 +65,12 @@ function Scatter (options) {
   })
   colorBuffer = regl.buffer({
     usage: 'dynamic',
-    type: 'float',
+    type: 'uint16',
     data: null
   })
   borderColorBuffer = regl.buffer({
     usage: 'dynamic',
-    type: 'float',
+    type: 'uint16',
     data: null
   })
   positionBuffer = regl.buffer({
@@ -155,7 +159,7 @@ function Scatter (options) {
         if (Array.isArray(colorIdx)) {
           return colorBuffer
         }
-        return {constant: 1}
+        return {constant: colorIdx}
       },
       borderColorIdx: () => {
         if (Array.isArray(borderColorIdx)) {
@@ -167,11 +171,17 @@ function Scatter (options) {
 
     blend: {
       enable: true,
+      // func: {
+      //   srcRGB:   'src alpha',
+      //   srcAlpha: 'src alpha',
+      //   dstRGB:   'one minus src alpha',
+      //   dstAlpha: 'one minus src alpha'
+      // }
       equation: {rgb: 'add', alpha: 'add'},
       func: {src: 'one', dst: 'one minus src alpha'}
     },
 
-    count: () => count,
+    count: () => count || 0,
 
     // and same for the selection
     // elements: [0,1],
@@ -190,6 +200,8 @@ function Scatter (options) {
 
     if (!dirty) return
 
+    if (!count) return
+
     drawPoints()
     dirty = false
   }
@@ -200,7 +212,7 @@ function Scatter (options) {
     //update buffer
     if (options.data) options.positions = options.data
     if (options.points) options.positions = options.points
-    if (options.positions) {
+    if (options.positions && options.positions.length) {
       bounds = getBounds(options.positions, 2)
       positions = normalize(options.positions.slice(), 2, bounds)
       positionBuffer(positions)
@@ -259,18 +271,27 @@ function Scatter (options) {
       //augment palette, bring colors to indexes
       if (options.color) {
         colorIdx = updateColor(options.color)
-        if (Array.isArray(colorIdx)) colorBuffer(colorIdx)
+        if (Array.isArray(colorIdx) && colorIdx.length) {
+          colorBuffer(colorIdx)
+        }
       }
       if (options.borderColor) {
         borderColorIdx = updateColor(options.borderColor)
-        if (Array.isArray(borderColorIdx)) colorBuffer(borderColorIdx)
+        if (Array.isArray(borderColorIdx)) borderColorBuffer(borderColorIdx)
       }
 
-      paletteTexture({
-        width: palette.length/4,
-        height: 1,
-        data: palette
-      })
+      if (palette.length) {
+        if (palette.length >= 8192*4) {
+          console.warn('regl-scatter2d: too many colors. Palette will be clipped.')
+          palette = palette.slice(0, 8192*4)
+        }
+
+        paletteTexture({
+          width: palette.length/4,
+          height: 1,
+          data: palette
+        })
+      }
     }
 
     //aggregate glyphs
@@ -301,42 +322,6 @@ function Scatter (options) {
         (bounds[1] - range[1]) / yrange
       ]
     }
-
-    //update atlas
-    /*
-    var maxSize = 0
-    for (var i = 0, l = sizes.length; i < l; ++i) {
-      if (sizes[i] > maxSize) maxSize = sizes[i]
-    }
-    var oldStep = this.charStep
-    this.charStep = clamp(Math.ceil(maxSize*4), 128, 768)
-
-    var chars = Object.keys(glyphChars)
-    var step = this.charStep
-    var charSize = Math.floor(step / 2)
-    var maxW = gl.getParameter(gl.MAX_TEXTURE_SIZE)
-    var maxChars = (maxW / step) * (maxW / step)
-    var atlasW = Math.min(maxW, step*chars.length)
-    var atlasH = Math.min(maxW, step*Math.ceil(step*chars.length/maxW))
-    var cols = Math.floor(atlasW / step)
-    if (chars.length > maxChars) {
-      console.warn('gl-scatter2d-fancy: number of characters is more than maximum texture size. Try reducing it.')
-    }
-
-    //do not overupdate atlas
-    if (!this.chars || (this.chars+'' !== chars+'') || this.charStep != oldStep) {
-      this.charCanvas = atlas({
-        canvas: this.charCanvas,
-        family: 'sans-serif',
-        size: charSize,
-        shape: [atlasW, atlasH],
-        step: [step, step],
-        chars: chars,
-        align: true
-      })
-      this.chars = chars
-    }
-    */
   }
 
   //update borderColor or color
@@ -344,6 +329,8 @@ function Scatter (options) {
     if (!Array.isArray(colors)) {
       colors = [colors]
     }
+
+    if (colors.length > 1 && colors.length != count) throw Error('Not enough colors')
 
     let idx = []
     for (let i = 0; i < colors.length; i++) {
@@ -355,8 +342,18 @@ function Scatter (options) {
         continue
       }
 
-      color = color == null ? [128, 128, 128, 1] : rgba(color, false)
-      color[3] *= 255;
+      if (typeof color === 'string') {
+        color = rgba(color, false)
+        color[3] *= 255;
+        color = color.map(Math.floor)
+      }
+      else if (Array.isArray(color)) {
+        color = color.map(Math.floor)
+      }
+      else {
+        color = [128, 128, 128, 1]
+      }
+
       let id = colorId(color, false)
       if (paletteIds[id] == null) {
         palette[paletteCount*4] = color[0]
