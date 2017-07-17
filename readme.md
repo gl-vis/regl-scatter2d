@@ -40,8 +40,10 @@ Redraw scatter. Takes over new options.
 | `borderSize` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`. |
 | `borderColor` | `'black'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number pointing at the color in the palette. |
 | `palette` | `null` | List of basic colors, for example `['red', 'green', 'blue', 'black']`. |
-| `glyph` | `null` | Glyph or array with glyphs to use for markers. |
+| `glyph` | `null` | Glyph id or array with glyph ids to use for markers. If undefined, circular markers are rendered. |
+| `glyphmap` | `null` | ImageData / canvas with sdf-glyphs. Use [font-atlas-sdf](https://github.com/dfcreative/font-atlas-sdf) to generate glyph map. |
 | `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected from the positions. |
+| `precision` | `'low'` | Psition precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance. |
 
 ## License
 

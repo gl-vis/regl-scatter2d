@@ -26,7 +26,7 @@ function Scatter (options) {
       charCanvas, charTexture, sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
-      borderColorBuffer, borderColorIdx = 1,
+      borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       drawPoints, glyphs
 
 
@@ -59,6 +59,11 @@ function Scatter (options) {
 
   //buffers to reuse
   sizeBuffer = regl.buffer({
+    usage: 'dynamic',
+    type: 'float',
+    data: null
+  })
+  borderSizeBuffer = regl.buffer({
     usage: 'dynamic',
     type: 'float',
     data: null
@@ -126,6 +131,7 @@ function Scatter (options) {
 
     void main() {
       float radius = length(2.0*gl_PointCoord.xy-1.0);
+
       if(radius > 1.0) {
         discard;
       }
@@ -171,9 +177,10 @@ function Scatter (options) {
 
     blend: {
       enable: true,
+      color: [0,0,0,1],
       func: {
         srcRGB:   'src alpha',
-        srcAlpha: 'src alpha',
+        srcAlpha: 1,
         dstRGB:   'one minus src alpha',
         dstAlpha: 'one minus src alpha'
       }
@@ -190,21 +197,13 @@ function Scatter (options) {
     primitive: 'points'
   })
 
-  //clean dirty flag every frame
-  regl.frame(ctx => {
-    dirty = true
-  })
-
   //main draw method
   function draw (opts) {
     if (opts) update(opts)
 
-    if (!dirty) return
-
     if (!count) return
 
     drawPoints()
-    dirty = false
   }
 
   function update (options) {
