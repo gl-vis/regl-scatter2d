@@ -309,7 +309,6 @@ function Scatter (options) {
     }
 
     //make sure scale/translate are properly set
-    if (options.dataBox) options.range = options.dataBox
     if (!options.range && !range) options.range = bounds
     if (options.range) {
       range = options.range

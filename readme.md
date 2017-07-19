@@ -26,23 +26,23 @@ scatter()
 | `regl` | `null` | Regl instance to reuse, otherwise new regl is created. |
 | `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created. |
 
-The rest of options is passed into `drawScatter` method.
+The rest of options is forwarded into `drawScatter`.
 
-#### `drawScatter(positions|options?)`
+#### `drawScatter(points|options?)`
 
-Redraw scatter. Takes over new options.
+Redraw points. Takes over new options.
 
 | Property | Default | Description |
 |---|---|---|
-| `positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points, as `[x,y, x,y, ...]` or array of points `[[x,y], [x,y], ...]`. |
+| `positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points as `[x,y, x,y, ...]` or array of points `[[x,y], [x,y], ...]`. |
 | `size` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`. |
 | `color`, `colors` | `'red'` | Color or array with colors. Each color can be a css-color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number pointing at the color in the palette. |
 | `borderSize` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`. |
 | `borderColor`, `borderColors` | `'black'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number pointing at the color in the palette. |
-| `palette` | `null` | List of basic colors, for example `['red', 'green', 'blue', 'black']`. |
-| `marker`, `markers` | `null` | Define marker shape. Can be a string with UTF character to render, and svg path string, ImageData/canvas with SDF-field or array with any of these, corresponding to points. If `null`, circular marker is used. |
-| `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected from the positions. |
-| `precision` | `'low'` | Psition precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance. |
+| `palette` | `null` | List of colors, eg. `['red', 'green', 'blue', 'black']`. |
+| `marker`, `markers` | `null` | Marker shape. Can be a string with utf-character, an svg-path string, image-data/canvas with sdf or array with any of these, corresponding to points. If `null`, circular marker is used. |
+| `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries. |
+| `precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance. |
 
 ## License
 
