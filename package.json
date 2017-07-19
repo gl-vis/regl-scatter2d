@@ -28,18 +28,17 @@
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
     "color-rgba": "^1.1.0",
-    "font-atlas-sdf": "^1.2.0",
     "object-assign": "^4.1.1",
     "regl": "^1.3.0",
     "snap-points-2d": "^3.1.0"
   },
   "devDependencies": {
-    "fps-indicator": "^1.1.0",
-    "browserify": "^14.4.0",
     "babelify": "^7.3.0",
+    "browserify": "^14.4.0",
     "bubleify": "^0.7.0",
     "canvas-fit": "^1.5.0",
     "enable-mobile": "^1.0.7",
+    "fps-indicator": "^1.1.0",
     "gauss-random": "^1.0.1",
     "github-cornerify": "^1.0.7",
     "gl-plot2d": "^1.2.0",
@@ -49,6 +48,7 @@
     "metadataify": "^2.0.0",
     "mouse-change": "^1.4.0",
     "mouse-wheel": "^1.2.0",
+    "nanoraf": "^3.0.1",
     "pan-zoom": "^2.0.0",
     "settings-panel": "^1.8.17"
   }

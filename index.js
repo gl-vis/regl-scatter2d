@@ -5,7 +5,6 @@ const extend = require('object-assign')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const clamp = require('clamp')
-const atlas = require('font-atlas-sdf')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
@@ -213,8 +212,21 @@ function Scatter (options) {
     if (options.data) options.positions = options.data
     if (options.points) options.positions = options.points
     if (options.positions && options.positions.length) {
-      bounds = getBounds(options.positions, 2)
-      positions = normalize(options.positions.slice(), 2, bounds)
+      //unroll positions
+      let unrolled
+      if (options.positions[0].length) {
+        unrolled = Array(options.positions.length)
+        for (let i = 0, l = options.positions.length; i<l; i++) {
+          unrolled[i*2] = options.positions[i][0]
+          unrolled[i*2+1] = options.positions[i][1]
+        }
+      }
+      else {
+        unrolled = options.positions.slice()
+      }
+
+      bounds = getBounds(unrolled, 2)
+      positions = normalize(unrolled, 2, bounds)
       positionBuffer(positions)
       count = Math.floor(positions.length / 2)
     }
@@ -229,16 +241,6 @@ function Scatter (options) {
     }
 
     //take over borders
-    // if (options.borders) options.border = options.borders
-    // if (options.border) {
-    //   throw 'unimpl'
-    //   if (Array.isArray(border)) {
-    //     [borderSize, borderColor] = options.border
-    //   }
-    //   else {
-    //     [borderSize, borderColor] = parseBorder(options.border)
-    //   }
-    // }
     if (options.borderSizes) options.borderSize = options.borderSizes
     if (options.borderSize != null) {
       borderSize = options.borderSize
@@ -307,6 +309,7 @@ function Scatter (options) {
     }
 
     //make sure scale/translate are properly set
+    if (options.dataBox) options.range = options.dataBox
     if (!options.range && !range) options.range = bounds
     if (options.range) {
       range = options.range
@@ -373,60 +376,3 @@ function Scatter (options) {
   return draw
 }
 
-
-
-
-/*
-// adjust scale and transform so to see all the data
-Scatter.prototype.autorange = function (positions) {
-  if (!positions) positions = this.positions
-  if (!positions || positions.length == 0) return this;
-
-  let bounds = this.bounds
-
-  let scale = [1 / (bounds[2] - bounds[0]), 1 / (bounds[3] - bounds[1])]
-
-  this.update({
-    scale: scale,
-    translate: [-bounds[0], -bounds[1]],
-  })
-
-  return this
-}
-
-Scatter.prototype.clear = function () {
-  this.regl.clear({
-    color: [1,1,1,1],
-    depth: 1,
-    stencil: 0
-  })
-
-  return this
-}
-
-Scatter.prototype.pick = function (x, y, value) {
-  // return this.draw()
-  return null
-}
-
-
-Scatter.prototype.drawPick = function () {
-  return this.pointCount
-}
-
-Scatter.prototype.dispose = function () {
-  this.charTexture.destroy()
-  this.sizeBuffer.destroy()
-  this.positionBuffer.destroy()
-
-  if (this.plot) this.plot.removeObject(this)
-
-  return this
-}
-
-Scatter.prototype.select = function () {
-  //TODO: init regl draw here
-  return this
-}
-
-*/

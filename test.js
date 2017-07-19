@@ -8,6 +8,7 @@ const fps = require('fps-indicator')({css:`padding: 1.4rem`})
 const random = require('gauss-random')
 const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
+const nanoraf = require('nanoraf')
 
 
 let N = 1e4
@@ -100,6 +101,8 @@ let settings = createSettings([
 
 
 //interactions
+let prev = null
+var frame = nanoraf(scatter)
 panZoom(document.body.lastChild, e => {
 	let w = document.body.lastChild.offsetWidth
 	let h = document.body.lastChild.offsetHeight
@@ -124,7 +127,9 @@ panZoom(document.body.lastChild, e => {
 	range[1] += yrange * e.dy / h
 	range[3] += yrange * e.dy / h
 
-	scatter({range: range})
+	let state = {range: range}
+	frame(state, prev)
+	prev = state
 })
 
 
