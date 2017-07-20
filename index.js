@@ -8,15 +8,17 @@ const clamp = require('clamp')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
+const getSdf = require('./get-sdf')
 
 module.exports = Scatter
+
 
 function Scatter (options) {
   if (!options) options = {}
 
   // persistent variables
   let regl, gl, canvas, plot,
-      range,
+      range, elements = [],
       size = 5,
       borderSize = 1,
       positions, count, selection, bounds,
@@ -26,7 +28,8 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      drawPoints, glyphs
+      drawPoints,
+      markerCache = new Map, markerCount = 0
 
 
   // regl instance
@@ -188,10 +191,11 @@ function Scatter (options) {
     depth: {
       enable: false
     },
-    count: () => count || 0,
 
-    // and same for the selection
-    // elements: [0,1],
+    // count: () => count || 0,
+
+    //point ids to render
+    elements: () => elements,
 
     primitive: 'points'
   })
@@ -229,6 +233,12 @@ function Scatter (options) {
       positions = normalize(unrolled, 2, bounds)
       positionBuffer(positions)
       count = Math.floor(positions.length / 2)
+
+      //update elements ids - that is all points
+      elements = Array(count)
+      for (let i = 0; i < count; i++) {
+        elements[i] = i
+      }
     }
 
     //sizes
@@ -296,16 +306,17 @@ function Scatter (options) {
       }
     }
 
-    //aggregate glyphs
-    if (options.glyphs) options.glyph = options.glyphs
-    if (options.glyph != null) {
-      // var glyphChars = {}
-      // for (var i = 0, l = this.pointCount, k = 0; i < l; i++) {
-      //   var char = glyphs[i]
-      //   if (glyphChars[char] == null) {
-      //     glyphChars[char] = k++
-      //   }
-      // }
+    //aggregate markers sdf
+    if (options.markers) options.marker = options.markers
+    if (options.marker != null) {
+      if (Array.isArray(options.marker)) {
+        for (let i = 0, l = options.marker.length; i < l; i++) {
+          updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
+        }
+      }
+      else {
+        updateMarker(options.marker, elements, Array.isArray(size) ? size[0] : size)
+      }
     }
 
     //make sure scale/translate are properly set
@@ -372,6 +383,30 @@ function Scatter (options) {
     return idx.length === 1 ? idx[0] : idx
   }
 
+  //update marker sdf
+  function updateMarker(marker, id, size) {
+    let markerObj
+
+    if (markerCache.has(marker)) {
+      markerObj = markerCache.get(marker)
+    }
+    else {
+      let sdf = getSdf(marker, size)
+      markerObj = {ids: {}, data: sdf}
+      markerCache.set(marker, markerObj)
+    }
+
+    if (Array.isArray(id)) {
+      for (let i = 0; i < id.length; i++) {
+        markerObj.ids[i] = true
+      }
+    }
+    else {
+      markerObj.ids[id] = true
+    }
+
+    return markerObj
+  }
+
   return draw
 }
-
