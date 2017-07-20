@@ -8,6 +8,7 @@ const clamp = require('clamp')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
+const nextPow2 = require('next-pow-2')
 const getSdf = require('./get-sdf')
 
 module.exports = Scatter
@@ -19,7 +20,7 @@ function Scatter (options) {
   // persistent variables
   let regl, gl, canvas, plot,
       range, elements = [],
-      size = 5,
+      size = 12, maxSize = 12,
       borderSize = 1,
       positions, count, selection, bounds,
       scale, translate,
@@ -29,7 +30,7 @@ function Scatter (options) {
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       drawPoints,
-      markerCache = new Map, markerCount = 0
+      markerCache = new Map, markerCount = 0, markers
 
 
   // regl instance
@@ -252,6 +253,14 @@ function Scatter (options) {
       size = options.size
       if (Array.isArray(size)) {
         sizeBuffer(size)
+
+        maxSize = size[0]
+        for (let i = 0, l = size.length; i < l; i++) {
+          if (size[i] > maxSize) maxSize = size[i]
+        }
+      }
+      else {
+        maxSize = size
       }
     }
 
@@ -313,7 +322,7 @@ function Scatter (options) {
 
     //aggregate markers sdf
     if (options.markers) options.marker = options.markers
-    if (options.marker != null) {
+    if (options.marker !== undefined) {
       //reset marker elements
       markerCache.forEach((markerObj, marker) => {
         markerObj.ids = []
@@ -325,8 +334,14 @@ function Scatter (options) {
         }
       }
       else {
-        updateMarker(options.marker, elements, Array.isArray(size) ? size[0] : size)
+        updateMarker(options.marker, elements, maxSize)
       }
+
+      markers = options.marker
+    }
+    else if (markers === undefined) {
+      markers = null
+      updateMarker(markers, elements, maxSize)
     }
 
     //make sure scale/translate are properly set
@@ -397,13 +412,21 @@ function Scatter (options) {
   function updateMarker(marker, id, size) {
     let markerObj
 
+    size = nextPow2(size)
+
     if (markerCache.has(marker)) {
       markerObj = markerCache.get(marker)
     }
     else {
-      let sdf = getSdf(marker, size)
-      markerObj = {ids: [], data: sdf}
+      markerObj = {ids: [], data: null, size: 0}
       markerCache.set(marker, markerObj)
+    }
+
+    //generate sdf bitmap of proper size
+    if (marker != null && markerObj.size < size) {
+      let sdf = getSdf(marker, size)
+      markerObj.data = sdf
+      markerObj.size = size
     }
 
     if (Array.isArray(id)) {

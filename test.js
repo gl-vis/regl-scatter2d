@@ -28,7 +28,7 @@ let scatter = createScatter({
 			),
 	// color: 'rgba(0, 50, 100, .5)',
 
-	marker: 'x',
+	marker: 'X',
 
 	range: range,
 	borderSize: 1,
