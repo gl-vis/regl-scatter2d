@@ -17,8 +17,9 @@ function getSDF(arg, markerSize) {
 	let size = markerSize * 2
 	let w = canvas.width = size * 2
 	let h = canvas.height = size * 2
-	let cutoff = .25
+	let cutoff = .05
 	let radius = size/2
+	let data
 
 	//FIXME: replace with render-svg or rasterize-svg module or so
 	//svg path or utf character
@@ -53,7 +54,7 @@ function getSDF(arg, markerSize) {
 	    ctx.fillText(arg, size, size)
 	  }
 
-	  let data = sdf(ctx, {
+	  data = sdf(ctx, {
 	    cutoff: cutoff,
 	    radius: radius
 	  })
@@ -61,18 +62,22 @@ function getSDF(arg, markerSize) {
 
 	//direct sdf data
 	else if (Array.isArray(arg)) {
-	  let data = arg
+	  data = arg
 	}
 
 	//image data, pixels, canvas, array
 	else {
-	  let data = sdf(arg, {
+	  data = sdf(arg, {
 	    cutoff: cutoff,
 	    radius: radius,
 	    width: w,
 	    height: h
 	  })
 	}
+
+	// show(data)
+
+	return data
 }
 
 

@@ -98,20 +98,23 @@ function Scatter (options) {
     attribute float borderColorIdx;
 
     uniform vec2 scale, translate;
-    uniform float paletteSize;
+    uniform float paletteSize, pixelRatio;
     uniform sampler2D palette;
 
     varying vec4 fragColor, fragBorderColor;
-    varying float centerFraction;
+    varying float centerFraction, borderWidth, fragPointSize;
 
     void main() {
       vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
       vec4 borderColor = texture2D(palette, vec2((borderColorIdx + .5) / paletteSize, 0));
 
-      gl_PointSize = size;
+      gl_PointSize = size * pixelRatio;
+      fragPointSize = size * pixelRatio;
+
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
-      centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
+      borderWidth = borderSize;
+      // centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
       fragColor = color;
       fragBorderColor = borderColor;
     }`,
@@ -122,16 +125,44 @@ function Scatter (options) {
     const float fragWeight = 1.0;
 
     varying vec4 fragColor, fragBorderColor;
-    varying float centerFraction;
+    varying float centerFraction, borderWidth, fragPointSize;
 
     uniform sampler2D marker;
+    uniform float pixelRatio;
 
     float smoothStep(float x, float y) {
       return 1.0 / (1.0 + exp(50.0*(x - y)));
     }
 
     void main() {
-      vec4 dist = texture2D(marker, gl_PointCoord);
+      float dist = texture2D(marker, gl_PointCoord).r;
+
+      //max-distance alpha
+      if (dist < 1e-2) discard;
+
+      float gamma = .0045;
+
+      //null-border case
+      // if (borderWidth * fragBorderColor.a == 0.) {
+      //   float charAmt = smoothstep(.748 - gamma, .748 + gamma, dist);
+      //   gl_FragColor = vec4(fragColor.rgb, charAmt * fragColor.a);
+      //   return;
+      // }
+
+
+      float dif = 5. * pixelRatio * borderWidth / fragPointSize;
+      float borderLevel = .748 - dif * .5;
+      float charLevel = .748 + dif * .5;
+
+      float borderAmt = smoothstep(borderLevel - gamma, borderLevel + gamma, dist);
+      float charAmt = smoothstep(charLevel - gamma, charLevel + gamma, dist);
+
+      vec4 color = fragBorderColor;
+      color.a *= borderAmt;
+
+      gl_FragColor = mix(color, fragColor, charAmt);
+      // gl_FragColor = vec4(vec3(charAmt), 1);
+
 
       // float radius = length(2.0*gl_PointCoord.xy-1.0);
 
@@ -143,11 +174,12 @@ function Scatter (options) {
       // float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
       // gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
 
-      gl_FragColor = dist;
+      // gl_FragColor = vec4(vec3(dist), 1);
     }`,
 
     uniforms: {
       marker: regl.prop('marker'),
+      pixelRatio: regl.context('pixelRatio'),
       palette: paletteTexture,
       paletteSize: () => palette.length/4,
       scale: () => scale,
@@ -428,15 +460,17 @@ function Scatter (options) {
 
     //generate sdf bitmap of proper size
     if (marker != null && markerObj.size < size) {
-      let sdf = getSdf(marker, size)
-      // markerObj.data = sdf
-      // markerObj.size = size
+      let distArr = getSdf(marker, size)
+      for (let i = 0, l = distArr.length; i < l; i++) {
+        distArr[i] *= 255
+      }
+
       markerObj.texture = regl.texture({
         channels: 1,
-        type: 'uint8',
-        data: [0, 255, 255, 0],
-        radius: 2
+        data: new Uint8Array(distArr),
+        radius: size * 4
       })
+      markerObj.size = size
     }
 
     if (Array.isArray(id)) {
