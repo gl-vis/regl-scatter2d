@@ -195,7 +195,7 @@ function Scatter (options) {
     // count: () => count || 0,
 
     //point ids to render
-    elements: () => elements,
+    elements: regl.prop('elements'),
 
     primitive: 'points'
   })
@@ -206,7 +206,12 @@ function Scatter (options) {
 
     if (!count) return
 
-    drawPoints()
+    //draw all available markers
+    markerCache.forEach(markerObj => {
+      let {data: bitmap, ids: elements} = markerObj
+
+      drawPoints({elements: elements})
+    })
   }
 
   function update (options) {
@@ -309,6 +314,11 @@ function Scatter (options) {
     //aggregate markers sdf
     if (options.markers) options.marker = options.markers
     if (options.marker != null) {
+      //reset marker elements
+      markerCache.forEach((markerObj, marker) => {
+        markerObj.ids = []
+      })
+
       if (Array.isArray(options.marker)) {
         for (let i = 0, l = options.marker.length; i < l; i++) {
           updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
@@ -392,17 +402,15 @@ function Scatter (options) {
     }
     else {
       let sdf = getSdf(marker, size)
-      markerObj = {ids: {}, data: sdf}
+      markerObj = {ids: [], data: sdf}
       markerCache.set(marker, markerObj)
     }
 
     if (Array.isArray(id)) {
-      for (let i = 0; i < id.length; i++) {
-        markerObj.ids[i] = true
-      }
+      markerObj.ids = id
     }
     else {
-      markerObj.ids[id] = true
+      markerObj.ids.push(id)
     }
 
     return markerObj

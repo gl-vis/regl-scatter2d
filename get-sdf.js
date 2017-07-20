@@ -14,6 +14,7 @@ module.exports = getSDF
 
 //return bitmap sdf data from any argument
 function getSDF(arg, size) {
+	//FIXME: replace with render-svg or rasterize-svg module or so
 	//svg path or utf character
 	if (typeof arg === 'string') {
 	  arg = arg.trim()
