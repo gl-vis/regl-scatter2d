@@ -244,10 +244,10 @@ function Scatter (options) {
     if (!count) return
 
     //draw all available markers
-    markerCache.forEach(markerObj => {
+    markerCache.forEach((markerObj) => {
       let {texture, ids, size} = markerObj
 
-      drawPoints({elements: elements, marker: texture})
+      drawPoints({elements: ids, marker: texture})
     })
   }
 
@@ -471,6 +471,9 @@ function Scatter (options) {
         radius: size * 4
       })
       markerObj.size = size
+    }
+    else if (!markerObj.texture) {
+      markerObj.texture = regl.texture()
     }
 
     if (Array.isArray(id)) {

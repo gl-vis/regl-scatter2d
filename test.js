@@ -12,23 +12,21 @@ const nanoraf = require('nanoraf')
 const palettes = require('nice-color-palettes')
 
 
-let N = 1e5
+let N = 1e4
 let range = [-10, -10, 10, 10]
-let zoom = .004
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
+let markers = ['|', '—']
 
 let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-	size:  Array(N).fill(15).map(x => Math.random() * x),
+	size:  Array(N).fill(55).map(x => Math.random() * x),
 	// size: 100,
-	color: Array(N).fill(0).map(() =>
-				colors[Math.floor(Math.random() * colors.length)]
-			),
+	color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 	// color: 'rgba(0, 50, 100, .5)',
 
-	marker: 'X',
+	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 	range: range,
 	borderSize: 1,
