@@ -1,7 +1,6 @@
 'use strict'
 
 const createRegl = require('regl')
-const extend = require('object-assign')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const clamp = require('clamp')
@@ -9,6 +8,8 @@ const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
 const nextPow2 = require('next-pow-2')
+const extend = require('object-assign')
+const glslify = require('glslify')
 const getSdf = require('./get-sdf')
 
 module.exports = Scatter
@@ -24,12 +25,11 @@ function Scatter (options) {
       borderSize = 1,
       positions, count, selection, bounds,
       scale, translate,
-      dirty = true,
+      drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      drawPoints,
       markerCache = new Map, markerCount = 0, markers
 
 
@@ -87,7 +87,9 @@ function Scatter (options) {
 
   update(options)
 
-  drawPoints = regl({
+
+  //common shader options
+  let shaderOptions = {
     vert: `
     precision mediump float;
 
@@ -102,7 +104,7 @@ function Scatter (options) {
     uniform sampler2D palette;
 
     varying vec4 fragColor, fragBorderColor;
-    varying float centerFraction, borderWidth, fragPointSize;
+    varying float centerFraction, fragBorderSize, fragPointSize;
 
     void main() {
       vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
@@ -113,72 +115,15 @@ function Scatter (options) {
 
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
-      borderWidth = borderSize;
-      // centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
+      fragBorderSize = borderSize;
+      centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
       fragColor = color;
       fragBorderColor = borderColor;
     }`,
 
-    frag: `
-    precision mediump float;
-
-    const float fragWeight = 1.0;
-
-    varying vec4 fragColor, fragBorderColor;
-    varying float centerFraction, borderWidth, fragPointSize;
-
-    uniform sampler2D marker;
-    uniform float pixelRatio;
-
-    float smoothStep(float x, float y) {
-      return 1.0 / (1.0 + exp(50.0*(x - y)));
-    }
-
-    void main() {
-      float dist = texture2D(marker, gl_PointCoord).r;
-
-      //max-distance alpha
-      if (dist < 1e-2) discard;
-
-      float gamma = .0045;
-
-      //null-border case
-      // if (borderWidth * fragBorderColor.a == 0.) {
-      //   float charAmt = smoothstep(.748 - gamma, .748 + gamma, dist);
-      //   gl_FragColor = vec4(fragColor.rgb, charAmt * fragColor.a);
-      //   return;
-      // }
-
-
-      float dif = 5. * pixelRatio * borderWidth / fragPointSize;
-      float borderLevel = .748 - dif * .5;
-      float charLevel = .748 + dif * .5;
-
-      float borderAmt = smoothstep(borderLevel - gamma, borderLevel + gamma, dist);
-      float charAmt = smoothstep(charLevel - gamma, charLevel + gamma, dist);
-
-      vec4 color = fragBorderColor;
-      color.a *= borderAmt;
-
-      gl_FragColor = mix(color, fragColor, charAmt);
-      // gl_FragColor = vec4(vec3(charAmt), 1);
-
-
-      // float radius = length(2.0*gl_PointCoord.xy-1.0);
-
-      // if(radius > 1.0) {
-      //   discard;
-      // }
-
-      // vec4 baseColor = mix(fragBorderColor, fragColor, smoothStep(radius, centerFraction));
-      // float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
-      // gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
-
-      // gl_FragColor = vec4(vec3(dist), 1);
-    }`,
+    frag: null,
 
     uniforms: {
-      marker: regl.prop('marker'),
       pixelRatio: regl.context('pixelRatio'),
       palette: paletteTexture,
       paletteSize: () => palette.length/4,
@@ -229,13 +174,27 @@ function Scatter (options) {
       enable: false
     },
 
-    // count: () => count || 0,
-
     //point ids to render
     elements: regl.prop('elements'),
 
     primitive: 'points'
-  })
+  }
+
+
+  //draw sdf-marker
+  let markerOptions = extend({}, shaderOptions)
+  markerOptions.uniforms.marker = regl.prop('marker')
+  markerOptions.frag = glslify('./marker.frag')
+
+  drawMarker = regl(markerOptions)
+
+
+  //draw circle
+  let circleOptions = extend({}, shaderOptions)
+  circleOptions.frag = glslify('./circle.frag')
+
+  drawCircle = regl(circleOptions)
+
 
   //main draw method
   function draw (opts) {
@@ -247,7 +206,11 @@ function Scatter (options) {
     markerCache.forEach((markerObj) => {
       let {texture, ids, size} = markerObj
 
-      drawPoints({elements: ids, marker: texture})
+      if (texture) {
+        drawMarker({elements: ids, marker: texture})
+      } else {
+        drawCircle({elements: ids})
+      }
     })
   }
 
@@ -471,9 +434,6 @@ function Scatter (options) {
         radius: size * 4
       })
       markerObj.size = size
-    }
-    else if (!markerObj.texture) {
-      markerObj.texture = regl.texture()
     }
 
     if (Array.isArray(id)) {

@@ -16,6 +16,11 @@
     "regl",
     "plotly"
   ],
+  "browserify": {
+    "transform": [
+      "glslify"
+    ]
+  },
   "author": "Dima Yv <df.creative@gmail.com>",
   "license": "MIT",
   "bugs": {
@@ -30,6 +35,7 @@
     "color-id": "^1.1.0",
     "color-rgba": "^1.1.0",
     "draw-svg-path": "^1.0.0",
+    "glslify": "^6.1.0",
     "next-pow-2": "^1.0.0",
     "nice-color-palettes": "^2.0.0",
     "normalize-svg-coords": "^1.0.2",
