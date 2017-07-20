@@ -57,8 +57,6 @@ function getSDF(arg, markerSize) {
 	    cutoff: cutoff,
 	    radius: radius
 	  })
-
-	  show(data)
 	}
 
 	//direct sdf data

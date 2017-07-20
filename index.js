@@ -25,7 +25,7 @@ function Scatter (options) {
       positions, count, selection, bounds,
       scale, translate,
       dirty = true,
-      charCanvas, charTexture, sizeBuffer, positionBuffer,
+      sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
@@ -49,10 +49,6 @@ function Scatter (options) {
   // compatibility
   gl = regl._gl
   canvas = gl.canvas
-
-  //texture for glyphs
-  charCanvas = document.createElement('canvas')
-  charTexture = regl.texture(charCanvas)
 
   //texture with color palette
   paletteTexture = regl.texture({
@@ -128,22 +124,30 @@ function Scatter (options) {
     varying vec4 fragColor, fragBorderColor;
     varying float centerFraction;
 
+    uniform sampler2D marker;
+
     float smoothStep(float x, float y) {
       return 1.0 / (1.0 + exp(50.0*(x - y)));
     }
 
     void main() {
-      float radius = length(2.0*gl_PointCoord.xy-1.0);
+      vec4 dist = texture2D(marker, gl_PointCoord);
 
-      if(radius > 1.0) {
-        discard;
-      }
-      vec4 baseColor = mix(fragBorderColor, fragColor, smoothStep(radius, centerFraction));
-      float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
-      gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
+      // float radius = length(2.0*gl_PointCoord.xy-1.0);
+
+      // if(radius > 1.0) {
+      //   discard;
+      // }
+
+      // vec4 baseColor = mix(fragBorderColor, fragColor, smoothStep(radius, centerFraction));
+      // float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
+      // gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
+
+      gl_FragColor = dist;
     }`,
 
     uniforms: {
+      marker: regl.prop('marker'),
       palette: paletteTexture,
       paletteSize: () => palette.length/4,
       scale: () => scale,
@@ -209,9 +213,9 @@ function Scatter (options) {
 
     //draw all available markers
     markerCache.forEach(markerObj => {
-      let {data: bitmap, ids: elements} = markerObj
+      let {texture, ids, size} = markerObj
 
-      drawPoints({elements: elements})
+      drawPoints({elements: elements, marker: texture})
     })
   }
 
@@ -425,8 +429,14 @@ function Scatter (options) {
     //generate sdf bitmap of proper size
     if (marker != null && markerObj.size < size) {
       let sdf = getSdf(marker, size)
-      markerObj.data = sdf
-      markerObj.size = size
+      // markerObj.data = sdf
+      // markerObj.size = size
+      markerObj.texture = regl.texture({
+        channels: 1,
+        type: 'uint8',
+        data: [0, 255, 255, 0],
+        radius: 2
+      })
     }
 
     if (Array.isArray(id)) {
