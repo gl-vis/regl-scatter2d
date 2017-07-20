@@ -32,6 +32,8 @@ function Scatter (options) {
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       markerCache = new Map, markerCount = 0, markers
 
+  //FIXME: replace markerCache with plain array - hope there is no that many markers
+  //FIXME: normalize marker size
 
   // regl instance
   if (options.regl) regl = options.regl

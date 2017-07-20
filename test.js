@@ -12,10 +12,10 @@ const nanoraf = require('nanoraf')
 const palettes = require('nice-color-palettes')
 
 
-let N = 1e1
+let N = 1e4
 let range = [-10, -10, 10, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null]//['X', 'H', '|', '—', null]
+let markers = ['X', 'H', '|', '—', null]
 
 let scatter = createScatter({
 	positions: generate(N),
@@ -31,7 +31,7 @@ let scatter = createScatter({
 
 	range: range,
 	borderSize: 2,
-	borderColor: [[100, 100, 100, 255]]
+	borderColor: [[60, 80, 100, 127]]
 })
 
 

@@ -18,7 +18,7 @@ void main() {
 		discard;
 	}
 
-	//antialias outline
+	// https://www.desultoryquest.com/blog/drawing-anti-aliased-circular-points-using-opengl-slash-webgl/
 	#ifdef GL_OES_standard_derivatives
 		delta = fwidth(radius);
 		alpha = 1.0 - smoothstep(1.0 - delta, 1.0, radius);
