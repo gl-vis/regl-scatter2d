@@ -17,7 +17,7 @@ function getSDF(arg, markerSize) {
 	let size = markerSize * 2
 	let w = canvas.width = size * 2
 	let h = canvas.height = size * 2
-	let cutoff = .05
+	let cutoff = .2
 	let radius = size/2
 	let data
 
@@ -29,21 +29,30 @@ function getSDF(arg, markerSize) {
 	  ctx.fillStyle = 'black'
 	  ctx.fillRect(0, 0, w, h)
 	  ctx.fillStyle = 'white'
+	  ctx.strokeStyle = 'white'
+	  ctx.lineWidth = 1
 
 	  //svg path
 	  if (arg[0] === 'm' || arg[0] === 'M') {
+	  	//FIXME: make this good
+		ctx.translate(size, size)
+		ctx.scale(1, 1)
 
 	    //if canvas svg paths api is available
 	    if (global.Path2D) {
 	      let path = new Path2D(arg)
 	      ctx.fill(path)
+	      ctx.stroke(path)
 	    }
 	    //fallback to bezier-curves
 	    else {
 	      let segments = parsePath(arg)
 	      drawPath(ctx, segments)
 	      ctx.fill()
+	      ctx.stroke()
 	    }
+
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
 	  }
 
 	  //plain character
@@ -75,14 +84,17 @@ function getSDF(arg, markerSize) {
 	  })
 	}
 
-	// show(data)
+	// show(data, arg)
 
 	return data
 }
 
 
 function show(arr) {
-	document.body.appendChild(canvas)
+	let cnv = document.body.appendChild(document.createElement('canvas'))
+	let ctx = cnv.getContext('2d')
+	cnv.width = canvas.width
+	cnv.height = canvas.height
 
 	let size = Math.sqrt(arr.length)
 	let w = size, h = size

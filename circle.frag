@@ -1,24 +1,30 @@
+#ifdef GL_OES_standard_derivatives
+#extension GL_OES_standard_derivatives : enable
+#endif
+
 precision mediump float;
 
-const float fragWeight = 1.0;
-
 varying vec4 fragColor, fragBorderColor;
-varying float centerFraction, fragBorderSize, fragPointSize;
+varying float fragBorderRadius;
 
 uniform float pixelRatio;
 
-float smoothStep(float x, float y) {
-  return 1.0 / (1.0 + exp(50.0*(x - y)));
-}
-
 void main() {
-  float radius = length(2.0 * gl_PointCoord.xy-1.0);
+	float radius, alpha = 1.0, delta = 0.0;
 
-  if(radius > 1.0) {
-    discard;
-  }
+	radius = length(2.0 * gl_PointCoord - 1.0);
 
-  vec4 baseColor = mix(fragBorderColor, fragColor, smoothStep(radius, centerFraction));
-  float alpha = 1.0 - pow(1.0 - baseColor.a, fragWeight);
-  gl_FragColor = vec4(baseColor.rgb * alpha, alpha);
+	if(radius > 1.0) {
+		discard;
+	}
+
+	//antialias outline
+	#ifdef GL_OES_standard_derivatives
+		delta = fwidth(radius);
+		alpha = 1.0 - smoothstep(1.0 - delta, 1.0, radius);
+	#endif
+
+	vec4 baseColor = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius, radius));
+	baseColor.a *= alpha;
+	gl_FragColor = baseColor;
 }

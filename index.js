@@ -43,6 +43,9 @@ function Scatter (options) {
     if (options.canvas) opts.canvas = options.canvas
     if (options.container) opts.container = options.container
     if (options.gl) opts.gl = options.gl
+
+    opts.extensions = ['OES_standard_derivatives']
+
     regl = createRegl(opts)
   }
 
@@ -104,19 +107,18 @@ function Scatter (options) {
     uniform sampler2D palette;
 
     varying vec4 fragColor, fragBorderColor;
-    varying float centerFraction, fragBorderSize, fragPointSize;
+    varying float fragPointSize, fragBorderRadius;
 
     void main() {
       vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
       vec4 borderColor = texture2D(palette, vec2((borderColorIdx + .5) / paletteSize, 0));
 
-      gl_PointSize = size * pixelRatio;
+      gl_PointSize = (size + borderSize) * pixelRatio;
       fragPointSize = size * pixelRatio;
 
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
-      fragBorderSize = borderSize;
-      centerFraction = borderSize == 0. ? 2. : size / (size + borderSize + 1.25);
+      fragBorderRadius = borderSize == 0. ? 2. : 1. - 2. * borderSize / (size + borderSize);
       fragColor = color;
       fragBorderColor = borderColor;
     }`,
@@ -203,7 +205,7 @@ function Scatter (options) {
     if (!count) return
 
     //draw all available markers
-    markerCache.forEach((markerObj) => {
+    markerCache.forEach((markerObj, marker) => {
       let {texture, ids, size} = markerObj
 
       if (texture) {
@@ -388,7 +390,7 @@ function Scatter (options) {
         color = color.map(Math.floor)
       }
       else {
-        color = [128, 128, 128, 1]
+        color = [127, 127, 127, 127]
       }
 
       let id = colorId(color, false)
