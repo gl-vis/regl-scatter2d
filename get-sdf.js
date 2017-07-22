@@ -5,7 +5,9 @@
 const sdf = require('bitmap-sdf')
 const parsePath = require('parse-svg-path')
 const drawPath = require('draw-svg-path')
-const normalizePath = require('normalize-svg-coords')
+// const normalizePath = require('normalize-svg-coords')
+// const pathBounds = require('svg-path-bounds')
+const isSvgPath = require('is-svg-path')
 
 const canvas = document.createElement('canvas')
 const ctx = canvas.getContext('2d')
@@ -33,20 +35,26 @@ function getSDF(arg, markerSize) {
 	  ctx.lineWidth = 1
 
 	  //svg path
-	  if (arg[0] === 'm' || arg[0] === 'M') {
+	  if (isSvgPath(arg)) {
+	  	let path = normalizePath({
+	  		path: arg,
+	  		viewBox: pathBounds(arg),
+	  		min: 0,
+	  		max: size
+	  	})
+
 	  	//FIXME: make this good
 		ctx.translate(size, size)
-		ctx.scale(1, 1)
 
 	    //if canvas svg paths api is available
 	    if (global.Path2D) {
-	      let path = new Path2D(arg)
-	      ctx.fill(path)
-	      ctx.stroke(path)
+	      let path2d = new Path2D(path)
+	      ctx.fill(path2d)
+	      ctx.stroke(path2d)
 	    }
 	    //fallback to bezier-curves
 	    else {
-	      let segments = parsePath(arg)
+	      let segments = parsePath(path)
 	      drawPath(ctx, segments)
 	      ctx.fill()
 	      ctx.stroke()

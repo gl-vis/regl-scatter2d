@@ -15,13 +15,13 @@ const palettes = require('nice-color-palettes')
 let N = 1e4
 let range = [-10, -10, 10, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = ['X', 'H', '|', '—', null]
+let markers = ['H', null]//, 'M0 0 L10 20 20 0Z']
 
 let scatter = createScatter({
 	positions: generate(N),
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-	size:  Array(N).fill(50),//.map(x => Math.random() * x),
+	size:  Array(N).fill(50).map(x => Math.random() * x),
 	// size: 100,
 	color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 	// color: 'rgba(0, 50, 100, .5)',
@@ -31,7 +31,7 @@ let scatter = createScatter({
 
 	range: range,
 	borderSize: 2,
-	borderColor: [[60, 80, 100, 127]]
+	borderColor: [[60, 80, 100, 200]]
 })
 
 
@@ -145,3 +145,9 @@ function generate(N) {
 
 	return positions
 }
+
+
+
+window.addEventListener('resize', () => {
+	scatter()
+})

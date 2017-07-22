@@ -46,8 +46,6 @@ function Scatter (options) {
     if (options.container) opts.container = options.container
     if (options.gl) opts.gl = options.gl
 
-    opts.extensions = ['OES_standard_derivatives']
-
     regl = createRegl(opts)
   }
 
@@ -109,20 +107,21 @@ function Scatter (options) {
     uniform sampler2D palette;
 
     varying vec4 fragColor, fragBorderColor;
-    varying float fragPointSize, fragBorderRadius;
+    varying float fragPointSize, fragBorderRadius, fragWidth;
 
     void main() {
       vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
       vec4 borderColor = texture2D(palette, vec2((borderColorIdx + .5) / paletteSize, 0));
 
       gl_PointSize = (size + borderSize) * pixelRatio;
-      fragPointSize = size * pixelRatio;
+      fragPointSize = (size + borderSize) * pixelRatio;
 
       gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
 
       fragBorderRadius = borderSize == 0. ? 2. : 1. - 2. * borderSize / (size + borderSize);
       fragColor = color;
       fragBorderColor = borderColor;
+      fragWidth = 1. / fragPointSize;
     }`,
 
     frag: null,

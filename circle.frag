@@ -1,30 +1,22 @@
-#ifdef GL_OES_standard_derivatives
-#extension GL_OES_standard_derivatives : enable
-#endif
-
 precision mediump float;
 
 varying vec4 fragColor, fragBorderColor;
-varying float fragBorderRadius;
+varying float fragBorderRadius, fragWidth;
 
 uniform float pixelRatio;
 
 void main() {
-	float radius, alpha = 1.0, delta = 0.0;
+	float radius, alpha = 1.0, delta = fragWidth;
 
 	radius = length(2.0 * gl_PointCoord - 1.0);
 
-	if(radius > 1.0) {
+	if(radius > 1.0 + delta) {
 		discard;
 	}
 
-	// https://www.desultoryquest.com/blog/drawing-anti-aliased-circular-points-using-opengl-slash-webgl/
-	#ifdef GL_OES_standard_derivatives
-		delta = fwidth(radius);
-		alpha = 1.0 - smoothstep(1.0 - delta, 1.0, radius);
-	#endif
+	alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, radius);
 
-	vec4 baseColor = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius, radius));
+	vec4 baseColor = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius + delta, radius));
 	baseColor.a *= alpha;
 	gl_FragColor = baseColor;
 }
