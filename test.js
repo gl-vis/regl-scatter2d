@@ -70,7 +70,7 @@ function show (arr) {
 let N = 1e3
 let range = [-10, -10, 10, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [dist]//[getCharSdf('H'), null, dist]//, 'M0 0 L10 20 20 0Z']
+let markers = [null, dist]//, 'M0 0 L10 20 20 0Z']
 
 let scatter = createScatter({
 	positions: generate(N),
@@ -85,7 +85,8 @@ let scatter = createScatter({
 	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 	range: range,
-	borderSize: 2,
+	borderSize: 5,
+	snap: false,
 	borderColor: [[60, 80, 100, 200]]
 })
 
@@ -97,7 +98,9 @@ scatter()
 //interactions
 let prev = null
 var frame = nanoraf(scatter)
+
 panZoom(document.body.lastChild, e => {
+	//FIXME: panzoom fails working right on ipad
 	let w = document.body.lastChild.offsetWidth
 	let h = document.body.lastChild.offsetHeight
 
@@ -171,7 +174,7 @@ function getCharSdf(char, size) {
 		radius: size/2
 	})
 
-	show(data)
+	// show(data)
 
 	return data
 }

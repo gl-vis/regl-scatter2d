@@ -44,6 +44,7 @@ Property | Default | Description
 `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
 `precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance.
+`snap` | `1e5` | Number of points to enable snapping, can be bool.
 
 ## License
 

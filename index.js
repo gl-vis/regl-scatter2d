@@ -10,6 +10,7 @@ const normalize = require('array-normalize')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const assert = require('assert')
+const search = require('binary-search-bounds')
 
 module.exports = Scatter
 
@@ -20,7 +21,7 @@ function Scatter (options) {
   // persistent variables
   let regl, gl, canvas, plot,
       range, elements = [],
-      size = 12, maxSize = 12,
+      size = 12, maxSize = 12, minSize = 12,
       borderSize = 1,
       positions, count, selection, bounds,
       scale, translate,
@@ -29,11 +30,8 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      //1st marker is always circle
-      markerIds = [[]], markerKey = [null],
-      markers
-
-  //FIXME: normalize marker size
+      markerIds = [[]], markerKey = [null], markers,
+      snap, scales, xCoords
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -177,18 +175,45 @@ function Scatter (options) {
     //draw all available markers
     for (let i = 0; i < markerIds.length; i++) {
       let ids = markerIds[i]
+      //FIXME: report empty array elements bug to regl
       if (!ids.length) continue
 
-      if (ids.texture) {
-        drawMarker({elements: ids, marker: ids.texture})
-      } else {
-        drawCircle({elements: ids})
+      //render unsnapped points
+      if (count < snap) {
+        ids.texture ? drawMarker({elements: ids, marker: ids.texture}) : drawCircle({elements: ids})
+      }
+
+      //render snap subsets
+      else {
+        for (let scaleNum = scales.length; scaleNum--;) {
+          let lod = scales[scaleNum]
+
+          //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
+          if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
+            continue
+          }
+
+          let intervalStart = lod.offset
+          let intervalEnd   = lod.count + intervalStart
+
+          //TODO: slice elements so to narrow rendering set
+          let startOffset = search.ge(this.xCoords, range[0], intervalStart, intervalEnd - 1)
+          let endOffset   = search.lt(this.xCoords, range[2], startOffset, intervalEnd - 1) + 1
+
+          if (endOffset > startOffset) {
+            ids.texture ? drawMarker({elements: ids, marker: ids.texture}) : drawCircle({elements: ids})
+          }
+        }
       }
     }
+
   }
 
   function update (options) {
     if (options.length != null) options = {positions: options}
+
+    if (options.snap === true) snap = 1e4
+    else if (options.snap === false) snap = Infinity
 
     //update buffer
     if (options.data) options.positions = options.data
@@ -217,6 +242,12 @@ function Scatter (options) {
       for (let i = 0; i < count; i++) {
         elements[i] = i
       }
+
+      //do snap if necessary
+      if (count > snap) {
+        i2idx = []
+        scales = snapPoints(unrolled, i2idx, [])
+      }
     }
 
     //sizes
@@ -227,12 +258,15 @@ function Scatter (options) {
         sizeBuffer(size)
 
         maxSize = size[0]
+        minSize = 1.5
         for (let i = 0, l = size.length; i < l; i++) {
           if (size[i] > maxSize) maxSize = size[i]
+          if (size[i] > minSize) minSize = size[i]
         }
       }
       else {
         maxSize = size
+        minSize = size
       }
     }
 
