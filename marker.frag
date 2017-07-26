@@ -33,5 +33,5 @@ void main() {
 
   gl_FragColor = color;
 
-  // gl_FragColor = vec4(vec3(fragBorderColorLevel), 1);
+  // gl_FragColor = vec4(vec3(0), 1);
 }

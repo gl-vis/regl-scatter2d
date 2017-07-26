@@ -29,9 +29,10 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerCache = [], markers
+      //1st marker is always circle
+      markerIds = [[]], markerKey = [null],
+      markers
 
-  //FIXME: replace markerCache with plain array - hope there is no that many markers
   //FIXME: normalize marker size
 
   // regl instance
@@ -174,8 +175,10 @@ function Scatter (options) {
     if (!count) return
 
     //draw all available markers
-    for (let i = 0; i < markerCache.length; i++) {
-      let ids = markerCache[i]
+    for (let i = 0; i < markerIds.length; i++) {
+      let ids = markerIds[i]
+      if (!ids.length) continue
+
       if (ids.texture) {
         drawMarker({elements: ids, marker: ids.texture})
       } else {
@@ -294,16 +297,17 @@ function Scatter (options) {
     if (options.markers) options.marker = options.markers
     if (options.marker !== undefined) {
       //reset marker elements
-      markerCache.length = 0
+      markerIds.length = markerKey.length = 1
 
+      //common marker
+      if (typeof options.marker[0] === 'number') {
+        updateMarker(options.marker, elements, maxSize)
+      }
       //per-point markers
-      if (options.marker[0].length) {
+      else {
         for (let i = 0, l = options.marker.length; i < l; i++) {
           updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
         }
-      }
-      else {
-        updateMarker(options.marker, elements, maxSize)
       }
 
       markers = options.marker
@@ -381,21 +385,23 @@ function Scatter (options) {
   function updateMarker(sdfArr, id) {
     let ids
 
-    let pos = markerCache.indexOf(sdfArr)
+    let pos = sdfArr == null ? 0 : markerKey.indexOf(sdfArr)
+
+    //existing marker
     if (pos >= 0) {
-      ids = markerCache[pos]
-      if (Array.isArray(id)) ids = markerCache[pos] = id
+      ids = markerIds[pos]
+      if (Array.isArray(id)) ids = markerIds[pos] = id
       else ids.push(id)
     }
+    //new marker
     else {
       ids = Array.isArray(id) ? id : [id]
-      markerCache.push(ids)
+      markerKey.push(sdfArr)
+      markerIds.push(ids)
     }
 
     //create marker texture
     if (sdfArr != null && !ids.texture) {
-      assert(sdfArr.length, 'Marker should be an sdf array or null')
-
       let distArr
       if (sdfArr instanceof Uint8Array || sdfArr instanceof Uint8ClampedArray) {
         distArr = sdfArr
@@ -416,6 +422,7 @@ function Scatter (options) {
         data: distArr,
         radius: radius
       })
+
     }
 
     return ids

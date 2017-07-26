@@ -10,6 +10,8 @@ uniform vec2 scale, translate;
 uniform float paletteSize, pixelRatio;
 uniform sampler2D palette;
 
+const float borderLevel = .5;
+
 varying vec4 fragColor, fragBorderColor;
 varying float fragPointSize, fragBorderRadius,
 		fragWidth, fragBorderColorLevel, fragColorLevel;
@@ -27,6 +29,6 @@ void main() {
   fragBorderColor = borderColor;
   fragWidth = 1. / gl_PointSize;
 
-  fragBorderColorLevel = clamp(.5 - .5 * borderSize / size, 0., 1.);
-  fragColorLevel = clamp(.5 + .5 * borderSize / size, 0., 1.);
+  fragBorderColorLevel = clamp(borderLevel - borderLevel * borderSize / size, 0., 1.);
+  fragColorLevel = clamp(borderLevel + (1. - borderLevel) * borderSize / size, 0., 1.);
 }

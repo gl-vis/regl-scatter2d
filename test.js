@@ -13,9 +13,9 @@ const palettes = require('nice-color-palettes')
 const sdf = require('bitmap-sdf')
 const parsePath = require('parse-svg-path')
 const drawPath = require('draw-svg-path')
-// const normalizePath = require('normalize-svg-coords')
-// const pathBounds = require('svg-path-bounds')
-// const isSvgPath = require('is-svg-path')
+const normalizePath = require('normalize-svg-coords')
+const pathBounds = require('svg-path-bounds')
+const isSvgPath = require('is-svg-path')
 
 
 
@@ -67,10 +67,10 @@ function show (arr) {
 
 
 
-let N = 1e4
+let N = 1e3
 let range = [-10, -10, 10, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = ['H', null]//, 'M0 0 L10 20 20 0Z']
+let markers = [dist]//[getCharSdf('H'), null, dist]//, 'M0 0 L10 20 20 0Z']
 
 let scatter = createScatter({
 	positions: generate(N),
@@ -81,7 +81,8 @@ let scatter = createScatter({
 	color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 	// color: 'rgba(0, 50, 100, .5)',
 
-	marker: dist,
+	// marker: dist,
+	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 	range: range,
 	borderSize: 2,
@@ -147,12 +148,40 @@ window.addEventListener('resize', () => {
 
 
 
+function getCharSdf(char, size) {
+	if (!size) size = 200
+
+	let cnv = document.createElement('canvas')
+	let ctx = cnv.getContext('2d')
+
+	let w = cnv.width = size
+	let h = cnv.height = size
+
+	ctx.fillStyle = 'black'
+	ctx.fillRect(0, 0, w, h)
+	ctx.textAlign = 'center'
+	ctx.textBaseline = 'middle'
+	ctx.font = size/2 + 'px sans-serif'
+
+	ctx.fillStyle = 'white'
+	ctx.fillText(char, size/2, size/2)
+
+	let data = sdf(ctx, {
+		cutoff: .1,
+		radius: size/2
+	})
+
+	show(data)
+
+	return data
+}
+
 //return bitmap sdf data from any argument
 function getSDF(arg, markerSize) {
 	let size = markerSize * 2
 	let w = canvas.width = size * 2
 	let h = canvas.height = size * 2
-	let cutoff = .2
+	let cutoff = 1
 	let radius = size/2
 	let data
 
