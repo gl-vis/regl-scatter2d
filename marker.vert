@@ -27,6 +27,6 @@ void main() {
   fragBorderColor = borderColor;
   fragWidth = 1. / gl_PointSize;
 
-  fragBorderColorLevel = .5 - .5 * borderSize / size;
-  fragColorLevel = .5 + .5 * borderSize / size;
+  fragBorderColorLevel = clamp(.5 - .5 * borderSize / size, 0., 1.);
+  fragColorLevel = clamp(.5 + .5 * borderSize / size, 0., 1.);
 }

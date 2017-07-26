@@ -7,10 +7,8 @@ const clamp = require('clamp')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
-const nextPow2 = require('next-pow-2')
 const extend = require('object-assign')
 const glslify = require('glslify')
-const getSdf = require('./get-sdf')
 const assert = require('assert')
 
 module.exports = Scatter
@@ -239,6 +237,7 @@ function Scatter (options) {
     if (options.borderSizes) options.borderSize = options.borderSizes
     if (options.borderSize != null) {
       borderSize = options.borderSize
+
       if (Array.isArray(borderSize)) {
         borderSizeBuffer(borderSize)
       }
@@ -300,18 +299,18 @@ function Scatter (options) {
       //per-point markers
       if (options.marker[0].length) {
         for (let i = 0, l = options.marker.length; i < l; i++) {
-          updateMarker(options.marker[i], i)
+          updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
         }
       }
       else {
-        updateMarker(options.marker, elements)
+        updateMarker(options.marker, elements, maxSize)
       }
 
       markers = options.marker
     }
     else if (markers === undefined) {
       markers = null
-      updateMarker(markers, elements)
+      updateMarker(markers, elements, maxSize)
     }
 
     //make sure scale/translate are properly set
@@ -409,6 +408,8 @@ function Scatter (options) {
       }
 
       let radius = Math.floor(Math.sqrt(distArr.length))
+
+      if (radius < maxSize) console.warn('SDF size is less than point size, ' + maxSize)
 
       ids.texture = regl.texture({
         channels: 1,

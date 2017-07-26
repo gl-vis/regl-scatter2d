@@ -10,8 +10,16 @@ const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 const nanoraf = require('nanoraf')
 const palettes = require('nice-color-palettes')
+const sdf = require('bitmap-sdf')
+const parsePath = require('parse-svg-path')
+const drawPath = require('draw-svg-path')
+// const normalizePath = require('normalize-svg-coords')
+// const pathBounds = require('svg-path-bounds')
+// const isSvgPath = require('is-svg-path')
 
-//create square test sdf
+
+
+//create square test sdf image
 let w = 200, h = 200
 let dist = new Array(w*h)
 for (let i = 0; i < w; i++) {
@@ -133,4 +141,92 @@ function generate(N) {
 window.addEventListener('resize', () => {
 	scatter()
 })
+
+
+
+
+
+
+//return bitmap sdf data from any argument
+function getSDF(arg, markerSize) {
+	let size = markerSize * 2
+	let w = canvas.width = size * 2
+	let h = canvas.height = size * 2
+	let cutoff = .2
+	let radius = size/2
+	let data
+
+	//FIXME: replace with render-svg or rasterize-svg module or so
+	//svg path or utf character
+	if (typeof arg === 'string') {
+	  arg = arg.trim()
+
+	  ctx.fillStyle = 'black'
+	  ctx.fillRect(0, 0, w, h)
+	  ctx.fillStyle = 'white'
+	  ctx.strokeStyle = 'white'
+	  ctx.lineWidth = 1
+
+	  //svg path
+	  if (isSvgPath(arg)) {
+	  	let path = normalizePath({
+	  		path: arg,
+	  		viewBox: pathBounds(arg),
+	  		min: 0,
+	  		max: size
+	  	})
+
+	  	//FIXME: make this good
+		ctx.translate(size, size)
+
+	    //if canvas svg paths api is available
+	    if (global.Path2D) {
+	      let path2d = new Path2D(path)
+	      ctx.fill(path2d)
+	      ctx.stroke(path2d)
+	    }
+	    //fallback to bezier-curves
+	    else {
+	      let segments = parsePath(path)
+	      drawPath(ctx, segments)
+	      ctx.fill()
+	      ctx.stroke()
+	    }
+
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+	  }
+
+	  //plain character
+	  else {
+	    ctx.textAlign = 'center'
+	    ctx.textBaseline = 'middle'
+	    ctx.font = size + 'px sans-serif'
+	    ctx.fillText(arg, size, size)
+	  }
+
+	  data = sdf(ctx, {
+	    cutoff: cutoff,
+	    radius: radius
+	  })
+	}
+
+	//direct sdf data
+	else if (Array.isArray(arg)) {
+	  data = arg
+	}
+
+	//image data, pixels, canvas, array
+	else {
+	  data = sdf(arg, {
+	    cutoff: cutoff,
+	    radius: radius,
+	    width: w,
+	    height: h
+	  })
+	}
+
+	// show(data, arg)
+
+	return data
+}
 
