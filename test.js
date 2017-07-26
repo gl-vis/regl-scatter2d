@@ -11,6 +11,53 @@ const rgba = require('color-rgba')
 const nanoraf = require('nanoraf')
 const palettes = require('nice-color-palettes')
 
+//create square test sdf
+let w = 200, h = 200
+let dist = new Array(w*h)
+for (let i = 0; i < w; i++) {
+	for (let j = 0; j < h; j++) {
+		if (i > j) {
+			if (i < h - j) {
+				dist[j*w + i] = j/(h/2)
+			}
+			else {
+				dist[j*w + i] = 1 - (i-w/2)/(w/2)
+			}
+		}
+		else {
+			if (i < h - j) {
+				dist[j*w + i] = i/(w/2)
+			}
+			else {
+				dist[j*w + i] = 1 - (j-h/2)/(h/2)
+			}
+		}
+	}
+}
+
+function show (arr) {
+	let dim = Math.sqrt(arr.length)
+	let cnv = document.body.appendChild(document.createElement('canvas'))
+	let ctx = cnv.getContext('2d')
+	let w = cnv.width = dim
+	let h = cnv.height = dim
+	let iData = new ImageData(w, h)
+	let data = iData.data
+
+	for (let i = 0; i < w; i++) {
+		for (let j = 0; j < h; j++) {
+			data[i*w*4 + j*4 + 0] = arr[i*w + j] * 255
+			data[i*w*4 + j*4 + 1] = arr[i*w + j] * 255
+			data[i*w*4 + j*4 + 2] = arr[i*w + j] * 255
+			data[i*w*4 + j*4 + 3] = 255
+		}
+	}
+
+	ctx.putImageData(iData, 0, 0)
+}
+
+
+
 
 let N = 1e4
 let range = [-10, -10, 10, 10]
@@ -26,8 +73,7 @@ let scatter = createScatter({
 	color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 	// color: 'rgba(0, 50, 100, .5)',
 
-	// marker: 'M-10 -10 H 10 V 10 H -10 Z',
-	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
+	marker: dist,
 
 	range: range,
 	borderSize: 2,
@@ -37,70 +83,6 @@ let scatter = createScatter({
 
 scatter()
 
-/*
-let settings = createSettings([
-	{type: 'number', label: '№ points', min: 1, max: 1e8, log: true, value: 1e4, change: value => {
-		let positions = generate(value)
-		// let positions = [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0]
-
-		// let from = lod[6].offset, to = from + lod[6].count
-		scatter
-		.update(positions)
-		.autorange()
-		.clear()
-		.draw()
-	}},
-	{type: 'interval', label: 'Size', min: 1, max: 50, value: [10,10], step: .5, change: value => {
-		//same size
-		if (value[0] === value[1]) {
-			scatter.update({
-				size: value[0]
-			})
-			.clear()
-			.draw()
-			return
-		}
-
-		let sizes = []
-		for (let i = 0, l = scatter.positions.length/2; i < l; i++) {
-			sizes.push(Math.random() * (value[1] - value[0]) + value[0])
-		}
-		scatter.update({
-			size: sizes
-		})
-		.clear()
-		.draw()
-	}},
-	{type: 'checkbox', label: 'Multicolor', value: false, change: v => {
-		if (v) {
-			//generate colors
-			let colors = Array(scatter.positions.length/2).fill(0).map(() =>
-				[Math.random(), Math.random(), Math.random(), Math.random()]
-			)
-			scatter.update({color: colors})
-		}
-		else {
-			let color = Array(4).fill(0).map(Math.random)
-			scatter.update({color: color})
-		}
-		scatter.draw()
-	}}
-], {
-	theme: require('settings-panel/theme/control'),
-	style: `
-	bottom: 0;
-	left: 0;
-	right: 0;
-	width: 340px;
-	margin: auto;
-	min-width: 240px;
-	position: absolute;
-	background: none;
-	font-family: Roboto, sans-serif;
-	font-weight: 300;
-	`
-})
-*/
 
 
 //interactions
@@ -151,3 +133,4 @@ function generate(N) {
 window.addEventListener('resize', () => {
 	scatter()
 })
+

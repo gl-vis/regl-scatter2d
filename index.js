@@ -11,6 +11,7 @@ const nextPow2 = require('next-pow-2')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const getSdf = require('./get-sdf')
+const assert = require('assert')
 
 module.exports = Scatter
 
@@ -30,7 +31,7 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerCache = new Map, markerCount = 0, markers
+      markerCache = [], markers
 
   //FIXME: replace markerCache with plain array - hope there is no that many markers
   //FIXME: normalize marker size
@@ -93,39 +94,6 @@ function Scatter (options) {
 
   //common shader options
   let shaderOptions = {
-    vert: `
-    precision mediump float;
-
-    attribute vec2 position;
-    attribute float size;
-    attribute float borderSize;
-    attribute float colorIdx;
-    attribute float borderColorIdx;
-
-    uniform vec2 scale, translate;
-    uniform float paletteSize, pixelRatio;
-    uniform sampler2D palette;
-
-    varying vec4 fragColor, fragBorderColor;
-    varying float fragPointSize, fragBorderRadius, fragWidth;
-
-    void main() {
-      vec4 color = texture2D(palette, vec2((colorIdx + .5) / paletteSize, 0));
-      vec4 borderColor = texture2D(palette, vec2((borderColorIdx + .5) / paletteSize, 0));
-
-      gl_PointSize = (size + borderSize) * pixelRatio;
-      fragPointSize = (size + borderSize) * pixelRatio;
-
-      gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
-
-      fragBorderRadius = borderSize == 0. ? 2. : 1. - 2. * borderSize / (size + borderSize);
-      fragColor = color;
-      fragBorderColor = borderColor;
-      fragWidth = 1. / fragPointSize;
-    }`,
-
-    frag: null,
-
     uniforms: {
       pixelRatio: regl.context('pixelRatio'),
       palette: paletteTexture,
@@ -188,6 +156,7 @@ function Scatter (options) {
   let markerOptions = extend({}, shaderOptions)
   markerOptions.uniforms.marker = regl.prop('marker')
   markerOptions.frag = glslify('./marker.frag')
+  markerOptions.vert = glslify('./marker.vert')
 
   drawMarker = regl(markerOptions)
 
@@ -195,6 +164,7 @@ function Scatter (options) {
   //draw circle
   let circleOptions = extend({}, shaderOptions)
   circleOptions.frag = glslify('./circle.frag')
+  circleOptions.vert = glslify('./circle.vert')
 
   drawCircle = regl(circleOptions)
 
@@ -206,15 +176,14 @@ function Scatter (options) {
     if (!count) return
 
     //draw all available markers
-    markerCache.forEach((markerObj, marker) => {
-      let {texture, ids, size} = markerObj
-
-      if (texture) {
-        drawMarker({elements: ids, marker: texture})
+    for (let i = 0; i < markerCache.length; i++) {
+      let ids = markerCache[i]
+      if (ids.texture) {
+        drawMarker({elements: ids, marker: ids.texture})
       } else {
         drawCircle({elements: ids})
       }
-    })
+    }
   }
 
   function update (options) {
@@ -326,24 +295,23 @@ function Scatter (options) {
     if (options.markers) options.marker = options.markers
     if (options.marker !== undefined) {
       //reset marker elements
-      markerCache.forEach((markerObj, marker) => {
-        markerObj.ids = []
-      })
+      markerCache.length = 0
 
-      if (Array.isArray(options.marker)) {
+      //per-point markers
+      if (options.marker[0].length) {
         for (let i = 0, l = options.marker.length; i < l; i++) {
-          updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
+          updateMarker(options.marker[i], i)
         }
       }
       else {
-        updateMarker(options.marker, elements, maxSize)
+        updateMarker(options.marker, elements)
       }
 
       markers = options.marker
     }
     else if (markers === undefined) {
       markers = null
-      updateMarker(markers, elements, maxSize)
+      updateMarker(markers, elements)
     }
 
     //make sure scale/translate are properly set
@@ -411,42 +379,45 @@ function Scatter (options) {
   }
 
   //update marker sdf
-  function updateMarker(marker, id, size) {
-    let markerObj
+  function updateMarker(sdfArr, id) {
+    let ids
 
-    size = nextPow2(size)
-
-    if (markerCache.has(marker)) {
-      markerObj = markerCache.get(marker)
+    let pos = markerCache.indexOf(sdfArr)
+    if (pos >= 0) {
+      ids = markerCache[pos]
+      if (Array.isArray(id)) ids = markerCache[pos] = id
+      else ids.push(id)
     }
     else {
-      markerObj = {ids: [], data: null, size: 0}
-      markerCache.set(marker, markerObj)
+      ids = Array.isArray(id) ? id : [id]
+      markerCache.push(ids)
     }
 
-    //generate sdf bitmap of proper size
-    if (marker != null && markerObj.size < size) {
-      let distArr = getSdf(marker, size)
-      for (let i = 0, l = distArr.length; i < l; i++) {
-        distArr[i] *= 255
+    //create marker texture
+    if (sdfArr != null && !ids.texture) {
+      assert(sdfArr.length, 'Marker should be an sdf array or null')
+
+      let distArr
+      if (sdfArr instanceof Uint8Array || sdfArr instanceof Uint8ClampedArray) {
+        distArr = sdfArr
+      }
+      else {
+        distArr = new Uint8Array(sdfArr.length)
+        for (let i = 0, l = sdfArr.length; i < l; i++) {
+          distArr[i] = sdfArr[i] * 255
+        }
       }
 
-      markerObj.texture = regl.texture({
+      let radius = Math.floor(Math.sqrt(distArr.length))
+
+      ids.texture = regl.texture({
         channels: 1,
-        data: new Uint8Array(distArr),
-        radius: size * 4
+        data: distArr,
+        radius: radius
       })
-      markerObj.size = size
     }
 
-    if (Array.isArray(id)) {
-      markerObj.ids = id
-    }
-    else {
-      markerObj.ids.push(id)
-    }
-
-    return markerObj
+    return ids
   }
 
   return draw

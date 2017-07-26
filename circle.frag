@@ -14,7 +14,7 @@ void main() {
 		discard;
 	}
 
-	alpha = 1.0 - smoothstep(1.0 - delta, 1.0 + delta, radius);
+	alpha -= smoothstep(1.0 - delta, 1.0 + delta, radius);
 
 	vec4 baseColor = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius + delta, radius));
 	baseColor.a *= alpha;

@@ -40,7 +40,7 @@ Property | Default | Description
 `color`, `colors` | `'red'` | Color or array with colors. Each color can be a css-color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number pointing at the color in the palette.
 `borderColor`, `borderColors` | `'black'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number pointing at the color in the palette.
 `palette` | `null` | List of colors, eg. `['red', 'green', 'blue', 'black']`.
-`marker`, `markers` | `null` | Marker shape/image. Can be a string with utf-character, an svg-path string, an image-data/canvas with bw pixels (main shape should be white on black background), a rectangular array with `0..1` distance values or array with any of these, corresponding to the points. If `null`, circular marker is used.
+`marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) to generate sdf from any image. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
 `precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance.

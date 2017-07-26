@@ -1,7 +1,7 @@
 precision mediump float;
 
 varying vec4 fragColor, fragBorderColor;
-varying float fragBorderRadius, fragPointSize;
+varying float fragWidth, fragBorderColorLevel, fragColorLevel;
 
 uniform sampler2D marker;
 uniform float pixelRatio;
@@ -11,31 +11,27 @@ float smoothStep(float x, float y) {
 }
 
 void main() {
-  float dist = texture2D(marker, gl_PointCoord).r;
+  float dist = texture2D(marker, gl_PointCoord).r, delta = fragWidth;
 
   //max-distance alpha
-  if (dist < 1e-2) discard;
-
-  // float gamma = .0045;
-  float gamma = .05;
+  if (dist < 0.003) discard;
 
   //null-border case
-  // if (fragBorderSize * fragBorderColor.a == 0.) {
-  //   float charAmt = smoothstep(.748 - gamma, .748 + gamma, dist);
-  //   gl_FragColor = vec4(fragColor.rgb, charAmt * fragColor.a);
-  //   return;
-  // }
+  if (fragBorderColorLevel == fragColorLevel || fragBorderColor.a == 0.) {
+    float colorAmt = smoothstep(.5 - delta, .5 + delta, dist);
+    gl_FragColor = vec4(fragColor.rgb, colorAmt * fragColor.a);
+    return;
+  }
 
 
-  float dif = 0.;//5. * pixelRatio * fragBorderSize / fragPointSize;
-  float borderLevel = .748 - dif * .5;
-  float charLevel = .748 + dif * .5;
-
-  float borderAmt = smoothstep(borderLevel - gamma, borderLevel + gamma, dist);
-  float charAmt = smoothstep(charLevel - gamma, charLevel + gamma, dist);
+  float borderColorAmt = smoothstep(fragBorderColorLevel - delta, fragBorderColorLevel + delta, dist);
+  float colorAmt = smoothstep(fragColorLevel - delta, fragColorLevel + delta, dist);
 
   vec4 color = fragBorderColor;
-  color.a *= borderAmt;
+  color.a *= borderColorAmt;
+  color = mix(color, fragColor, colorAmt);
 
-  gl_FragColor = mix(color, fragColor, charAmt);
+  gl_FragColor = color;
+
+  // gl_FragColor = vec4(vec3(fragBorderColorLevel), 1);
 }
