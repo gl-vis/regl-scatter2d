@@ -12,6 +12,7 @@ const glslify = require('glslify')
 const assert = require('assert')
 const search = require('binary-search-bounds')
 
+
 module.exports = Scatter
 
 
@@ -30,8 +31,7 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerIds = [[]], markerKey = [null], markers,
-      snap, scales, xCoords
+      markerIds = [[]], markerKey = [null], markers, snap
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -44,6 +44,10 @@ function Scatter (options) {
     if (options.container) opts.container = options.container
     if (options.gl) opts.gl = options.gl
 
+    opts.optionalExtensions = [
+      'OES_element_index_uint'
+    ]
+
     regl = createRegl(opts)
   }
 
@@ -54,7 +58,9 @@ function Scatter (options) {
   //texture with color palette
   paletteTexture = regl.texture({
     type: 'uint8',
-    format: 'rgba'
+    format: 'rgba',
+    mag: 'nearest',
+    min: 'nearest'
   })
 
   //buffers to reuse
@@ -145,6 +151,9 @@ function Scatter (options) {
     //point ids to render
     elements: regl.prop('elements'),
 
+    count: regl.prop('count'),
+    offset: regl.prop('offset'),
+
     primitive: 'points'
   }
 
@@ -179,41 +188,61 @@ function Scatter (options) {
       if (!ids.length) continue
 
       //render unsnapped points
-      if (count < snap) {
-        ids.texture ? drawMarker({elements: ids, marker: ids.texture}) : drawCircle({elements: ids})
+      if (!ids.snap) {
+        ids.texture ?
+          drawMarker({elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}) :
+          drawCircle({elements: ids.elements, offset: 0, count: ids.length})
       }
 
-      //render snap subsets
+      //render snapped subsets
       else {
-        for (let scaleNum = scales.length; scaleNum--;) {
-          let lod = scales[scaleNum]
+        let {scale, x, w, texture} = ids
+
+        for (let scaleNum = scale.length; scaleNum--;) {
+          let lod = scale[scaleNum]
+
+          //FIXME: figure out pixel size
+          if (lod.pixelSize < pixelSize) continue
+
+
+          //FIXME: put elements per-scale
 
           //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-          if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
-            continue
-          }
+          // if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
+          //   continue
+          // }
 
           let intervalStart = lod.offset
-          let intervalEnd   = lod.count + intervalStart
+          let intervalEnd = lod.count + intervalStart
 
-          //TODO: slice elements so to narrow rendering set
-          let startOffset = search.ge(this.xCoords, range[0], intervalStart, intervalEnd - 1)
-          let endOffset   = search.lt(this.xCoords, range[2], startOffset, intervalEnd - 1) + 1
+          let els = lod.elements
 
-          if (endOffset > startOffset) {
-            ids.texture ? drawMarker({elements: ids, marker: ids.texture}) : drawCircle({elements: ids})
-          }
+          texture ?
+          drawMarker({elements: els, marker: texture, offset: intervalStart, count: lod.count}) :
+          drawCircle({elements: els, offset: intervalStart, count: lod.count})
+
+          continue
+
+          let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
+          let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
+
+          if (endOffset <= startOffset) continue
+
+          // let els = ids.subarray(startOffset, endOffset)
+          // let els = ids.elements({offset: startOffset, count: endOffset - startOffset})
         }
       }
     }
-
   }
 
   function update (options) {
     if (options.length != null) options = {positions: options}
 
-    if (options.snap === true) snap = 1e4
-    else if (options.snap === false) snap = Infinity
+    if (options.snap != null) {
+      if (options.snap === true) snap = 1e4
+      else if (options.snap === false) snap = Infinity
+      else snap = options.snap
+    }
 
     //update buffer
     if (options.data) options.positions = options.data
@@ -232,21 +261,16 @@ function Scatter (options) {
         unrolled = options.positions.slice()
       }
 
+      count = Math.floor(unrolled.length / 2)
+
       bounds = getBounds(unrolled, 2)
       positions = normalize(unrolled, 2, bounds)
       positionBuffer(positions)
-      count = Math.floor(positions.length / 2)
 
       //update elements ids - that is all points
       elements = Array(count)
       for (let i = 0; i < count; i++) {
         elements[i] = i
-      }
-
-      //do snap if necessary
-      if (count > snap) {
-        i2idx = []
-        scales = snapPoints(unrolled, i2idx, [])
       }
     }
 
@@ -329,26 +353,76 @@ function Scatter (options) {
 
     //aggregate markers sdf
     if (options.markers) options.marker = options.markers
-    if (options.marker !== undefined) {
-      //reset marker elements
-      markerIds.length = markerKey.length = 1
+    if (options.marker !== undefined || markers === undefined) {
+      if (options.marker !== undefined) {
+        //reset marker elements
+        markerIds.length = markerKey.length = 1
 
-      //common marker
-      if (typeof options.marker[0] === 'number') {
-        updateMarker(options.marker, elements, maxSize)
+        //common marker
+        if (typeof options.marker[0] === 'number') {
+          updateMarker(options.marker, elements, maxSize)
+        }
+        //per-point markers
+        else {
+          for (let i = 0, l = options.marker.length; i < l; i++) {
+            let id = elements[i]
+            updateMarker(options.marker[id], id, Array.isArray(size) ? size[id] : size)
+          }
+        }
+
+        markers = options.marker
       }
-      //per-point markers
-      else {
-        for (let i = 0, l = options.marker.length; i < l; i++) {
-          updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
+      else if (markers === undefined) {
+        markers = null
+        updateMarker(markers, elements, maxSize)
+      }
+
+      console.time(1)
+      //recalculate per-marker type snapping
+      //first, it is faster to snap 100 points 100 times than 10000 points once
+      //second, it is easier to subset render per-marker than per-generic set
+      for (let i = 0; i < markerIds.length; i++) {
+        let ids = markerIds[i]
+
+        let l = ids.length
+
+        if (l * 2 > snap) {
+          ids.snap = true
+          let x = ids.x = Array(l)
+          let w = ids.w = Array(l)
+          let markerPoints = Array(l * 2)
+          let i2id = Array(l)
+          let id2i = Array(l)
+          for (let i = 0; i < l; i++) {
+            let id = ids[i]
+            markerPoints[i * 2] = positions[id * 2]
+            markerPoints[i * 2 + 1] = positions[id * 2 + 1]
+          }
+          let scale = ids.scale = snapPoints(markerPoints, i2id, w, bounds)
+
+          for (let i = 0; i < l; i++) {
+            x[i] = markerPoints[i * 2]
+            id2i[i2id[i]] = i
+          }
+
+          //put shuffled → direct element ids to memory
+          ids.elements = regl.elements({
+            primitive: 'points',
+            type: 'uint32',
+            data: id2i
+          })
+        }
+
+        //direct elements
+        else {
+          ids.elements = regl.elements({
+            primitive: 'points',
+            type: 'uint32',
+            data: ids
+          })
         }
       }
-
-      markers = options.marker
-    }
-    else if (markers === undefined) {
-      markers = null
-      updateMarker(markers, elements, maxSize)
+      console.timeEnd(1)
     }
 
     //make sure scale/translate are properly set
@@ -454,9 +528,10 @@ function Scatter (options) {
       ids.texture = regl.texture({
         channels: 1,
         data: distArr,
-        radius: radius
+        radius: radius,
+        mag: 'linear',
+        min: 'linear'
       })
-
     }
 
     return ids
