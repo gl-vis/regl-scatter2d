@@ -183,6 +183,7 @@ function Scatter (options) {
 
     if (!count) return
 
+    // console.time('draw')
     initShader((params) => {
       let vh = params.viewportHeight, vw = params.viewportWidth
 
@@ -210,7 +211,6 @@ function Scatter (options) {
           for (let scaleNum = scale.length; scaleNum--;) {
             let lod = scale[scaleNum]
 
-            //FIXME: figure out pixel size
             if (lod.pixelSize < pixelSize) continue
 
 
@@ -228,7 +228,7 @@ function Scatter (options) {
             let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
             let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
 
-            if (endOffset <= startOffset) continue
+            // if (endOffset <= startOffset) continue
 
             // texture ?
             // drawMarker({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset}) :
@@ -243,19 +243,25 @@ function Scatter (options) {
           }
         }
       }
+
+      // console.timeEnd('draw')
     })
   }
 
   function update (options) {
+    // console.time('update')
     if (options.length != null) options = {positions: options}
 
+    // console.time(1)
     if (options.snap != null) {
       if (options.snap === true) snap = 1e4
       else if (options.snap === false) snap = Infinity
       else snap = options.snap
     }
+    // console.timeEnd(1)
 
     //update buffer
+    // console.time(2)
     if (options.data) options.positions = options.data
     if (options.points) options.positions = options.points
     if (options.positions && options.positions.length) {
@@ -284,8 +290,10 @@ function Scatter (options) {
         elements[i] = i
       }
     }
+    // console.timeEnd(2)
 
     //sizes
+    // console.time(3)
     if (options.sizes) options.size = options.sizes
     if (options.size != null) {
       size = options.size
@@ -314,8 +322,10 @@ function Scatter (options) {
         borderSizeBuffer(borderSize)
       }
     }
+    // console.timeEnd(3)
 
     //process colors
+    // console.time(4)
     if (options.colors) options.color = options.colors
     if (options.borderColors) options.borderColor = options.borderColors
 
@@ -361,8 +371,10 @@ function Scatter (options) {
         })
       }
     }
+    // console.timeEnd(4)
 
     //aggregate markers sdf
+    // console.time(5)
     if (options.markers) options.marker = options.markers
     if (options.marker !== undefined || markers === undefined) {
       if (options.marker !== undefined) {
@@ -388,12 +400,13 @@ function Scatter (options) {
         updateMarker(markers, elements, maxSize)
       }
     }
+    // console.timeEnd(5)
 
     //update snaping if positions provided
+    // console.time(6)
     if (options.positions) {
       let points = options.positions
 
-      console.time(1)
       //recalculate per-marker type snapping
       //first, it is faster to snap 100 points 100 times than 10000 points once
       //second, it is easier to subset render per-marker than per-generic set
@@ -442,10 +455,11 @@ function Scatter (options) {
           })
         }
       }
-      console.timeEnd(1)
     }
+    // console.timeEnd(6)
 
     //make sure scale/translate are properly set
+    // console.time(7)
     if (!options.range && !range) options.range = bounds
     if (options.range) {
       range = options.range
@@ -461,6 +475,8 @@ function Scatter (options) {
         (bounds[1] - range[1]) / yrange
       ]
     }
+    // console.timeEnd(7)
+    // console.timeEnd('update')
   }
 
   //update borderColor or color
