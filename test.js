@@ -69,24 +69,24 @@ function show (arr) {
 let N = 1e6
 let range = [-10, -10, 10, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null, dist]//, 'M0 0 L10 20 20 0Z']
+let markers = [dist]//, dist]//, 'M0 0 L10 20 20 0Z']
 
 let scatter = createScatter({
 	positions: generate(N),
+	// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-	size:  Array(N).fill(100).map(x => Math.random() * x),
-	// size: 100,
-	color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-	// color: 'rgba(0, 50, 100, .5)',
+	// size:  Array(N).fill(100).map(x => Math.random() * x),
+	size: 5,
+	// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+	color: 'rgba(0, 50, 100, .5)',
 
-	// marker: dist,
 	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 	range: range,
-	borderSize: 5,
+	borderSize: 0,
 	snap: 1,
-	borderColor: [[60, 80, 100, 200]]
+	borderColor: [[60, 80, 100, 255]]
 })
 
 

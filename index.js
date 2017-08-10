@@ -5,7 +5,7 @@ const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const clamp = require('clamp')
 const colorId = require('color-id')
-const snapPoints = require('snap-points-2d')
+const snapPoints = require('../snap-points-2d')
 const normalize = require('array-normalize')
 const extend = require('object-assign')
 const glslify = require('glslify')
@@ -31,7 +31,7 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerIds = [[]], markerKey = [null], markers, snap
+      markerIds = [[]], markerKey = [null], markers, snap, pixelSize
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -157,6 +157,8 @@ function Scatter (options) {
     primitive: 'points'
   }
 
+  //intercepting context
+  let initShader = regl({})
 
   //draw sdf-marker
   let markerOptions = extend({}, shaderOptions)
@@ -181,58 +183,67 @@ function Scatter (options) {
 
     if (!count) return
 
-    //draw all available markers
-    for (let i = 0; i < markerIds.length; i++) {
-      let ids = markerIds[i]
-      //FIXME: report empty array elements bug to regl
-      if (!ids.length) continue
+    initShader((params) => {
+      let vh = params.viewportHeight, vw = params.viewportWidth
 
-      //render unsnapped points
-      if (!ids.snap) {
-        ids.texture ?
-          drawMarker({elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}) :
-          drawCircle({elements: ids.elements, offset: 0, count: ids.length})
-      }
+      //draw all available markers
+      for (let i = 0; i < markerIds.length; i++) {
+        let ids = markerIds[i]
+        //FIXME: report empty array elements bug to regl
+        if (!ids.length) continue
 
-      //render snapped subsets
-      else {
-        let {scale, x, w, texture} = ids
+        //render unsnapped points
+        if (!ids.snap) {
+          ids.texture ?
+            drawMarker({elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}) :
+            drawCircle({elements: ids.elements, offset: 0, count: ids.length})
+        }
 
-        for (let scaleNum = scale.length; scaleNum--;) {
-          let lod = scale[scaleNum]
+        //render snapped subsets
+        else {
+          let {scale, x, w, texture} = ids
 
-          //FIXME: figure out pixel size
-          if (lod.pixelSize < pixelSize) continue
+          let pixelSize = (range[2] - range[0]) / vw
+
+          let els = ids.elements
+
+          for (let scaleNum = scale.length; scaleNum--;) {
+            let lod = scale[scaleNum]
+
+            //FIXME: figure out pixel size
+            if (lod.pixelSize < pixelSize) continue
 
 
-          //FIXME: put elements per-scale
+            //FIXME: put elements per-scale
 
-          //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-          // if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
-          //   continue
-          // }
+            //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
+            // if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
+            //   continue
+            // }
 
-          let intervalStart = lod.offset
-          let intervalEnd = lod.count + intervalStart
+            let intervalStart = lod.offset
+            let intervalEnd = lod.count + intervalStart
 
-          let els = lod.elements
 
-          texture ?
-          drawMarker({elements: els, marker: texture, offset: intervalStart, count: lod.count}) :
-          drawCircle({elements: els, offset: intervalStart, count: lod.count})
+            let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
+            let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
 
-          continue
+            if (endOffset <= startOffset) continue
 
-          let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
-          let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
+            // texture ?
+            // drawMarker({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset}) :
+            // drawCircle({elements: els, offset: startOffset, count: endOffset - startOffset})
 
-          if (endOffset <= startOffset) continue
+            texture ?
+            drawMarker({elements: els, marker: texture, offset: intervalStart, count: lod.count}) :
+            drawCircle({elements: els, offset: lod.offset, count: lod.count})
 
-          // let els = ids.subarray(startOffset, endOffset)
-          // let els = ids.elements({offset: startOffset, count: endOffset - startOffset})
+            // let els = ids.subarray(startOffset, endOffset)
+            // let els = ids.elements({offset: startOffset, count: endOffset - startOffset})
+          }
         }
       }
-    }
+    })
   }
 
   function update (options) {
@@ -376,6 +387,11 @@ function Scatter (options) {
         markers = null
         updateMarker(markers, elements, maxSize)
       }
+    }
+
+    //update snaping if positions provided
+    if (options.positions) {
+      let points = options.positions
 
       console.time(1)
       //recalculate per-marker type snapping
@@ -391,25 +407,29 @@ function Scatter (options) {
           let x = ids.x = Array(l)
           let w = ids.w = Array(l)
           let markerPoints = Array(l * 2)
+
+          //shuffled_id: real_id
           let i2id = Array(l)
-          let id2i = Array(l)
-          for (let i = 0; i < l; i++) {
-            let id = ids[i]
-            markerPoints[i * 2] = positions[id * 2]
-            markerPoints[i * 2 + 1] = positions[id * 2 + 1]
-          }
-          let scale = ids.scale = snapPoints(markerPoints, i2id, w, bounds)
 
           for (let i = 0; i < l; i++) {
+            let id = ids[i]
+            markerPoints[i * 2] = points[id * 2]
+            markerPoints[i * 2 + 1] = points[id * 2 + 1]
+          }
+
+          let scale = ids.scale = snapPoints(markerPoints, i2id, w, bounds)
+
+          let idx = Array(l)
+          for (let i = 0; i < l; i++) {
             x[i] = markerPoints[i * 2]
-            id2i[i2id[i]] = i
+            idx[i] = ids[i2id[i]]
           }
 
           //put shuffled → direct element ids to memory
           ids.elements = regl.elements({
             primitive: 'points',
             type: 'uint32',
-            data: id2i
+            data: idx
           })
         }
 
