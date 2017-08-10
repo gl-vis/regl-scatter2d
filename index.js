@@ -11,7 +11,7 @@ const extend = require('object-assign')
 const glslify = require('glslify')
 const assert = require('assert')
 const search = require('binary-search-bounds')
-
+const sliced = require('sliced')
 
 module.exports = Scatter
 
@@ -31,7 +31,8 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerIds = [[]], markerKey = [null], markers, snap, pixelSize
+      markerIds = [[]], markerKey = [null], markers,
+      snap = 1e4, pixelSize
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -249,19 +250,17 @@ function Scatter (options) {
   }
 
   function update (options) {
-    // console.time('update')
+    console.time('update')
     if (options.length != null) options = {positions: options}
 
-    // console.time(1)
     if (options.snap != null) {
       if (options.snap === true) snap = 1e4
       else if (options.snap === false) snap = Infinity
       else snap = options.snap
     }
-    // console.timeEnd(1)
 
     //update buffer
-    // console.time(2)
+    // console.time(1)
     if (options.data) options.positions = options.data
     if (options.points) options.positions = options.points
     if (options.positions && options.positions.length) {
@@ -275,22 +274,18 @@ function Scatter (options) {
         }
       }
       else {
-        unrolled = options.positions.slice()
+        unrolled = new Float32Array(options.positions.length)
+        unrolled.set(options.positions)
+        // unrolled = sliced(options.positions)
       }
+      // console.timeEnd(1)
 
       count = Math.floor(unrolled.length / 2)
 
       bounds = getBounds(unrolled, 2)
       positions = normalize(unrolled, 2, bounds)
       positionBuffer(positions)
-
-      //update elements ids - that is all points
-      elements = Array(count)
-      for (let i = 0; i < count; i++) {
-        elements[i] = i
-      }
     }
-    // console.timeEnd(2)
 
     //sizes
     // console.time(3)
@@ -361,7 +356,7 @@ function Scatter (options) {
       if (palette.length) {
         if (palette.length >= 8192*4) {
           console.warn('regl-scatter2d: too many colors. Palette will be clipped.')
-          palette = palette.slice(0, 8192*4)
+          palette = sliced(palette, 0, 8192*4)
         }
 
         paletteTexture({
@@ -383,13 +378,16 @@ function Scatter (options) {
 
         //common marker
         if (typeof options.marker[0] === 'number') {
+          elements = Array(count)
+          for (let i = 0; i < count; i++) {
+            elements[i] = i
+          }
           updateMarker(options.marker, elements, maxSize)
         }
         //per-point markers
         else {
           for (let i = 0, l = options.marker.length; i < l; i++) {
-            let id = elements[i]
-            updateMarker(options.marker[id], id, Array.isArray(size) ? size[id] : size)
+            updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
           }
         }
 
@@ -397,6 +395,10 @@ function Scatter (options) {
       }
       else if (markers === undefined) {
         markers = null
+        elements = Array(count)
+        for (let i = 0; i < count; i++) {
+          elements[i] = i
+        }
         updateMarker(markers, elements, maxSize)
       }
     }
@@ -476,7 +478,7 @@ function Scatter (options) {
       ]
     }
     // console.timeEnd(7)
-    // console.timeEnd('update')
+    console.timeEnd('update')
   }
 
   //update borderColor or color

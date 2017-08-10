@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "budo test",
-    "build": "browserify example/points.js -g babelify | indexhtmlify | metadataify | github-cornerify > demo/index.html",
-    "build2": "browserify test.js -g babelify | indexhtmlify | metadataify | github-cornerify > demo/colors.html"
+    "build": "browserify test.js -g babelify | indexhtmlify | metadataify | github-cornerify > gh-pages/index.html"
   },
   "repository": {
     "type": "git",
@@ -37,6 +36,7 @@
     "glslify": "^6.1.0",
     "object-assign": "^4.1.1",
     "regl": "^1.3.0",
+    "sliced": "^1.0.1",
     "snap-points-2d": "^3.1.0"
   },
   "devDependencies": {

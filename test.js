@@ -85,7 +85,7 @@ let scatter = createScatter({
 
 	range: range,
 	borderSize: 1,
-	snap: 1,
+	// snap: false,
 	borderColor: [[127,127,127,127]]
 })
 
@@ -98,10 +98,12 @@ scatter()
 let prev = null
 var frame = nanoraf(scatter)
 
-panZoom(document.body.lastChild, e => {
+let cnv = document.body.querySelectorAll('canvas')[1]
+
+panZoom(cnv, e => {
 	//FIXME: panzoom fails working right on ipad
-	let w = document.body.lastChild.offsetWidth
-	let h = document.body.lastChild.offsetHeight
+	let w = cnv.offsetWidth
+	let h = cnv.offsetHeight
 
 	let rx = e.x / w
 	let ry = e.y / h
