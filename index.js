@@ -190,62 +190,54 @@ function Scatter (options) {
     // console.time('draw')
     initShader((params) => {
       let vh = params.viewportHeight, vw = params.viewportWidth
+      let pixelSize = (range[2] - range[0]) / vw
 
-      //draw all available markers
-      for (let i = 0; i < markerIds.length; i++) {
+      //draw circles
+      drawCircle(getMarkerDrawOptions(markerIds[0]))
+
+      //draw all other available markers
+      let batch = []
+      for (let i = 1; i < markerIds.length; i++) {
         let ids = markerIds[i]
+
         //FIXME: report empty array elements bug to regl
         if (!ids.length) continue
 
-        //render unsnapped points
+        batch = batch.concat(getMarkerDrawOptions(ids))
+      }
+      drawMarker(batch)
+
+
+      //get options for the marker ids
+      function getMarkerDrawOptions(ids) {
+        //unsnapped options
         if (!ids.snap) {
-          ids.texture ?
-            drawMarker({elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}) :
-            drawCircle({elements: ids.elements, offset: 0, count: ids.length})
+          return {elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}
         }
 
-        //render snapped subsets
-        else {
-          let {scale, x, w, texture} = ids
+        //scales batch
+        let batch = []
+        let {scale, x, w, texture} = ids
+        let els = ids.elements
 
-          let pixelSize = (range[2] - range[0]) / vw
+        for (let scaleNum = scale.length; scaleNum--;) {
+          let lod = scale[scaleNum]
 
-          let els = ids.elements
+          //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
+          if (lod.pixelSize && lod.pixelSize < pixelSize && scaleNum > 1) continue
 
-          for (let scaleNum = scale.length; scaleNum--;) {
-            let lod = scale[scaleNum]
+          let intervalStart = lod.offset
+          let intervalEnd = lod.count + intervalStart
 
-            if (lod.pixelSize < pixelSize) continue
+          let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
+          let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
 
+          if (endOffset <= startOffset) continue
 
-            //FIXME: put elements per-scale
-
-            //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-            // if(lod.pixelSize && (lod.pixelSize < pixelSize * 1.25) && scaleNum > 1) {
-            //   continue
-            // }
-
-            let intervalStart = lod.offset
-            let intervalEnd = lod.count + intervalStart
-
-
-            let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
-            let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
-
-            // if (endOffset <= startOffset) continue
-
-            // texture ?
-            // drawMarker({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset}) :
-            // drawCircle({elements: els, offset: startOffset, count: endOffset - startOffset})
-
-            texture ?
-            drawMarker({elements: els, marker: texture, offset: intervalStart, count: lod.count}) :
-            drawCircle({elements: els, offset: lod.offset, count: lod.count})
-
-            // let els = ids.subarray(startOffset, endOffset)
-            // let els = ids.elements({offset: startOffset, count: endOffset - startOffset})
-          }
+          batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
         }
+
+        return batch
       }
 
       // console.timeEnd('draw')
@@ -253,7 +245,7 @@ function Scatter (options) {
   }
 
   function update (options) {
-    console.time('update')
+    // console.time('update')
     if (options.length != null) options = {positions: options}
 
     if (options.snap != null) {
@@ -441,8 +433,9 @@ function Scatter (options) {
 
           let idx = Array(l)
           for (let i = 0; i < l; i++) {
-            x[i] = markerPoints[i * 2]
-            idx[i] = ids[i2id[i]]
+            let id = i2id[i]
+            idx[i] = ids[id]
+            x[i] = points[ids[id] * 2]
           }
 
           //put shuffled → direct element ids to memory
@@ -483,7 +476,7 @@ function Scatter (options) {
       ]
     }
     // console.timeEnd(7)
-    console.timeEnd('update')
+    // console.timeEnd('update')
   }
 
   //update borderColor or color

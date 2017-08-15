@@ -70,7 +70,7 @@ let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null]//, dist]//, 'M0 0 L10 20 20 0Z']
+let markers = [null]//, 'M0 0 L10 20 20 0Z']
 
 let scatter = createScatter({
 	positions: generate(N),
@@ -85,17 +85,17 @@ let scatter = createScatter({
 	marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 	range: range,
-	borderSize: 0,
-	snap: false,
+	borderSize: 1,
+	snap: 1e1,
 	borderColor: [[127,127,127,127]]
 })
 
 
 scatter()
 
-setTimeout(() => {
-	scatter({snap: 1})
-})
+// setTimeout(() => {
+// 	scatter({snap: 1})
+// })
 
 
 

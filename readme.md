@@ -22,11 +22,13 @@ drawPoints()
 
 ### `drawScatter = require('regl-scatter2d')(options)`
 
+Create a function drawing points.
+
 Option | Default | Description
 ---|---|---
 `regl` | `null` | Regl instance to reuse, otherwise new regl is created.
 `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created.
-`...rest` | | `drawScatter(rest)` is invoked with the rest of options
+`...rest` | | `drawScatter(rest)` is invoked with the rest of options.
 
 ### `drawScatter(points|options?)`
 
