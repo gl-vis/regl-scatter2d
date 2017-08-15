@@ -20,19 +20,19 @@ function Scatter (options) {
   if (!options) options = {}
 
   // persistent variables
-  let regl, gl, canvas, plot,
+  let regl,
       range, elements = [],
       size = 12, maxSize = 12, minSize = 12,
       borderSize = 1,
       positions, nPositions, count, selection, bounds,
-      scale, translate,
+      scale, translate, pixelSize,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       markerIds = [[]], markerKey = [null], markers,
-      snap = 1e4, pixelSize
+      snap = 1e4
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -49,12 +49,10 @@ function Scatter (options) {
       'OES_element_index_uint'
     ]
 
+    //FIXME: fallback to Int16Array if extension is not supported
+
     regl = createRegl(opts)
   }
-
-  // compatibility
-  gl = regl._gl
-  canvas = gl.canvas
 
   //texture with color palette
   paletteTexture = regl.texture({
@@ -149,17 +147,12 @@ function Scatter (options) {
       enable: false
     },
 
-    //point ids to render
     elements: regl.prop('elements'),
-
     count: regl.prop('count'),
     offset: regl.prop('offset'),
 
     primitive: 'points'
   }
-
-  //intercepting context
-  let initShader = regl({})
 
   //draw sdf-marker
   let markerOptions = extend({}, shaderOptions)
@@ -168,7 +161,6 @@ function Scatter (options) {
   markerOptions.vert = glslify('./marker.vert')
 
   drawMarker = regl(markerOptions)
-
 
   //draw circle
   let circleOptions = extend({}, shaderOptions)
@@ -188,60 +180,53 @@ function Scatter (options) {
     if (!count) return
 
     // console.time('draw')
-    initShader((params) => {
-      let vh = params.viewportHeight, vw = params.viewportWidth
-      let pixelSize = (range[2] - range[0]) / vw
+    //draw circles
+    drawCircle(getMarkerDrawOptions(markerIds[0]))
 
-      //draw circles
-      drawCircle(getMarkerDrawOptions(markerIds[0]))
+    //draw all other available markers
+    let batch = []
+    for (let i = 1; i < markerIds.length; i++) {
+      let ids = markerIds[i]
 
-      //draw all other available markers
-      let batch = []
-      for (let i = 1; i < markerIds.length; i++) {
-        let ids = markerIds[i]
+      //FIXME: report empty array elements bug to regl
+      if (!ids.length) continue
 
-        //FIXME: report empty array elements bug to regl
-        if (!ids.length) continue
+      batch = batch.concat(getMarkerDrawOptions(ids))
+    }
+    drawMarker(batch)
+    // console.timeEnd('draw')
+  }
 
-        batch = batch.concat(getMarkerDrawOptions(ids))
-      }
-      drawMarker(batch)
+  //get options for the marker ids
+  function getMarkerDrawOptions(ids) {
+    //unsnapped options
+    if (!ids.snap) {
+      return {elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}
+    }
 
+    //scales batch
+    let batch = []
+    let {scale, x, w, texture} = ids
+    let els = ids.elements
 
-      //get options for the marker ids
-      function getMarkerDrawOptions(ids) {
-        //unsnapped options
-        if (!ids.snap) {
-          return {elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}
-        }
+    for (let scaleNum = scale.length; scaleNum--;) {
+      let lod = scale[scaleNum]
 
-        //scales batch
-        let batch = []
-        let {scale, x, w, texture} = ids
-        let els = ids.elements
+      //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
+      if (lod.pixelSize && lod.pixelSize < pixelSize && scaleNum > 1) continue
 
-        for (let scaleNum = scale.length; scaleNum--;) {
-          let lod = scale[scaleNum]
+      let intervalStart = lod.offset
+      let intervalEnd = lod.count + intervalStart
 
-          //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-          if (lod.pixelSize && lod.pixelSize < pixelSize && scaleNum > 1) continue
+      let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
+      let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
 
-          let intervalStart = lod.offset
-          let intervalEnd = lod.count + intervalStart
+      if (endOffset <= startOffset) continue
 
-          let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
-          let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
+      batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
+    }
 
-          if (endOffset <= startOffset) continue
-
-          batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
-        }
-
-        return batch
-      }
-
-      // console.timeEnd('draw')
-    })
+    return batch
   }
 
   function update (options) {
@@ -474,6 +459,9 @@ function Scatter (options) {
         (bounds[0] - range[0]) / xrange,
         (bounds[1] - range[1]) / yrange
       ]
+
+      //FIXME: possibly we have to use viewportWidth here from context
+      pixelSize = (range[2] - range[0]) / regl._gl.drawingBufferWidth
     }
     // console.timeEnd(7)
     // console.timeEnd('update')
