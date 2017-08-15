@@ -9,30 +9,30 @@ Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), covering other
 [![npm install regl-scatter2d](https://nodei.co/npm/regl-scatter2d.png?mini=true)](https://npmjs.org/package/regl-scatter2d/)
 
 ```js
-let scatter = require('regl-scatter2d')({
+let drawPoints = require('regl-scatter2d')({
+	regl: require('regl')(),
 	positions: data,
 	color: 'rgba(0, 100, 200, .75)'
 })
 
-scatter()
+drawPoints()
 ```
 
 ## API
 
-#### `drawScatter = require('regl-scatter2d')(options)`
+### `drawScatter = require('regl-scatter2d')(options)`
 
-Property | Default | Description
+Option | Default | Description
 ---|---|---
 `regl` | `null` | Regl instance to reuse, otherwise new regl is created.
 `gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created.
+`...rest` | | `drawScatter(rest)` is invoked with the rest of options
 
-The rest of options is forwarded into `drawScatter`.
+### `drawScatter(points|options?)`
 
-#### `drawScatter(points|options?)`
+Redraw points and optionally update options.
 
-Redraw points. Takes over new options.
-
-Property | Default | Description
+Option | Default | Description
 ---|---|---
 `positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points as `[x,y, x,y, ...]` or array of points `[[x,y], [x,y], ...]`.
 `size` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`.
@@ -42,9 +42,10 @@ Property | Default | Description
 `palette` | `null` | List of colors, eg. `['red', 'green', 'blue', 'black']`.
 `marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) to generate sdf from any image. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
-`ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
 `precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance.
 `snap` | `1e5` | Number of points to enable snapping, can be bool.
+`ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
+`draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn.
 
 ## License
 

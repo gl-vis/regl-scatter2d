@@ -24,7 +24,7 @@ function Scatter (options) {
       range, elements = [],
       size = 12, maxSize = 12, minSize = 12,
       borderSize = 1,
-      positions, count, selection, bounds,
+      positions, nPositions, count, selection, bounds,
       scale, translate,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
@@ -180,7 +180,10 @@ function Scatter (options) {
 
   //main draw method
   function draw (opts) {
-    if (opts) update(opts)
+    if (opts) {
+      update(opts)
+      if (opts.draw === false) return
+    }
 
     if (!count) return
 
@@ -278,13 +281,15 @@ function Scatter (options) {
         unrolled.set(options.positions)
         // unrolled = sliced(options.positions)
       }
+
+      positions = options.positions
       // console.timeEnd(1)
 
       count = Math.floor(unrolled.length / 2)
 
       bounds = getBounds(unrolled, 2)
-      positions = normalize(unrolled, 2, bounds)
-      positionBuffer(positions)
+      nPositions = normalize(unrolled, 2, bounds)
+      positionBuffer(nPositions)
     }
 
     //sizes
@@ -406,8 +411,8 @@ function Scatter (options) {
 
     //update snaping if positions provided
     // console.time(6)
-    if (options.positions) {
-      let points = options.positions
+    if (options.positions || options.snap != null) {
+      let points = options.positions || positions
 
       //recalculate per-marker type snapping
       //first, it is faster to snap 100 points 100 times than 10000 points once
