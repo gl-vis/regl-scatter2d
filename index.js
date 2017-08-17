@@ -18,6 +18,8 @@ module.exports = Scatter
 
 function Scatter (options) {
   if (!options) options = {}
+  else if (typeof options === 'function') options = {regl: options}
+  else if (options.length) options = {positions: options}
 
   // persistent variables
   let regl,
@@ -32,7 +34,8 @@ function Scatter (options) {
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       markerIds = [[]], markerKey = [null], markers,
-      snap = 1e4
+      snap = 1e4,
+      viewport, scissor
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -41,9 +44,15 @@ function Scatter (options) {
   else {
     let opts = {}
     opts.pixelRatio = options.pixelRatio || global.devicePixelRatio
-    if (options.canvas) opts.canvas = options.canvas
-    if (options.container) opts.container = options.container
-    if (options.gl) opts.gl = options.gl
+
+    if (options instanceof HTMLCanvasElement) opts.canvas = options
+    else if (options instanceof HTMLElement) opts.container = options
+    else if (options.drawingBufferWidth || options.drawingBufferHeight) opts.gl = options
+    else {
+      if (options.canvas) opts.canvas = options.canvas
+      if (options.container) opts.container = options.container
+      if (options.gl) opts.gl = options.gl
+    }
 
     opts.optionalExtensions = [
       'OES_element_index_uint'
@@ -141,6 +150,18 @@ function Scatter (options) {
         dstRGB:   'one minus src alpha',
         dstAlpha: 'one minus src alpha'
       }
+    },
+
+    scissor: ctx => {
+      return {enable: !!scissor, box: scissor}
+    },
+
+    viewport: ctx => {
+      return !viewport ? {
+        x: 0, y: 0,
+        width: ctx.drawingBufferWidth,
+        height: ctx.drawingBufferHeight
+      } : viewport
     },
 
     depth: {
@@ -446,6 +467,7 @@ function Scatter (options) {
     //make sure scale/translate are properly set
     // console.time(7)
     if (!options.range && !range) options.range = bounds
+    if (options.bounds) options.range = options.bounds
     if (options.range) {
       range = options.range
       let xrange = range[2] - range[0]
@@ -465,6 +487,29 @@ function Scatter (options) {
     }
     // console.timeEnd(7)
     // console.timeEnd('update')
+
+    //update visible attribs
+    if ('viewport' in options) {
+      viewport = rect(options.viewport)
+    }
+    if ('scissor' in options) {
+      scissor = rect(options.scissor)
+    }
+  }
+
+  //return viewport/scissor rectangle object from arg
+  function rect(arg) {
+      if (Array.isArray(options.viewport)) {
+        return {x: arg[0], y: arg[1], width: arg[2], height: arg[3]}
+      }
+      else if (arg) {
+        return {
+          x: arg.x || arg.left || 0,
+          y: arg.y || arg.top || 0,
+          width: arg.w || arg.width || 0,
+          height: arg.h || arg.height || 0
+        }
+      }
   }
 
   //update borderColor or color
