@@ -205,7 +205,6 @@ function Scatter (options) {
 
     if (!count) return
 
-    // console.time('draw')
     //draw circles
     drawCircle(getMarkerDrawOptions(markerIds[0]))
 
@@ -222,7 +221,6 @@ function Scatter (options) {
       batch = batch.concat(getMarkerDrawOptions(ids))
     }
     drawMarker(batch)
-    // console.timeEnd('draw')
   }
 
   //get options for the marker ids
@@ -251,15 +249,27 @@ function Scatter (options) {
 
       if (endOffset <= startOffset) continue
 
-      batch.push({elements: els, marker: texture, offset: intervalStart, count: endOffset - startOffset})
+      batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
     }
 
     return batch
   }
 
   function update (options) {
-    // console.time('update')
     if (options.length != null) options = {positions: options}
+
+    //copy options to avoid mutation & handle aliases
+    options = {
+      positions: options.positions || options.data || options.points,
+      snap: options.snap,
+      size: options.sizes || options.size,
+      borderSize: options.borderSizes || options.borderSize,
+      color: options.colors || options.color,
+      borderColor: options.borderColors || options.borderColor,
+      palette: options.palette,
+      marker: options.markers || options.marker,
+      range: options.bounds || options.range
+    }
 
     if (options.snap != null) {
       if (options.snap === true) snap = 1e4
@@ -268,9 +278,6 @@ function Scatter (options) {
     }
 
     //update buffer
-    // console.time(1)
-    if (options.data) options.positions = options.data
-    if (options.points) options.positions = options.points
     if (options.positions && options.positions.length) {
       //unroll positions
       let unrolled
@@ -287,7 +294,6 @@ function Scatter (options) {
       }
 
       positions = options.positions
-      // console.timeEnd(1)
 
       count = Math.floor(unrolled.length / 2)
 
@@ -297,8 +303,6 @@ function Scatter (options) {
     }
 
     //sizes
-    // console.time(3)
-    if (options.sizes) options.size = options.sizes
     if (options.size != null) {
       size = options.size
       if (Array.isArray(size)) {
@@ -318,7 +322,6 @@ function Scatter (options) {
     }
 
     //take over borders
-    if (options.borderSizes) options.borderSize = options.borderSizes
     if (options.borderSize != null) {
       borderSize = options.borderSize
 
@@ -326,13 +329,8 @@ function Scatter (options) {
         borderSizeBuffer(borderSize)
       }
     }
-    // console.timeEnd(3)
 
     //process colors
-    // console.time(4)
-    if (options.colors) options.color = options.colors
-    if (options.borderColors) options.borderColor = options.borderColors
-
     if (options.color || options.borderColor || options.palette) {
       //reset palette if passed
       if (options.palette) {
@@ -374,11 +372,8 @@ function Scatter (options) {
         })
       }
     }
-    // console.timeEnd(4)
 
     //aggregate markers sdf
-    // console.time(5)
-    if (options.markers) options.marker = options.markers
     if (options.marker !== undefined || markers === undefined) {
       if (options.marker !== undefined) {
         //reset marker elements
@@ -406,16 +401,15 @@ function Scatter (options) {
       else if (markers === undefined) {
         markers = null
         elements = Array(count)
+
         for (let i = 0; i < count; i++) {
           elements[i] = i
         }
         updateMarker(markers, elements, maxSize)
       }
     }
-    // console.timeEnd(5)
 
     //update snaping if positions provided
-    // console.time(6)
     if (options.positions || options.snap != null) {
       let points = options.positions || positions
 
@@ -469,14 +463,12 @@ function Scatter (options) {
         }
       }
     }
-    // console.timeEnd(6)
 
     //make sure scale/translate are properly set
-    // console.time(7)
     if (!options.range && !range) options.range = bounds
-    if (options.bounds) options.range = options.bounds
+
     if (options.range) {
-      range = options.range
+      range = options.range || options.bounds
       let xrange = range[2] - range[0]
       let yrange = range[3] - range[1]
 
@@ -492,8 +484,6 @@ function Scatter (options) {
       //FIXME: possibly we have to use viewportWidth here from context
       pixelSize = (range[2] - range[0]) / regl._gl.drawingBufferWidth
     }
-    // console.timeEnd(7)
-    // console.timeEnd('update')
 
     //update visible attribs
     if ('viewport' in options) {
@@ -517,6 +507,9 @@ function Scatter (options) {
 
         if (vp.bottom) viewport.height = vp.bottom - viewport.y
         else viewport.height = vp.h || vp.height || 0
+      }
+      else {
+        viewport = vp
       }
     }
   }
