@@ -32,7 +32,7 @@ function Scatter (options) {
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
       colorIdx = 0, colorBuffer,
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
-      markerIds = [[]], markerKey = [null], markers,
+      markerIds = [], markerKey = [], markers,
       snap = 1e4,
       viewport
 
@@ -251,7 +251,7 @@ function Scatter (options) {
 
       if (endOffset <= startOffset) continue
 
-      batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
+      batch.push({elements: els, marker: texture, offset: intervalStart, count: endOffset - startOffset})
     }
 
     return batch
@@ -382,9 +382,11 @@ function Scatter (options) {
     if (options.marker !== undefined || markers === undefined) {
       if (options.marker !== undefined) {
         //reset marker elements
-        markerIds.length = markerKey.length = 1
+        markerIds.length = markerKey.length = 0
+        markerIds.push([])
+        markerKey.push(null)
 
-        //common marker
+        //generic marker
         if (typeof options.marker[0] === 'number') {
           elements = Array(count)
           for (let i = 0; i < count; i++) {
