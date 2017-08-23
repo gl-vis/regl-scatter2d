@@ -50,11 +50,10 @@ Option | Default | Description
 `marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) to generate sdf from any image. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `bounds` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport` | `null` | View bounds limiting area within the canvas
-`scissor` | `null` | Scissor bounds limiting area within the canvas
 `precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance.
 `snap` | `1e5` | Number of points to enable snapping, can be bool.
 `ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
-`draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn.
+`draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors.
 
 ## License
 

@@ -11,7 +11,6 @@ const extend = require('object-assign')
 const glslify = require('glslify')
 const assert = require('assert')
 const search = require('binary-search-bounds')
-const sliced = require('sliced')
 
 module.exports = Scatter
 
@@ -35,7 +34,7 @@ function Scatter (options) {
       borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
       markerIds = [[]], markerKey = [null], markers,
       snap = 1e4,
-      viewport, scissor
+      viewport
 
   // regl instance
   if (options.regl) regl = options.regl
@@ -59,7 +58,6 @@ function Scatter (options) {
     ]
 
     //FIXME: fallback to Int16Array if extension is not supported
-
     regl = createRegl(opts)
   }
 
@@ -117,25 +115,25 @@ function Scatter (options) {
       position: positionBuffer,
       size: () => {
         if (Array.isArray(size)) {
-          return sizeBuffer
+          return {buffer: sizeBuffer, divisor: 1}
         }
         return {constant: size}
       },
       borderSize: () => {
         if (Array.isArray(borderSize)) {
-          return borderSizeBuffer
+          return {buffer: borderSizeBuffer, divisor: 1}
         }
         return {constant: borderSize}
       },
       colorIdx: () => {
         if (Array.isArray(colorIdx)) {
-          return colorBuffer
+          return {buffer: colorBuffer, divisor: 1}
         }
         return {constant: colorIdx}
       },
       borderColorIdx: () => {
         if (Array.isArray(borderColorIdx)) {
-          return borderColorBuffer
+          return {buffer: borderColorBuffer, divisor: 1}
         }
         return {constant: borderColorIdx}
       }
@@ -152,8 +150,15 @@ function Scatter (options) {
       }
     },
 
-    scissor: ctx => {
-      return {enable: !!scissor, box: scissor}
+    scissor: {
+      enable: true,
+      box: ctx => {
+        return viewport ? viewport : {
+          x: 0, y: 0,
+          width: ctx.drawingBufferWidth,
+          height: ctx.drawingBufferHeight
+        };
+      }
     },
 
     viewport: ctx => {
@@ -203,6 +208,8 @@ function Scatter (options) {
     // console.time('draw')
     //draw circles
     drawCircle(getMarkerDrawOptions(markerIds[0]))
+
+    if (!markerIds.length) return
 
     //draw all other available markers
     let batch = []
@@ -277,7 +284,6 @@ function Scatter (options) {
       else {
         unrolled = new Float32Array(options.positions.length)
         unrolled.set(options.positions)
-        // unrolled = sliced(options.positions)
       }
 
       positions = options.positions
@@ -330,8 +336,12 @@ function Scatter (options) {
     if (options.color || options.borderColor || options.palette) {
       //reset palette if passed
       if (options.palette) {
-        palette = [], paletteIds = {}, paletteCount = 0
-        for (let i = 0, l = options.palette.length; i < l; i++) {
+        let maxColors = 8192;
+        palette = new Uint8Array(maxColors * 4), paletteIds = {}, paletteCount = 0
+
+        if (options.palette.length > maxColors) console.warn('regl-scatter2d: too many colors. Palette will be clipped.')
+
+        for (let i = 0, l = Math.min(options.palette.length, maxColors); i < l; i++) {
           let color = rgba(options.palette[i], false)
           color[3] *= 255.
           let id = colorId(color, false)
@@ -357,11 +367,6 @@ function Scatter (options) {
       }
 
       if (palette.length) {
-        if (palette.length >= 8192*4) {
-          console.warn('regl-scatter2d: too many colors. Palette will be clipped.')
-          palette = sliced(palette, 0, 8192*4)
-        }
-
         paletteTexture({
           width: palette.length/4,
           height: 1,
@@ -490,26 +495,28 @@ function Scatter (options) {
 
     //update visible attribs
     if ('viewport' in options) {
-      viewport = rect(options.viewport)
-    }
-    if ('scissor' in options) {
-      scissor = rect(options.scissor)
-    }
-  }
-
-  //return viewport/scissor rectangle object from arg
-  function rect(arg) {
-      if (Array.isArray(options.viewport)) {
-        return {x: arg[0], y: arg[1], width: arg[2], height: arg[3]}
-      }
-      else if (arg) {
-        return {
-          x: arg.x || arg.left || 0,
-          y: arg.y || arg.top || 0,
-          width: arg.w || arg.width || 0,
-          height: arg.h || arg.height || 0
+      let vp = options.viewport
+      if (Array.isArray(vp)) {
+        viewport = {
+          x: vp[0],
+          y: vp[1],
+          width: vp[2] - vp[0],
+          height: vp[3] - vp[1]
         }
       }
+      else if (vp) {
+        viewport = {
+          x: vp.x || vp.left || 0,
+          y: vp.y || vp.top || 0
+        }
+
+        if (vp.right) viewport.width = vp.right - viewport.x
+        else viewport.width = vp.w || vp.width || 0
+
+        if (vp.bottom) viewport.height = vp.bottom - viewport.y
+        else viewport.height = vp.h || vp.height || 0
+      }
+    }
   }
 
   //update borderColor or color
