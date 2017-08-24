@@ -17,7 +17,8 @@
   ],
   "browserify": {
     "transform": [
-      "glslify"
+      "glslify",
+      "bubleify"
     ]
   },
   "author": "Dima Yv <df.creative@gmail.com>",
@@ -30,6 +31,7 @@
     "array-bounds": "^1.0.0",
     "array-normalize": "^1.1.2",
     "binary-search-bounds": "^2.0.3",
+    "bubleify": "^0.7.0",
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
     "color-rgba": "^1.1.0",
