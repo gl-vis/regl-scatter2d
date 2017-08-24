@@ -55,6 +55,10 @@ Option | Default | Description
 `ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
 `draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors.
 
+## Related
+
+* [pts](https://github.com/williamngan/pts)
+
 ## License
 
 (c) 2017 Dima Yv. MIT License

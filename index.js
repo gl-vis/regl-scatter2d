@@ -205,6 +205,7 @@ function Scatter (options) {
 
     if (!count) return
 
+
     //draw circles
     drawCircle(getMarkerDrawOptions(markerIds[0]))
 
@@ -268,7 +269,8 @@ function Scatter (options) {
       borderColor: options.borderColors || options.borderColor,
       palette: options.palette,
       marker: options.markers || options.marker,
-      range: options.bounds || options.range
+      range: options.bounds || options.range,
+      viewport: options.viewport
     }
 
     if (options.snap != null) {
