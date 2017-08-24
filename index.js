@@ -3,13 +3,11 @@
 const createRegl = require('regl')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
-const clamp = require('clamp')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
 const normalize = require('array-normalize')
 const extend = require('object-assign')
 const glslify = require('glslify')
-const assert = require('assert')
 const search = require('binary-search-bounds')
 
 module.exports = Scatter
@@ -25,7 +23,7 @@ function Scatter (options) {
       range, elements = [],
       size = 12, maxSize = 12, minSize = 12,
       borderSize = 1,
-      positions, nPositions, count, selection, bounds,
+      positions, nPositions, count, bounds,
       scale, translate, pixelSize,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
@@ -337,7 +335,10 @@ function Scatter (options) {
       //reset palette if passed
       if (options.palette) {
         let maxColors = 8192;
-        palette = new Uint8Array(maxColors * 4), paletteIds = {}, paletteCount = 0
+
+        palette = new Uint8Array(maxColors * 4)
+        paletteIds = {}
+        paletteCount = 0
 
         if (options.palette.length > maxColors) console.warn('regl-scatter2d: too many colors. Palette will be clipped.')
 
@@ -438,7 +439,7 @@ function Scatter (options) {
             markerPoints[i * 2 + 1] = points[id * 2 + 1]
           }
 
-          let scale = ids.scale = snapPoints(markerPoints, i2id, w, bounds)
+          ids.scale = snapPoints(markerPoints, i2id, w, bounds)
 
           let idx = Array(l)
           for (let i = 0; i < l; i++) {
