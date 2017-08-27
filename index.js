@@ -21,15 +21,15 @@ function Scatter (options) {
   // persistent variables
   let regl,
       range, elements = [],
-      size = 12, maxSize = 12, minSize = 12,
+      size, maxSize = 0, minSize = 0,
       borderSize = 1,
-      positions, nPositions, count, bounds,
+      positions, nPositions, count = 0, bounds,
       scale, translate, pixelSize,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
-      colorIdx = 0, colorBuffer,
-      borderColorBuffer, borderColorIdx = 1, borderSizeBuffer,
+      colorIdx, colorBuffer,
+      borderColorBuffer, borderColorIdx, borderSizeBuffer,
       markerIds = [], markerKey = [], markers,
       snap = 1e4,
       viewport
@@ -96,7 +96,14 @@ function Scatter (options) {
 
   //TODO: detect hi-precision here
 
-  update(options)
+  //update with defaults
+  update(extend({
+    color: 'black',
+    borderColor: 'transparent',
+    borderSize: 1,
+    size: 12,
+    marker: null
+  }, options))
 
 
   //common shader options
@@ -299,6 +306,7 @@ function Scatter (options) {
 
       bounds = getBounds(unrolled, 2)
       nPositions = normalize(unrolled, 2, bounds)
+
       positionBuffer(nPositions)
     }
 
@@ -377,38 +385,27 @@ function Scatter (options) {
     }
 
     //aggregate markers sdf
-    if (options.marker !== undefined || markers === undefined) {
-      if (options.marker !== undefined) {
-        //reset marker elements
-        markerIds.length = markerKey.length = 0
-        markerIds.push([])
-        markerKey.push(null)
+    if (options.marker !== undefined || options.positions) {
+      //reset marker elements
+      markerIds.length = markerKey.length = 0
+      markerIds.push([])
+      markerKey.push(null)
 
-        //generic marker
-        if (typeof options.marker[0] === 'number') {
-          elements = Array(count)
-          for (let i = 0; i < count; i++) {
-            elements[i] = i
-          }
-          updateMarker(options.marker, elements, maxSize)
-        }
-        //per-point markers
-        else {
-          for (let i = 0, l = options.marker.length; i < l; i++) {
-            updateMarker(options.marker[i], i, Array.isArray(size) ? size[i] : size)
-          }
-        }
+      markers = options.marker
 
-        markers = options.marker
-      }
-      else if (markers === undefined) {
-        markers = null
+      //generic sdf marker
+      if (!markers || typeof markers[0] === 'number') {
         elements = Array(count)
-
         for (let i = 0; i < count; i++) {
           elements[i] = i
         }
         updateMarker(markers, elements, maxSize)
+      }
+      //per-point markers
+      else {
+        for (let i = 0, l = markers.length; i < l; i++) {
+          updateMarker(markers[i], i, Array.isArray(size) ? size[i] : size)
+        }
       }
     }
 

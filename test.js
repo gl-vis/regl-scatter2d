@@ -66,7 +66,7 @@ function show (arr) {
 
 
 
-let N = 1e6
+let N = 1e4
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
