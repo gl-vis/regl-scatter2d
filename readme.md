@@ -42,17 +42,17 @@ Redraw points and optionally update options.
 Option | Default | Description
 ---|---|---
 `positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points as `[x,y, x,y, ...]` or array of points `[[x,y], [x,y], ...]`.
-`size` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`.
-`borderSize` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`.
-`color`, `colors` | `'red'` | Color or array with colors. Each color can be a css color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number with index of a color in the palette.
-`borderColor`, `borderColors` | `'black'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number with index of a color in the palette.
+`size`, `sizes` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`.
+`borderSize`, `borderSizes` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`.
+`color`, `colors` | `'black'` | Color or array with colors. Each color can be a css color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number with index of a color in the palette.
+`borderColor`, `borderColors` | `'transparent'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number with index of a color in the palette.
 `palette` | `null` | List of colors, eg. `['red', 'green', 'blue', 'black', ...]`.
-`marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) to generate sdf from any image. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
+`marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate sdf from an image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `bounds` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
-`viewport` | `null` | View bounds limiting area within the canvas
-`precision` | `'low'` | Positions precision, `'high'` or `'low'`. Tradeoff between max number of points and rendering performance.
-`snap` | `1e5` | Number of points to enable snapping, can be bool.
-`ids` | `null` | List of point ids to draw, corresponding to `points`. If undefined, all available points will be drawn.
+`viewport` | `null` | Bounding box limiting visible area within the canvas in pixels, should be an array `[left, top, right, bottom]`.
+`hiprecision` | `false` | Positions precision. Higher precision lowers max number of points and rendering performance, but enables 64-bit floats.
+`snap` | `1e5` | Number of points threshold to enable snapping, can be bool.
+`ids`, `elements` | `null` | Subset of `points` to draw, should be an array of point ids. If `undefined`, all available points are drawn.
 `draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors.
 
 ## Related

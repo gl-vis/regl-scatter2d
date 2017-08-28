@@ -210,6 +210,36 @@ function Scatter (options) {
 
     if (!count) return
 
+    //draw subset of of elements
+    if (opts.elements || opts.ids) {
+      let els = opts.elements || opts.ids
+
+      let pending = {};
+
+      for (let i = 0; i < els.length; i++) {
+       pending[els[i]] = true;
+      }
+
+      let batch = []
+      for (let i = 0; i < markerIds.length; i++) {
+        let subIds = [], ids = markerIds[i]
+
+        for (let i = 0, l = ids.length; i < l; i++) {
+          if (pending[ids[i]]) {
+            subIds.push(ids[i])
+            pending[ids[i]] = null
+          }
+        }
+
+        batch.push({elements: subIds, offset: 0, count: subIds.length, marker: ids.texture})
+      }
+
+      drawCircle(batch.shift())
+      drawMarker(batch)
+
+      return
+    }
+
 
     //draw circles
     drawCircle(getMarkerDrawOptions(markerIds[0]))
