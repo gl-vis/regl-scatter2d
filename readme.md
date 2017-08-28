@@ -25,19 +25,19 @@ drawPoints()
 
 ## API
 
-### `drawScatter = require('regl-scatter2d')(options|points|regl)`
+### `drawScatter = require('regl-scatter2d')(options|regl|points)`
 
 Create function drawing points, based on options or a shortcut.
 
 Option | Default | Description
 ---|---|---
 `regl` | `null` | Regl instance to reuse, otherwise new regl is created.
-`gl`, `canvas`, `container` | `null` | Options for `regl`, if new regl is created.
-`...rest` | | `drawScatter(rest)` is invoked with the rest of options.
+`gl`, `canvas`, `container`, `pixelRatio` | `null` | Options for `regl`, if new regl is created.
+`...rest` | | Initial options for `drawScatter`, see below.
 
 ### `drawScatter(points|options?)`
 
-Redraw points and optionally update options.
+Redraw points and update options.
 
 Option | Default | Description
 ---|---|---
