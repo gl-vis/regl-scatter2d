@@ -46,8 +46,8 @@ Option | Default | Description
 `borderSize`, `borderSizes` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`.
 `color`, `colors` | `'black'` | Color or array with colors. Each color can be a css color string or an array with float `0..1` values. If `palette` is defined, `color` can be a number with index of a color in the palette.
 `borderColor`, `borderColors` | `'transparent'` | Border color or array with border colors. If `palette` is defined, `borderColor` can be a number with index of a color in the palette.
-`palette` | `null` | List of colors, eg. `['red', 'green', 'blue', 'black', ...]`.
-`marker`, `markers` | `null` | Marker sdf image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate sdf from an image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
+`palette` | `null` | Indexed colors in case of `colors` or `borderColors` are indexes. Eg. `['red', 'green', 'blue', 'black', ...]`.
+`marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `bounds` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport` | `null` | Bounding box limiting visible area within the canvas in pixels, should be an array `[left, top, right, bottom]`.
 `hiprecision` | `false` | Positions precision. Higher precision lowers max number of points and rendering performance, but enables 64-bit floats.

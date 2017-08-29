@@ -66,12 +66,12 @@ function show (arr) {
 
 
 
-let N = 1e4
+let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
 
-let markers = [null, dist]//, 'M0 0 L10 20 20 0Z']
+let markers = [null]
 
 let scatter = createScatter({
 	positions: generate(N),
@@ -88,6 +88,7 @@ let scatter = createScatter({
 	range: range,
 	borderSize: 1,
 	snap: 1e1,
+	// snap: false,
 	borderColor: [[127,127,127,127]]
 })
 

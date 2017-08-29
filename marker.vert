@@ -6,7 +6,7 @@ attribute float borderSize;
 attribute float colorIdx;
 attribute float borderColorIdx;
 
-uniform vec2 scale, translate;
+uniform vec4 range;
 uniform float paletteSize, pixelRatio;
 uniform sampler2D palette;
 
@@ -23,7 +23,8 @@ void main() {
   gl_PointSize = 2. * size * pixelRatio;
   fragPointSize = size * pixelRatio;
 
-  gl_Position = vec4((position * scale + translate) * 2. - 1., 0, 1);
+  vec2 position = (position.xy - range.xy) / vec2(range.z - range.x, range.w - range.y);
+  gl_Position = vec4(position * 2. - 1., 0, 1);
 
   fragColor = color;
   fragBorderColor = borderColor;

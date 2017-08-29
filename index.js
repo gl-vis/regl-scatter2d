@@ -4,7 +4,7 @@ const createRegl = require('regl')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
-const snapPoints = require('snap-points-2d')
+const snapPoints = require('../snap-points-2d')
 const normalize = require('array-normalize')
 const extend = require('object-assign')
 const glslify = require('glslify')
@@ -24,7 +24,7 @@ function Scatter (options) {
       size, maxSize = 0, minSize = 0,
       borderSize = 1,
       positions, nPositions, count = 0, bounds,
-      scale, translate, pixelSize,
+      pixelSize,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
       paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
@@ -112,7 +112,7 @@ function Scatter (options) {
       pixelRatio: regl.context('pixelRatio'),
       palette: paletteTexture,
       paletteSize: () => palette.length/4,
-      scale: () => scale,
+      range: () => range,
       translate: () => translate
     },
 
@@ -211,7 +211,7 @@ function Scatter (options) {
     if (!count) return
 
     //draw subset of of elements
-    if (opts.elements || opts.ids) {
+    if (opts && (opts.elements || opts.ids)) {
       let els = opts.elements || opts.ids
 
       let pending = {};
@@ -319,10 +319,10 @@ function Scatter (options) {
       //unroll positions
       let unrolled
       if (options.positions[0].length) {
-        unrolled = Array(options.positions.length)
-        for (let i = 0, l = options.positions.length; i<l; i++) {
+        unrolled = Array(options.positions.length * 2)
+        for (let i = 0, l = options.positions.length; i < l; i++) {
           unrolled[i*2] = options.positions[i][0]
-          unrolled[i*2+1] = options.positions[i][1]
+          unrolled[i*2 + 1] = options.positions[i][1]
         }
       }
       else {
@@ -330,14 +330,13 @@ function Scatter (options) {
         unrolled.set(options.positions)
       }
 
-      positions = options.positions
+      positions = unrolled
 
       count = Math.floor(unrolled.length / 2)
 
       bounds = getBounds(unrolled, 2)
-      nPositions = normalize(unrolled, 2, bounds)
 
-      positionBuffer(nPositions)
+      positionBuffer(unrolled)
     }
 
     //sizes
@@ -441,7 +440,7 @@ function Scatter (options) {
 
     //update snaping if positions provided
     if (options.positions || options.snap != null) {
-      let points = options.positions || positions
+      let points = positions
 
       //recalculate per-marker type snapping
       //first, it is faster to snap 100 points 100 times than 10000 points once
@@ -498,18 +497,7 @@ function Scatter (options) {
     if (!options.range && !range) options.range = bounds
 
     if (options.range) {
-      range = options.range || options.bounds
-      let xrange = range[2] - range[0]
-      let yrange = range[3] - range[1]
-
-      scale = [
-        (bounds[2] - bounds[0]) / xrange,
-        (bounds[3] - bounds[1]) / yrange
-      ]
-      translate = [
-        (bounds[0] - range[0]) / xrange,
-        (bounds[1] - range[1]) / yrange
-      ]
+      range = options.range
 
       //FIXME: possibly we have to use viewportWidth here from context
       pixelSize = (range[2] - range[0]) / regl._gl.drawingBufferWidth
@@ -550,7 +538,7 @@ function Scatter (options) {
       colors = [colors]
     }
 
-    if (colors.length > 1 && colors.length != count) throw Error('Not enough colors')
+    if (colors.length > 1 && colors.length < count) throw Error('Not enough colors')
 
     let idx = []
     for (let i = 0; i < colors.length; i++) {
