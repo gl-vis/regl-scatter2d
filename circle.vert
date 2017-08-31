@@ -1,12 +1,12 @@
 precision highp float;
 
-attribute vec2 position;
+attribute vec2 position, positionFract;
 attribute float size;
 attribute float borderSize;
 attribute float colorIdx;
 attribute float borderColorIdx;
 
-uniform vec4 range;
+uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float paletteSize, pixelRatio;
 uniform sampler2D palette;
 
@@ -19,8 +19,12 @@ void main() {
 
   gl_PointSize = (size + borderSize) * pixelRatio;
 
-  vec2 position = (position.xy - range.xy) / vec2(range.z - range.x, range.w - range.y);
-  gl_Position = vec4(position * 2. - 1., 0, 1);
+  vec2 pos = (position + translate) * scale
+			+ (positionFract + translateFract) * scale
+			+ (position + translate) * scaleFract
+			+ (positionFract + translateFract) * scaleFract;
+
+  gl_Position = vec4(pos * 2. - 1., 0, 1);
 
   fragBorderRadius = borderSize == 0. ? 2. : 1. - 2. * borderSize / (size + borderSize);
   fragColor = color;

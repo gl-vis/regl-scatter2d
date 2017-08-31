@@ -20,7 +20,7 @@ function Scatter (options) {
 
   // persistent variables
   let regl,
-      range, elements = [],
+      range, scale, translate, scaleFract, translateFract, elements = [],
       size, maxSize = 0, minSize = 0,
       borderSize = 1,
       positions, nPositions, count = 0, bounds,
@@ -31,7 +31,7 @@ function Scatter (options) {
       colorIdx, colorBuffer,
       borderColorBuffer, borderColorIdx, borderSizeBuffer,
       markerIds = [], markerKey = [], markers,
-      snap = 1e4,
+      snap = 1e4, hiprecision = true,
       viewport
 
   // regl instance
@@ -111,13 +111,30 @@ function Scatter (options) {
     uniforms: {
       pixelRatio: regl.context('pixelRatio'),
       palette: paletteTexture,
-      paletteSize: () => palette.length/4,
-      range: () => range,
-      translate: () => translate
+      paletteSize: () => palette.length * .25,
+      scale: () => scale,
+      scaleFract: () => scaleFract,
+      translate: () => translate,
+      translateFract: () => translateFract
     },
 
     attributes: {
-      position: positionBuffer,
+      position: () => {
+        return hiprecision ? {
+          buffer: positionBuffer,
+          offset: 0,
+          stride: 16
+        } : positionBuffer
+      },
+      positionFract: () => {
+        return hiprecision ? {
+          buffer: positionBuffer,
+          offset: 8,
+          stride: 16
+        } : {
+          constant: [0, 0]
+        }
+      },
       size: () => {
         if (Array.isArray(size)) {
           return {buffer: sizeBuffer, divisor: 1}
@@ -268,17 +285,18 @@ function Scatter (options) {
 
     //scales batch
     let batch = []
-    let {scale, x, w, texture} = ids
+    let {lod, x, w, texture} = ids
+
     let els = ids.elements
 
-    for (let scaleNum = scale.length; scaleNum--;) {
-      let lod = scale[scaleNum]
+    for (let scaleNum = lod.length; scaleNum--;) {
+      let level = lod[scaleNum]
 
       //FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-      if (lod.pixelSize && lod.pixelSize < pixelSize && scaleNum > 1) continue
+      if (level.pixelSize && level.pixelSize < pixelSize && scaleNum > 1) continue
 
-      let intervalStart = lod.offset
-      let intervalEnd = lod.count + intervalStart
+      let intervalStart = level.offset
+      let intervalEnd = level.count + intervalStart
 
       let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
       let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
@@ -305,8 +323,11 @@ function Scatter (options) {
       palette: options.palette,
       marker: options.markers || options.marker,
       range: options.bounds || options.range,
-      viewport: options.viewport
+      viewport: options.viewport,
+      hiprecision: options.hiprecision
     }
+
+    if (options.hiprecision != null) hiprecision = options.hiprecision
 
     if (options.snap != null) {
       if (options.snap === true) snap = 1e4
@@ -326,17 +347,39 @@ function Scatter (options) {
         }
       }
       else {
-        unrolled = new Float32Array(options.positions.length)
+        unrolled = hiprecision ? new Float64Array(options.positions.length) : new Float32Array(options.positions.length)
         unrolled.set(options.positions)
       }
 
       positions = unrolled
 
-      count = Math.floor(unrolled.length / 2)
+      count = unrolled.length >> 1
 
       bounds = getBounds(unrolled, 2)
 
-      positionBuffer(unrolled)
+      if (!hiprecision) {
+        positionBuffer(unrolled)
+      }
+
+      //hi-precision buffer has normalized coords and [hi,hi, lo,lo, hi,hi, lo,lo...] layout
+      else {
+        let precisePositions = new Float32Array(count * 4)
+
+        //float numbers are more precise around 0
+        let boundX = bounds[2] - bounds[0], boundY = bounds[3] - bounds[1]
+
+        for (let i = 0, l = count; i < l; i++) {
+          let nx = (unrolled[i * 2] - bounds[0]) / boundX
+          let ny = (unrolled[i * 2 + 1] - bounds[1]) / boundY
+
+          precisePositions[i * 4] = nx
+          precisePositions[i * 4 + 1] = ny
+          precisePositions[i * 4 + 2] = nx - precisePositions[i * 4]
+          precisePositions[i * 4 + 3] = ny - precisePositions[i * 4 + 1]
+        }
+
+        positionBuffer(precisePositions)
+      }
     }
 
     //sizes
@@ -465,7 +508,7 @@ function Scatter (options) {
             markerPoints[i * 2 + 1] = points[id * 2 + 1]
           }
 
-          ids.scale = snapPoints(markerPoints, i2id, w, bounds)
+          ids.lod = snapPoints(markerPoints, i2id, w, bounds)
 
           let idx = Array(l)
           for (let i = 0; i < l; i++) {
@@ -498,6 +541,32 @@ function Scatter (options) {
 
     if (options.range) {
       range = options.range
+
+      if (hiprecision) {
+        let boundX = bounds[2] - bounds[0],
+            boundY = bounds[3] - bounds[1]
+
+        let nrange = [
+          (range[0] - bounds[0]) / boundX,
+          (range[1] - bounds[1]) / boundY,
+          (range[2] - bounds[0]) / boundX,
+          (range[3] - bounds[1]) / boundY
+        ]
+
+        scale = [1 / (nrange[2] - nrange[0]), 1 / (nrange[3] - nrange[1])]
+        translate = [-nrange[0], -nrange[1]]
+
+        scaleFract = fract32(scale)
+        translateFract = fract32(translate)
+      }
+
+      else {
+        scale = [1 / (range[2] - range[0]), 1 / (range[3] - range[1])]
+        translate = [-range[0], -range[1]]
+
+        scaleFract = [0, 0]
+        translateFract = [0, 0]
+      }
 
       //FIXME: possibly we have to use viewportWidth here from context
       pixelSize = (range[2] - range[0]) / regl._gl.drawingBufferWidth
@@ -627,4 +696,14 @@ function Scatter (options) {
   }
 
   return draw
+}
+
+//return fractional part of float32 array
+function fract32 (arr) {
+  let f32arr = new Float32Array(arr.length)
+  f32arr.set(arr)
+  for (let i = 0, l = f32arr.length; i < l; i++) {
+    f32arr[i] = arr[i] - f32arr[i]
+  }
+  return f32arr
 }

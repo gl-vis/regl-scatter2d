@@ -87,9 +87,10 @@ let scatter = createScatter({
 
 	range: range,
 	borderSize: 1,
+	borderColor: [[127,127,127,127]],
 	snap: 1e1,
 	// snap: false,
-	borderColor: [[127,127,127,127]]
+	hiprecision: true,
 })
 
 
@@ -139,7 +140,7 @@ panZoom(cnv, e => {
 
 
 function generate(N) {
-	var positions = new Float32Array(2 * N)
+	var positions = new Float64Array(2 * N)
 
 	for(var i=0; i<2*N; ++i) {
 	  positions[i] = random()
