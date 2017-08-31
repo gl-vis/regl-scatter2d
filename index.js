@@ -5,7 +5,6 @@ const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
 const snapPoints = require('../snap-points-2d')
-const normalize = require('array-normalize')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const search = require('binary-search-bounds')
@@ -23,7 +22,7 @@ function Scatter (options) {
       range, scale, translate, scaleFract, translateFract, elements = [],
       size, maxSize = 0, minSize = 0,
       borderSize = 1,
-      positions, nPositions, count = 0, bounds,
+      positions, count = 0, bounds,
       pixelSize,
       drawMarker, drawCircle,
       sizeBuffer, positionBuffer,
