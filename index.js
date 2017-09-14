@@ -136,25 +136,25 @@ function Scatter (options) {
       },
       size: () => {
         if (Array.isArray(size)) {
-          return {buffer: sizeBuffer, divisor: 1}
+          return {buffer: sizeBuffer, divisor: 0}
         }
         return {constant: size}
       },
       borderSize: () => {
         if (Array.isArray(borderSize)) {
-          return {buffer: borderSizeBuffer, divisor: 1}
+          return {buffer: borderSizeBuffer, divisor: 0}
         }
         return {constant: borderSize}
       },
       colorIdx: () => {
         if (Array.isArray(colorIdx)) {
-          return {buffer: colorBuffer, divisor: 1}
+          return {buffer: colorBuffer, divisor: 0}
         }
         return {constant: colorIdx}
       },
       borderColorIdx: () => {
         if (Array.isArray(borderColorIdx)) {
-          return {buffer: borderColorBuffer, divisor: 1}
+          return {buffer: borderColorBuffer, divisor: 0}
         }
         return {constant: borderColorIdx}
       }
@@ -326,6 +326,7 @@ function Scatter (options) {
       hiprecision: options.hiprecision
     }
 
+    //FIXME: here we may want to normalize points if no new points provided
     if (options.hiprecision != null) hiprecision = options.hiprecision
 
     if (options.snap != null) {
@@ -411,6 +412,7 @@ function Scatter (options) {
 
     //process colors
     if (options.color || options.borderColor || options.palette) {
+
       //reset palette if passed
       if (options.palette) {
         let maxColors = 8192;
