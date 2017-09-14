@@ -71,7 +71,7 @@ let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
 
-let markers = [null]
+let markers = [null, dist]
 
 let scatter = createScatter({
 	positions: generate(N),

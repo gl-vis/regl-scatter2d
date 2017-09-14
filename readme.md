@@ -50,17 +50,19 @@ Option | Default | Description
 `marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `bounds` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport` | `null` | Bounding box limiting visible area within the canvas in pixels, should be an array `[left, top, right, bottom]`.
-`hiprecision` | `false` | Higher points precision reduces max number of points and rendering performance, but enables 64-bit floats.
+`precise` | `false` | Reduces max number of points and performance a bit, but enables 64-bit float precision.
 `snap` | `1e5` | Number of points threshold to enable snapping, can be bool.
 `ids`, `elements` | `null` | Subset of `points` to draw, should be an array of point ids. If `undefined`, all available points are drawn.
 `draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors.
 
 ## Related
 
+* [regl-line2d](https://github.com/dfcreative/regl-line2d)
+* [regl-error2d](https://github.com/dfcreative/regl-error2d)
 * [pts](https://github.com/williamngan/pts)
 
 ## License
 
 (c) 2017 Dima Yv. MIT License
 
-Development supported by plot.ly.
+Development supported by [plot.ly](https://github.com/plotly/).

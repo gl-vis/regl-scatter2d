@@ -323,7 +323,7 @@ function Scatter (options) {
       marker: options.markers || options.marker,
       range: options.bounds || options.range,
       viewport: options.viewport,
-      hiprecision: options.hiprecision
+      hiprecision: options.hiprecision != null ? options.hiprecision : options.precise
     }
 
     //FIXME: here we may want to normalize points if no new points provided
