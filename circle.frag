@@ -12,6 +12,7 @@ void main() {
 
 	if(radius > 1.0 + delta) {
 		discard;
+		return;
 	}
 
 	alpha -= smoothstep(1.0 - delta, 1.0 + delta, radius);
