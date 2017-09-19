@@ -20,40 +20,44 @@ function Scatter (options) {
 
 	// persistent variables
 	let regl, gl,
-			range, scale, translate, scaleFract, translateFract, elements = [],
-			size, maxSize = 0, minSize = 0,
-			borderSize = 1,
-			positions, count = 0, bounds,
-			pixelSize,
-			drawMarker, drawCircle,
-			sizeBuffer, positionBuffer,
-			paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
-			colorIdx, colorBuffer,
-			borderColorBuffer, borderColorIdx, borderSizeBuffer,
-			markerIds = [], markerKey = [], markers,
-			snap = 1e4, precise = true,
-			viewport
+		range, scale, translate, scaleFract, translateFract, elements = [],
+		size, maxSize = 0, minSize = 0,
+		borderSize = 1,
+		positions, count = 0, bounds,
+		pixelSize,
+		drawMarker, drawCircle,
+		sizeBuffer, positionBuffer,
+		paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
+		colorIdx, colorBuffer,
+		borderColorBuffer, borderColorIdx, borderSizeBuffer,
+		markerIds = [], markerKey = [], markers,
+		snap = 1e4, precise = true,
+		viewport
 
 	// regl instance
 	if (options.regl) regl = options.regl
 
 	// container/gl/canvas case
 	else {
-		let opts = {}
-		opts.pixelRatio = options.pixelRatio || global.devicePixelRatio
+		let opts
 
-		if (options instanceof HTMLCanvasElement) opts.canvas = options
-		else if (options instanceof HTMLElement) opts.container = options
-		else if (options.drawingBufferWidth || options.drawingBufferHeight) opts.gl = options
+		if (options instanceof HTMLCanvasElement) opts = {canvas: options}
+		else if (options instanceof HTMLElement) opts = {container: options}
+		else if (options.drawingBufferWidth || options.drawingBufferHeight) opts = {gl: options}
+
 		else {
-			if (options.canvas) opts.canvas = options.canvas
-			if (options.container) opts.container = options.container
-			if (options.gl) opts.gl = options.gl
+			opts = pick(options, {
+				pixelRatio: true,
+				canvas: true,
+				container: true,
+				gl: true,
+				extensions: true
+			})
 		}
 
-		opts.optionalExtensions = [
-			'OES_element_index_uint'
-		]
+		if (!opts.optionalExtensions) opts.optionalExtensions = []
+
+		opts.optionalExtensions.push('OES_element_index_uint')
 
 		//FIXME: fallback to Int16Array if extension is not supported
 		regl = createRegl(opts)
@@ -316,7 +320,7 @@ function Scatter (options) {
 			borderColor: 'borderColors borderColor stroke stroke-color',
 			palette: 'palette',
 			marker: 'markers marker',
-			range: 'bounds range',
+			range: 'bounds range dataBox',
 			viewport: 'viewBox viewPort viewport',
 			precise: 'precise hiprecision'
 		})
@@ -537,12 +541,15 @@ function Scatter (options) {
 			options.range = bounds
 		}
 
-		if (options.range) {
-			range = options.range
+		if (options.range || options.positions) {
+			if (options.range) {
+				range = options.range
+			}
 
-			if (precise) {
+			if (precise && positions) {
 				let boundX = (bounds[2] - bounds[0]) || 1.,
 					boundY = (bounds[3] - bounds[1]) || 1.
+
 				let nrange = [
 					(range[0] - bounds[0]) / boundX,
 					(range[1] - bounds[1]) / boundY,
