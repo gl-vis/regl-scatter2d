@@ -9,6 +9,7 @@ const extend = require('object-assign')
 const glslify = require('glslify')
 const search = require('binary-search-bounds')
 const pick = require('pick-by-alias')
+const updateDiff = require('update-diff')
 
 module.exports = Scatter
 
@@ -31,11 +32,21 @@ function Scatter (options) {
 		colorIdx, colorBuffer,
 		borderColorBuffer, borderColorIdx, borderSizeBuffer,
 
+		// defaultOptions = {
+		// },
+
+		// groups = [],
+
 		//stores ids and their elements corresponding to markers
 		markerIds = [],
 
 		//keeps reference to sdf array for the marker
+		//key is sdf array, can be generalized later to superformula, bitmap etc
 		markerKey = [],
+
+		//textures for marker keys
+		markerTexture = [null],
+		markerTextureKey = [null],
 
 		//markers corresponding to points
 		markers,
@@ -132,7 +143,8 @@ function Scatter (options) {
 			scale: () => scale,
 			scaleFract: () => scaleFract,
 			translate: () => translate,
-			translateFract: () => translateFract
+			translateFract: () => translateFract,
+			marker: (ctx, prop) => markerTexture[prop.marker]
 		},
 
 		attributes: {
@@ -209,7 +221,6 @@ function Scatter (options) {
 
 	//draw sdf-marker
 	let markerOptions = extend({}, shaderOptions)
-	markerOptions.uniforms.marker = regl.prop('marker')
 	markerOptions.frag = glslify('./marker.frag')
 	markerOptions.vert = glslify('./marker.vert')
 
@@ -274,10 +285,12 @@ function Scatter (options) {
 					}
 				}
 
-				batch.push({elements: subIds, offset: 0, count: subIds.length, marker: ids.texture})
+				batch.push({elements: subIds, offset: 0, count: subIds.length, marker: ids.textureId})
 			}
 
+		    regl._refresh()
 			drawCircle(batch.shift())
+		    regl._refresh()
 			drawMarker(batch)
 
 			return
@@ -286,8 +299,7 @@ function Scatter (options) {
 
 		//draw circles
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
-		// regl._refresh();
-
+		regl._refresh()
 		drawCircle(getMarkerDrawOptions(markerIds[0]))
 		if (!markerIds.length) return
 
@@ -303,7 +315,7 @@ function Scatter (options) {
 		}
 
 		if (batch.length) {
-		    regl._refresh();
+		    regl._refresh()
 			drawMarker(batch)
 		}
 	}
@@ -312,12 +324,12 @@ function Scatter (options) {
 	function getMarkerDrawOptions(ids) {
 		//unsnapped options
 		if (!ids.snap) {
-			return {elements: ids.elements, offset: 0, count: ids.length, marker: ids.texture}
+			return {elements: ids.elements, offset: 0, count: ids.length, marker: ids.textureId}
 		}
 
 		//scales batch
 		let batch = []
-		let {lod, x, w, texture} = ids
+		let {lod, x, w, textureId} = ids
 
 		let els = ids.elements
 
@@ -335,7 +347,7 @@ function Scatter (options) {
 
 			if (endOffset <= startOffset) continue
 
-			batch.push({elements: els, marker: texture, offset: startOffset, count: endOffset - startOffset})
+			batch.push({elements: els, marker: textureId, offset: startOffset, count: endOffset - startOffset})
 		}
 
 		return batch
@@ -705,8 +717,10 @@ function Scatter (options) {
 			markerIds.push(ids)
 		}
 
-		//create marker texture
-		if (markerSdfArr != null && !ids.texture) {
+		//create/cache marker texture
+		let txtPos = markerSdfArr == null ? 0 : markerTextureKey.indexOf(markerSdfArr)
+
+		if (txtPos < 0) {
 			let distArr
 			if (markerSdfArr instanceof Uint8Array || markerSdfArr instanceof Uint8ClampedArray) {
 				distArr = markerSdfArr
@@ -722,14 +736,19 @@ function Scatter (options) {
 
 			if (radius < maxSize) console.warn('SDF size is less than point size, ' + maxSize)
 
-			ids.texture = regl.texture({
+			txtPos = markerTexture.length
+
+			markerTextureKey.push(markerSdfArr)
+			markerTexture.push(regl.texture({
 				channels: 1,
 				data: distArr,
 				radius: radius,
 				mag: 'linear',
 				min: 'linear'
-			})
+			}))
 		}
+
+		ids.textureId = txtPos
 
 		return ids
 	}
