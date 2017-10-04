@@ -30,8 +30,22 @@ function Scatter (options) {
 		paletteTexture, palette = [], paletteIds = {}, paletteCount = 0,
 		colorIdx, colorBuffer,
 		borderColorBuffer, borderColorIdx, borderSizeBuffer,
-		markerIds = [], markerKey = [], markers,
-		snap = 1e4, precise = true,
+
+		//stores ids and their elements corresponding to markers
+		markerIds = [],
+
+		//keeps reference to sdf array for the marker
+		markerKey = [],
+
+		//markers corresponding to points
+		markers,
+
+		//snapping
+		snap = 1e4,
+
+		//float64 precision of rendering
+		precise = true,
+
 		viewport
 
 	// regl instance
@@ -46,13 +60,7 @@ function Scatter (options) {
 		else if (options.drawingBufferWidth || options.drawingBufferHeight) opts = {gl: options}
 
 		else {
-			opts = pick(options, {
-				pixelRatio: true,
-				canvas: true,
-				container: true,
-				gl: true,
-				extensions: true
-			})
+			opts = pick(options, 'pixelRatio canvas container gl extensions')
 		}
 
 		if (!opts.optionalExtensions) opts.optionalExtensions = []
@@ -174,10 +182,10 @@ function Scatter (options) {
 			enable: true,
 			color: [0,0,0,1],
 			func: {
-				srcRGB:   'src alpha',
-				srcAlpha: 1,
-				dstRGB:   'one minus src alpha',
-				dstAlpha: 'one minus src alpha'
+				srcRGB: 'src alpha',
+				dstRGB: 'one minus src alpha',
+				srcAlpha: 'one minus dst alpha',
+				dstAlpha: 'one'
 			}
 		},
 
@@ -214,16 +222,36 @@ function Scatter (options) {
 
 	drawCircle = regl(circleOptions)
 
+	//expose API
+	extend(scatter2d, {
+		update: update,
+		draw: draw,
+		destroy: destroy,
+		regl: regl,
+		gl: gl,
+		canvas: gl.canvas,
+		// groups: groups
+	})
 
-	//main draw method
-	function draw (opts) {
+
+	function scatter2d (opts) {
+		//update
 		if (opts) {
 			update(opts)
-			if (opts.draw === false) return
 		}
 
-		if (!count) return
+		//destroy
+		else if (opts === null) {
+			destroy()
+		}
 
+		draw(opts)
+	}
+
+	function draw (opts) {
+		// if (opts && !Array.isArray(opts)) opts = [opts]
+
+		if (!count) return
 
 		//draw subset of of elements
 		if (opts && (opts.elements || opts.ids)) {
@@ -232,7 +260,7 @@ function Scatter (options) {
 			let pending = {};
 
 			for (let i = 0; i < els.length; i++) {
-			 pending[els[i]] = true;
+				pending[els[i]] = true;
 			}
 
 			let batch = []
@@ -257,8 +285,10 @@ function Scatter (options) {
 
 
 		//draw circles
-		drawCircle(getMarkerDrawOptions(markerIds[0]))
+		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
+		// regl._refresh();
 
+		drawCircle(getMarkerDrawOptions(markerIds[0]))
 		if (!markerIds.length) return
 
 		//draw all other available markers
@@ -271,7 +301,11 @@ function Scatter (options) {
 
 			batch = batch.concat(getMarkerDrawOptions(ids))
 		}
-		drawMarker(batch)
+
+		if (batch.length) {
+		    regl._refresh();
+			drawMarker(batch)
+		}
 	}
 
 	//get options for the marker ids
@@ -411,7 +445,6 @@ function Scatter (options) {
 
 		//process colors
 		if (options.color || options.borderColor || options.palette) {
-
 			//reset palette if passed
 			if (options.palette) {
 				let maxColors = 8192;
@@ -471,20 +504,18 @@ function Scatter (options) {
 				for (let i = 0; i < count; i++) {
 					elements[i] = i
 				}
-				updateMarker(markers, elements, maxSize)
+				updateMarkerElements(markers, elements, maxSize)
 			}
 			//per-point markers
 			else {
 				for (let i = 0, l = markers.length; i < l; i++) {
-					updateMarker(markers[i], i, Array.isArray(size) ? size[i] : size)
+					updateMarkerElements(markers[i], i, Array.isArray(size) ? size[i] : size)
 				}
 			}
 		}
 
-		//update snaping if positions provided
+		//update snapping if positions provided
 		if (options.positions || options.snap != null) {
-			let points = positions
-
 			//recalculate per-marker type snapping
 			//first, it is faster to snap 100 points 100 times than 10000 points once
 			//second, it is easier to subset render per-marker than per-generic set
@@ -504,8 +535,8 @@ function Scatter (options) {
 
 					for (let i = 0; i < l; i++) {
 						let id = ids[i]
-						markerPoints[i * 2] = points[id * 2]
-						markerPoints[i * 2 + 1] = points[id * 2 + 1]
+						markerPoints[i * 2] = positions[id * 2]
+						markerPoints[i * 2 + 1] = positions[id * 2 + 1]
 					}
 
 					ids.lod = snapPoints(markerPoints, i2id, w, bounds)
@@ -514,7 +545,7 @@ function Scatter (options) {
 					for (let i = 0; i < l; i++) {
 						let id = i2id[i]
 						idx[i] = ids[id]
-						x[i] = points[ids[id] * 2]
+						x[i] = positions[ids[id] * 2]
 					}
 
 					//put shuffled → direct element ids to memory
@@ -656,10 +687,10 @@ function Scatter (options) {
 	}
 
 	//update marker sdf
-	function updateMarker(sdfArr, id) {
+	function updateMarkerElements(markerSdfArr, id) {
 		let ids
 
-		let pos = sdfArr == null ? 0 : markerKey.indexOf(sdfArr)
+		let pos = markerSdfArr == null ? 0 : markerKey.indexOf(markerSdfArr)
 
 		//existing marker
 		if (pos >= 0) {
@@ -670,20 +701,20 @@ function Scatter (options) {
 		//new marker
 		else {
 			ids = Array.isArray(id) ? id : [id]
-			markerKey.push(sdfArr)
+			markerKey.push(markerSdfArr)
 			markerIds.push(ids)
 		}
 
 		//create marker texture
-		if (sdfArr != null && !ids.texture) {
+		if (markerSdfArr != null && !ids.texture) {
 			let distArr
-			if (sdfArr instanceof Uint8Array || sdfArr instanceof Uint8ClampedArray) {
-				distArr = sdfArr
+			if (markerSdfArr instanceof Uint8Array || markerSdfArr instanceof Uint8ClampedArray) {
+				distArr = markerSdfArr
 			}
 			else {
-				distArr = new Uint8Array(sdfArr.length)
-				for (let i = 0, l = sdfArr.length; i < l; i++) {
-					distArr[i] = sdfArr[i] * 255
+				distArr = new Uint8Array(markerSdfArr.length)
+				for (let i = 0, l = markerSdfArr.length; i < l; i++) {
+					distArr[i] = markerSdfArr[i] * 255
 				}
 			}
 
@@ -703,7 +734,18 @@ function Scatter (options) {
 		return ids
 	}
 
-	return draw
+
+	function destroy () {
+		sizeBuffer.destroy()
+		positionBuffer.destroy()
+		colorBuffer.destroy()
+		borderColorBuffer.destroy()
+		borderSizeBuffer.destroy()
+		paletteTexture.destroy()
+		regl.destroy()
+	}
+
+	return scatter2d
 }
 
 //return fractional part of float32 array

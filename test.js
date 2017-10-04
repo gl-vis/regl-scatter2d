@@ -66,7 +66,7 @@ function show (arr) {
 
 
 
-let N = 2
+let N = 1e5
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
@@ -74,7 +74,7 @@ let colors = palettes[Math.floor(Math.random() * palettes.length)]
 let markers = [null, dist]
 
 let scatter = createScatter({
-	positions: [0,0,0,3],//generate(N),
+	positions: generate(N),
 	// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
 	// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
@@ -88,8 +88,7 @@ let scatter = createScatter({
 	range: range,
 	borderSize: 1,
 	borderColor: [[127,127,127,127]],
-	snap: false,
-	// snap: false,
+	snap: true,
 	precise: true,
 
 	// viewport: [100,100,300,300]
