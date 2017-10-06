@@ -313,6 +313,7 @@ function Scatter (options) {
 		let batch = []
 		let {range} = group
 		let {lod, x, w, id} = ids
+		let pixelSize = (range[2] - range[0]) / gl.drawingBufferWidth
 
 		let els = ids.elements
 
@@ -320,7 +321,7 @@ function Scatter (options) {
 			let level = lod[scaleNum]
 
 			//FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-			if (level.pixelSize && level.pixelSize < ids.pixelSize && scaleNum > 1) continue
+			if (level.pixelSize && level.pixelSize < pixelSize && scaleNum > 1) continue
 
 			let intervalStart = level.offset
 			let intervalEnd = level.count + intervalStart
@@ -392,7 +393,7 @@ function Scatter (options) {
 
 			updateDiff(group, options, [{
 				precise: Boolean,
-				snap: s => s === true ? 1e4 : s === false ? Infinity : s,
+				snap: true,
 				size: true,
 				borderSize: true,
 				opacity: parseFloat,
@@ -442,7 +443,7 @@ function Scatter (options) {
 					if (!markers || typeof markers[0] === 'number') {
 						let elements = Array(group.count)
 						for (let i = 0; i < group.count; i++) {
-							elements[i] = i + group.offset
+							elements[i] = i
 						}
 
 						let id = addMarker(markers)
@@ -465,17 +466,17 @@ function Scatter (options) {
 				//first, it is faster to snap 100 points 100 times than 10000 points once (practically, not theoretically)
 				//second, it is easier to subset render per-marker than per-generic set
 				positions: (positions, group) => {
-					let {markerIds, snap, bounds} = group
+					let {markerIds, snap, bounds, offset} = group
 
 					for (let i = 0; i < markerIds.length; i++) {
 						let ids = markerIds[i]
 						if (!ids || !ids.length) continue
 
-						let l = ids.length
+						let l = ids.length, els
 
 						ids.id = i;
 
-						if (l * 2 > snap) {
+						if (snap && (snap === true || l * 2 > snap)) {
 							ids.snap = true
 							let x = ids.x = Array(l)
 							let w = ids.w = Array(l)
@@ -500,21 +501,23 @@ function Scatter (options) {
 							}
 
 							//put shuffled → direct element ids to memory
-							ids.elements = regl.elements({
-								primitive: 'points',
-								type: 'uint32',
-								data: idx
-							})
+							els = new Uint32Array(l)
+							for (let i = 0; i < l; i++) {
+								els[i] = idx[i] + offset
+							}
+						}
+						else {
+							els = new Uint32Array(l)
+							for (let i = 0; i < l; i++) {
+								els[i] = ids[i] + offset
+							}
 						}
 
-						//direct elements
-						else {
-							ids.elements = regl.elements({
-								primitive: 'points',
-								type: 'uint32',
-								data: ids
-							})
-						}
+						ids.elements = regl.elements({
+							primitive: 'points',
+							type: 'uint32',
+							data: els
+						})
 					}
 				},
 
