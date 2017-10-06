@@ -38,7 +38,7 @@ function Scatter (options) {
 			offset: 0,
 			count: 0,
 			bounds: null,
-			positions: null,
+			positions: [],
 			snap: 1e4
 		},
 		groups = [],
@@ -357,7 +357,8 @@ function Scatter (options) {
 		groups = options.map((options, i) => {
 			let group = groups[i]
 
-			if (typeof options === 'function') options = {after: options}
+			if (!options) options = {}
+			else if (typeof options === 'function') options = {after: options}
 			else if (typeof options[0] === 'number') options = {positions: options}
 
 			//copy options to avoid mutation & handle aliases
