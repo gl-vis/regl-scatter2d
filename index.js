@@ -277,7 +277,6 @@ function Scatter (options) {
 			//FIXME remove regl._refresh hooks once regl issue #427 is fixed
 			if (group.markerIds[0]) {
 				regl._refresh()
-				console.log(group)
 				drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
 			}
 
@@ -285,11 +284,10 @@ function Scatter (options) {
 			let batch = []
 			for (let i = 1; i < group.markerIds.length; i++) {
 				let ids = group.markerIds[i]
-				console.log(group)
 
 				if (!ids || !ids.length) continue
 
-				batch.push(getMarkerDrawOptions(ids, group))
+				batch = batch.concat(getMarkerDrawOptions(ids, group))
 			}
 
 			if (batch.length) {

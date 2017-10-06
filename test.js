@@ -75,7 +75,7 @@ function show (arr) {
 
 
 
-let N = 1e4
+let N = 1e3
 let passes = 2
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
