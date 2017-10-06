@@ -3,7 +3,7 @@ precision highp float;
 varying vec4 fragColor, fragBorderColor;
 varying float fragBorderRadius, fragWidth;
 
-uniform float pixelRatio;
+uniform float pixelRatio, opacity;
 
 void main() {
 	float radius, alpha = 1.0, delta = fragWidth;
@@ -17,7 +17,7 @@ void main() {
 
 	alpha -= smoothstep(1.0 - delta, 1.0 + delta, radius);
 
-	vec4 baseColor = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius + delta, radius));
-	baseColor.a *= alpha;
-	gl_FragColor = baseColor;
+	vec4 color = mix(fragColor, fragBorderColor, smoothstep(fragBorderRadius - delta, fragBorderRadius + delta, radius));
+	color.a *= alpha * opacity;
+	gl_FragColor = color;
 }

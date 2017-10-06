@@ -4,7 +4,7 @@ varying vec4 fragColor, fragBorderColor;
 varying float fragWidth, fragBorderColorLevel, fragColorLevel;
 
 uniform sampler2D marker;
-uniform float pixelRatio;
+uniform float pixelRatio, opacity;
 
 float smoothStep(float x, float y) {
   return 1.0 / (1.0 + exp(50.0*(x - y)));
@@ -30,6 +30,7 @@ void main() {
   vec4 color = fragBorderColor;
   color.a *= borderColorAmt;
   color = mix(color, fragColor, colorAmt);
+  color.a *= opacity;
 
   gl_FragColor = color;
 }
