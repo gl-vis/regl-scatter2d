@@ -21,7 +21,6 @@ function Scatter (options) {
 
 	// persistent variables
 	let regl, gl,
-		size,
 		drawMarker, drawCircle,
 		sizeBuffer, positionBuffer, positionFractBuffer, colorBuffer,
 		paletteTexture, palette = [], paletteIds = {},
@@ -220,6 +219,8 @@ function Scatter (options) {
 	}
 
 	function draw (opts) {
+		if (typeof opts === 'number') return drawGroup(opts)
+
 		//make options a batch
 		if (opts && !Array.isArray(opts)) opts = [opts]
 		groups.filter(group => group && group.count && group.opacity)
@@ -236,6 +237,7 @@ function Scatter (options) {
 			}
 
 			//draw subset of elements
+			//FIXME: this is not working very likely
 			if (opts && opts[i] && (opts[i].elements || opts[i].ids)) {
 				let els = opts[i].elements || opts[i].ids
 
@@ -272,29 +274,36 @@ function Scatter (options) {
 				return
 			}
 
-
-			//draw circles
-			//FIXME remove regl._refresh hooks once regl issue #427 is fixed
-			if (group.markerIds[0]) {
-				regl._refresh()
-				drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
-			}
-
-			//draw all other available markers
-			let batch = []
-			for (let i = 1; i < group.markerIds.length; i++) {
-				let ids = group.markerIds[i]
-
-				if (!ids || !ids.length) continue
-
-				batch = batch.concat(getMarkerDrawOptions(ids, group))
-			}
-
-			if (batch.length) {
-				regl._refresh()
-				drawMarker(batch)
-			}
+			drawGroup(i)
 		})
+	}
+
+	function drawGroup (i) {
+		let group = groups[i]
+
+		if (!group) return
+
+		//draw circles
+		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
+		if (group.markerIds[0]) {
+			regl._refresh()
+			drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
+		}
+
+		//draw all other available markers
+		let batch = []
+		for (let i = 1; i < group.markerIds.length; i++) {
+			let ids = group.markerIds[i]
+
+			if (!ids || !ids.length) continue
+
+			batch = batch.concat(getMarkerDrawOptions(ids, group))
+		}
+
+		if (batch.length) {
+			regl._refresh()
+			drawMarker(batch)
+		}
 	}
 
 	//get options for the marker ids
@@ -312,7 +321,7 @@ function Scatter (options) {
 		//scales batch
 		let batch = []
 		let {range} = group
-		let {lod, x, w, id} = ids
+		let {lod, x, id} = ids
 		let pixelSize = (range[2] - range[0]) / gl.drawingBufferWidth
 
 		let els = ids.elements
@@ -594,8 +603,8 @@ function Scatter (options) {
 					colorId[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
 
 					//we downscale size to allow for fractions
-					sizes[i*2] = (size[i] == null ? size : size[i]) * 255 / maxSize
-					sizes[i*2 + 1] = (borderSize[i] == null ? borderSize : borderSize[i]) * 255 / maxSize
+					sizes[i*2] = Math.round((size[i] == null ? size : size[i]) * 255 / maxSize)
+					sizes[i*2 + 1] = Math.round((borderSize[i] == null ? borderSize : borderSize[i]) * 255 / maxSize)
 				}
 
 				positionData.set(positions, offset * 2)
@@ -709,8 +718,6 @@ function Scatter (options) {
 		positionBuffer.destroy()
 		positionFractBuffer.destroy()
 		colorBuffer.destroy()
-		borderColorBuffer.destroy()
-		borderSizeBuffer.destroy()
 		paletteTexture.destroy()
 		regl.destroy()
 	}
