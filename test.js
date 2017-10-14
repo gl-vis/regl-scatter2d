@@ -84,18 +84,23 @@ let colors = palettes[Math.floor(Math.random() * palettes.length)]
 let markers = [null, dist]
 
 let scatter = createScatter(Array.from({length: 2}, (x, i) => {
+	var pos = generate(N)
+	// var pos = [
+	// 	[0,0.75,0.5,0.85,1,0.75,1.25,null,1.5,0.85,1.75,null,2,0.75,2.5,0.85,3,0.75],
+	// 	[0,0.5,1,0.6,2,0.5,2.5,null,3,0.5]
+	// ][i]
 	return {
-		positions: generate(N),
+		positions: pos,
 		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
 		// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-		size:  Array(N).fill(100).map(x => Math.random() * 5 + 5),
+		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
 		// size: 10,
-		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		// color: 'rgba(0, 0, 0, .5)',
 
 		marker: markers[i],
-		// marjer: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
+		// marjer: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
 		borderSize: 1,
@@ -107,9 +112,7 @@ let scatter = createScatter(Array.from({length: 2}, (x, i) => {
 	}
 }))
 
-
 scatter()
-
 // setTimeout(() => {
 // 	scatter({snap: 1})
 // })

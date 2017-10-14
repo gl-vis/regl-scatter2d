@@ -68,7 +68,7 @@ Option | Default | Description
 `ids`, `elements` | `null` | Subset of `points` to draw, should be an array of point ids. If `undefined`, all available points are drawn.
 <!-- `draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors. -->
 
-Separate methods are exposed `scatter.update`, `scatter.draw`, `scatter.destroy`.
+Additional methods exposed as `scatter.update`, `scatter.draw`, `scatter.destroy`.
 
 ## Related
 

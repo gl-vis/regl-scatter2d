@@ -223,8 +223,7 @@ function Scatter (options) {
 
 		//make options a batch
 		if (opts && !Array.isArray(opts)) opts = [opts]
-		groups.filter(group => group && group.count && group.opacity)
-			.forEach((group, i) => {
+		groups.forEach((group, i) => {
 			if (opts) {
 				if (!opts[i]) group.draw = false
 				else group.draw = true
@@ -266,9 +265,9 @@ function Scatter (options) {
 					})
 				}
 
-			    regl._refresh()
+				regl._refresh()
 				drawCircle(batch.shift())
-			    regl._refresh()
+				regl._refresh()
 				drawMarker(batch)
 
 				return
@@ -278,10 +277,10 @@ function Scatter (options) {
 		})
 	}
 
-	function drawGroup (i) {
-		let group = groups[i]
+	function drawGroup (group) {
+		if (typeof group === 'number') group = groups[group]
 
-		if (!group) return
+		if (!(group && group.count && group.opacity)) return
 
 		//draw circles
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
@@ -701,6 +700,7 @@ function Scatter (options) {
 		}
 
 		let w = (palette.length - start) * .25
+
 		if (w > 0) {
 			paletteTexture.subimage({
 				width: w,
