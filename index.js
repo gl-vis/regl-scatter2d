@@ -364,7 +364,6 @@ function Scatter (regl, options) {
 				marker: 'markers marker shape',
 				range: 'range dataBox',
 				viewport: 'viewport viewBox',
-				precise: 'precise hiprecision',
 				opacity: 'opacity alpha'
 			})
 
@@ -384,7 +383,6 @@ function Scatter (regl, options) {
 			}
 
 			updateDiff(group, options, [{
-				precise: Boolean,
 				snap: true,
 				size: true,
 				borderSize: true,
