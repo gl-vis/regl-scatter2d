@@ -1,6 +1,5 @@
 'use strict'
 
-const createRegl = require('regl')
 const rgba = require('color-rgba')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
@@ -15,22 +14,33 @@ const flatten = require('flatten-vertex-data')
 module.exports = Scatter
 
 
-function Scatter (options) {
-	if (!options) options = {}
-	else if (typeof options === 'function') options = {regl: options}
+function Scatter (regl, options) {
+	if (typeof regl === 'function') {
+		if (!options) options = {}
+		options.regl = regl
+	}
+	else {
+		options = regl
+	}
+	if (options.length) options.positions = options
+	regl = options.regl
+
+	if (!regl.hasExtension('OES_element_index_uint')) {
+		throw Error('regl-error2d: `OES_element_index_uint` extension should be enabled');
+	}
 
 	// persistent variables
-	let regl, gl,
+	let gl = regl._gl,
 		drawMarker, drawCircle,
 		sizeBuffer, positionBuffer, positionFractBuffer, colorBuffer,
 		paletteTexture, palette = [], paletteIds = {},
-		defaultOptions = {
+		defaults = {
 			color: 'black',
 			borderColor: 'transparent',
 			borderSize: 1,
 			size: 12,
 			opacity: 1,
-			marker: null,
+			marker: undefined,
 			viewport: null,
 			range: null,
 			pixelSize: null,
@@ -47,33 +57,6 @@ function Scatter (options) {
 		markerCache = [null]
 
 	const maxColors = 256, maxSize = 100
-
-	// regl instance
-	if (options.regl) regl = options.regl
-
-	// container/gl/canvas case
-	else {
-		let opts
-
-		if (options instanceof HTMLCanvasElement) opts = {canvas: options}
-		else if (options instanceof HTMLElement) opts = {container: options}
-		else if (options.drawingBufferWidth || options.drawingBufferHeight) opts = {gl: options}
-
-		else {
-			opts = pick(options, 'pixelRatio canvas container gl extensions')
-		}
-
-		if (!opts.optionalExtensions) opts.optionalExtensions = []
-
-		opts.optionalExtensions.push('OES_element_index_uint')
-
-		//FIXME: fallback to Int16Array if extension is not supported
-		regl = createRegl(opts)
-	}
-
-	//TODO: test if required extensions are supported
-
-	gl = regl._gl
 
 	//texture with color palette
 	paletteTexture = regl.texture({
@@ -127,26 +110,26 @@ function Scatter (options) {
 		attributes: {
 			position: positionBuffer,
 			positionFract: positionFractBuffer,
-			size: {
+			size: (ctx, prop) => prop.size.length ? {
 				buffer: sizeBuffer,
 				stride: 2,
 				offset: 0
-			},
-			borderSize: {
+			} : {constant: [prop.size]},
+			borderSize: (ctx, prop) => prop.borderSize.length ? {
 				buffer: sizeBuffer,
 				stride: 2,
 				offset: 1
-			},
-			colorId: {
+			} : {constant: [prop.borderSize]},
+			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: colorBuffer,
 				stride: 2,
 				offset: 0
-			},
-			borderColorId: {
+			} : {constant: [prop.color]},
+			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
 				stride: 2,
 				offset: 1
-			}
+			} : {constant: [prop.borderColor]}
 		},
 
 		blend: {
@@ -360,7 +343,7 @@ function Scatter (options) {
 		if (!Array.isArray(options)) options = [options]
 
 		//global count of points
-		let pointCount = 0, colorCount = 0
+		let pointCount = 0
 
 		groups = options.map((options, i) => {
 			let group = groups[i]
@@ -397,7 +380,7 @@ function Scatter (options) {
 					//list of ids corresponding to markers, with inner props
 					markerIds: []
 				}
-				options = extend({}, defaultOptions, options)
+				options = extend({}, defaults, options)
 			}
 
 			updateDiff(group, options, [{
@@ -408,32 +391,14 @@ function Scatter (options) {
 				opacity: parseFloat,
 
 				//add colors to palette, save references
-				color: c => {
-					c = updateColor(c)
-					colorCount += typeof c === 'number' ? c : c.length
-					return c
-				},
-				borderColor: c => {
-					c = updateColor(c)
-					colorCount += typeof c === 'number' ? c : c.length
-					return c
-				},
+				color: updateColor,
+				borderColor: updateColor,
 
 				positions: (positions, group) => {
 					positions = flatten(positions, 'float64')
 
 					let count = group.count = Math.floor(positions.length / 2)
 					let bounds = group.bounds = getBounds(positions, 2)
-
-					//grouped positions
-					let points = Array(count)
-					for (let i = 0; i < count; i++) {
-						points[i] = [
-							positions[i*2],
-							positions[i*2+1]
-						]
-					}
-					group.points = points
 
 					if (!group.range) group.range = bounds
 
@@ -450,12 +415,13 @@ function Scatter (options) {
 
 					//single sdf marker
 					if (!markers || typeof markers[0] === 'number') {
+						let id = addMarker(markers)
+
 						let elements = Array(group.count)
 						for (let i = 0; i < group.count; i++) {
 							elements[i] = i
 						}
 
-						let id = addMarker(markers)
 						group.markerIds[id] = elements
 					}
 					//per-point markers
@@ -469,7 +435,7 @@ function Scatter (options) {
 					}
 
 					return markers
-				},
+				}
 			}, {
 				//recalculate per-marker snapping
 				//first, it is faster to snap 100 points 100 times than 10000 points once (practically, not theoretically)
@@ -489,30 +455,33 @@ function Scatter (options) {
 							ids.snap = true
 							let x = ids.x = Array(l)
 							let w = ids.w = Array(l)
-							let markerPoints = Array(l * 2)
+							let markerPoints
+
+							//multimarker snapping is computationally more intense
+							if (markerIds.length > 1) {
+								markerPoints = Array(l * 2)
+
+								for (let i = 0; i < l; i++) {
+									let id = ids[i]
+									markerPoints[i * 2] = positions[id * 2]
+									markerPoints[i * 2 + 1] = positions[id * 2 + 1]
+								}
+							}
+							else {
+								markerPoints = new Float64Array(positions.length)
+								markerPoints.set(positions)
+							}
 
 							//shuffled_id: real_id
-							let i2id = Array(l)
-
-							for (let i = 0; i < l; i++) {
-								let id = ids[i]
-								markerPoints[i * 2] = positions[id * 2]
-								markerPoints[i * 2 + 1] = positions[id * 2 + 1]
-							}
+							let i2id = new Uint32Array(l)
 
 							ids.lod = snapPoints(markerPoints, i2id, w, bounds)
 
-							let idx = Array(l)
-							for (let i = 0; i < l; i++) {
-								let id = i2id[i]
-								idx[i] = ids[id]
-								x[i] = positions[ids[id] * 2]
-							}
-
-							//put shuffled → direct element ids to memory
 							els = new Uint32Array(l)
 							for (let i = 0; i < l; i++) {
-								els[i] = idx[i] + offset
+								let id = i2id[i], iid = ids[id]
+								els[i] = iid + offset
+								x[i] = positions[iid * 2]
 							}
 						}
 						else {
@@ -581,13 +550,15 @@ function Scatter (options) {
 			return group
 		})
 
+
 		//put point/color data into buffers, if updated any of them
-		if (pointCount || colorCount) {
+		if (pointCount) {
 			let len = groups.reduce((acc, group, i) => {
 				return acc + group.count
 			}, 0)
 
-			let positionData = new Float64Array(len * 2)
+			let positionData = new Float32Array(len * 2)
+			let positionFractData = new Float32Array(len * 2)
 			let colorData = new Uint8Array(len * 2)
 			let sizeData = new Uint8Array(len * 2)
 
@@ -595,24 +566,35 @@ function Scatter (options) {
 				let {positions, count, offset, color, borderColor, size, borderSize} = group
 				if (!count) return
 
-				let colorId = new Uint8Array(count*2)
-				let sizes = new Uint8Array(count*2)
-				for (let i = 0; i < count; i++) {
-					colorId[i*2] = color[i] == null ? color : color[i]
-					colorId[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
-
-					//we downscale size to allow for fractions
-					sizes[i*2] = Math.round((size[i] == null ? size : size[i]) * 255 / maxSize)
-					sizes[i*2 + 1] = Math.round((borderSize[i] == null ? borderSize : borderSize[i]) * 255 / maxSize)
+				if (color.length || borderColor.length) {
+					let colorIds = new Uint8Array(count*2)
+					for (let i = 0; i < count; i++) {
+						colorIds[i*2] = color[i] == null ? color : color[i]
+						colorIds[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
+					}
+					colorData.set(colorIds, offset * 2)
 				}
 
-				positionData.set(positions, offset * 2)
-				colorData.set(colorId, offset * 2)
-				sizeData.set(sizes, offset * 2)
+				if (size.length || borderSize.length) {
+					let sizes = new Uint8Array(count*2)
+					for (let i = 0; i < count; i++) {
+						//we downscale size to allow for fractions
+						sizes[i*2] = Math.round((size[i] == null ? size : size[i]) * 255 / maxSize)
+						sizes[i*2 + 1] = Math.round((borderSize[i] == null ? borderSize : borderSize[i]) * 255 / maxSize)
+					}
+					sizeData.set(sizes, offset * 2)
+				}
+				else {
+					group.size = Math.round(group.size * 255 / maxSize)
+					group.borderSize = Math.round(group.borderSize * 255 / maxSize)
+				}
+
+				positionData.set(float32(positions), offset * 2)
+				positionFractData.set(fract32(positions), offset * 2)
 			})
 
-			positionBuffer(float32(positionData))
-			positionFractBuffer(fract32(positionData))
+			positionBuffer(positionData)
+			positionFractBuffer(positionFractData)
 			colorBuffer(colorData)
 			sizeBuffer(sizeData)
 		}

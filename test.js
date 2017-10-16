@@ -17,6 +17,7 @@ const normalizePath = require('normalize-svg-coords')
 const pathBounds = require('svg-path-bounds')
 const isSvgPath = require('is-svg-path')
 const t = require('tape')
+const regl = require('regl')({extensions: ['OES_element_index_uint']})
 
 
 t('precision')
@@ -75,15 +76,16 @@ function show (arr) {
 
 
 
-let N = 1e3
-let passes = 2
+let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
+let markers = [null]//, dist]
+let passes = markers.length
 
-let markers = [null, dist]
+let scatter = createScatter(regl)
 
-let scatter = createScatter(Array.from({length: 2}, (x, i) => {
+scatter(Array.from({length: passes}, (x, i) => {
 	var pos = generate(N)
 	// var pos = [
 	// 	[0,0.75,0.5,0.85,1,0.75,1.25,null,1.5,0.85,1.75,null,2,0.75,2.5,0.85,3,0.75],
@@ -96,8 +98,8 @@ let scatter = createScatter(Array.from({length: 2}, (x, i) => {
 
 		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
 		// size: 10,
-		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		// color: 'rgba(0, 0, 0, .5)',
+		// color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: 'rgba(0, 0, 0, .5)',
 
 		marker: markers[i],
 		// marjer: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
@@ -112,7 +114,6 @@ let scatter = createScatter(Array.from({length: 2}, (x, i) => {
 	}
 }))
 
-scatter()
 // setTimeout(() => {
 // 	scatter({snap: 1})
 // })
