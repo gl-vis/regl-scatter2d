@@ -29,7 +29,6 @@
   "homepage": "https://github.com/dfcreative/regl-scatter2d#readme",
   "dependencies": {
     "array-bounds": "^1.0.0",
-    "array-normalize": "^1.1.2",
     "binary-search-bounds": "^2.0.3",
     "bubleify": "^0.7.0",
     "clamp": "^1.0.1",
