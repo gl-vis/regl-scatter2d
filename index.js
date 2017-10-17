@@ -382,6 +382,12 @@ function Scatter (regl, options) {
 				options = extend({}, defaults, options)
 			}
 
+			//force update triggers
+			if (options.positions && !('marker' in options)) {
+				options.marker = group.marker
+				delete group.marker
+			}
+
 			updateDiff(group, options, [{
 				snap: true,
 				size: true,
