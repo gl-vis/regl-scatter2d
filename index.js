@@ -114,12 +114,12 @@ function Scatter (regl, options) {
 				buffer: sizeBuffer,
 				stride: 2,
 				offset: 0
-			} : {constant: [prop.size]},
+			} : {constant: [Math.round(prop.size * 255 / maxSize)]},
 			borderSize: (ctx, prop) => prop.borderSize.length ? {
 				buffer: sizeBuffer,
 				stride: 2,
 				offset: 1
-			} : {constant: [prop.borderSize]},
+			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
 			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: colorBuffer,
 				stride: 2,
@@ -343,7 +343,7 @@ function Scatter (regl, options) {
 		if (!Array.isArray(options)) options = [options]
 
 		//global count of points
-		let pointCount = 0
+		let pointCount = 0, sizeCount = 0, colorCount = 0
 
 		groups = options.map((options, i) => {
 			let group = groups[i]
@@ -390,13 +390,27 @@ function Scatter (regl, options) {
 
 			updateDiff(group, options, [{
 				snap: true,
-				size: true,
-				borderSize: true,
+				size: s => {
+					sizeCount += s.length || 1
+					return s
+				},
+				borderSize: s => {
+					sizeCount += s.length || 1
+					return s
+				},
 				opacity: parseFloat,
 
 				//add colors to palette, save references
-				color: updateColor,
-				borderColor: updateColor,
+				color: c => {
+					c = updateColor(c)
+					colorCount += c.length || 1
+					return c
+				},
+				borderColor: c => {
+					c = updateColor(c)
+					colorCount += c.length || 1
+					return c
+				},
 
 				positions: (positions, group) => {
 					positions = flatten(positions, 'float64')
@@ -556,28 +570,32 @@ function Scatter (regl, options) {
 
 
 		//put point/color data into buffers, if updated any of them
-		if (pointCount) {
-			let len = groups.reduce((acc, group, i) => {
-				return acc + group.count
-			}, 0)
+		let len = groups.reduce((acc, group, i) => {
+			return acc + group.count
+		}, 0)
 
+		if (pointCount) {
 			let positionData = new Float32Array(len * 2)
 			let positionFractData = new Float32Array(len * 2)
-			let colorData = new Uint8Array(len * 2)
+
+			groups.forEach((group, i) => {
+				let {positions, count, offset} = group
+				if (!count) return
+
+				positionData.set(float32(positions), offset * 2)
+				positionFractData.set(fract32(positions), offset * 2)
+			})
+
+			positionBuffer(positionData)
+			positionFractBuffer(positionFractData)
+		}
+
+		if (sizeCount) {
 			let sizeData = new Uint8Array(len * 2)
 
 			groups.forEach((group, i) => {
-				let {positions, count, offset, color, borderColor, size, borderSize} = group
+				let {positions, count, offset, size, borderSize} = group
 				if (!count) return
-
-				if (color.length || borderColor.length) {
-					let colorIds = new Uint8Array(count*2)
-					for (let i = 0; i < count; i++) {
-						colorIds[i*2] = color[i] == null ? color : color[i]
-						colorIds[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
-					}
-					colorData.set(colorIds, offset * 2)
-				}
 
 				if (size.length || borderSize.length) {
 					let sizes = new Uint8Array(count*2)
@@ -588,19 +606,29 @@ function Scatter (regl, options) {
 					}
 					sizeData.set(sizes, offset * 2)
 				}
-				else {
-					group.size = Math.round(group.size * 255 / maxSize)
-					group.borderSize = Math.round(group.borderSize * 255 / maxSize)
-				}
-
-				positionData.set(float32(positions), offset * 2)
-				positionFractData.set(fract32(positions), offset * 2)
 			})
 
-			positionBuffer(positionData)
-			positionFractBuffer(positionFractData)
-			colorBuffer(colorData)
 			sizeBuffer(sizeData)
+		}
+
+		if (colorCount) {
+			let colorData = new Uint8Array(len * 2)
+
+			groups.forEach((group, i) => {
+				let {count, offset, color, borderColor} = group
+				if (!count) return
+
+				if (color.length || borderColor.length) {
+					let colorIds = new Uint8Array(count*2)
+					for (let i = 0; i < count; i++) {
+						colorIds[i*2] = color[i] == null ? color : color[i]
+						colorIds[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
+					}
+					colorData.set(colorIds, offset * 2)
+				}
+			})
+
+			colorBuffer(colorData)
 		}
 	}
 
