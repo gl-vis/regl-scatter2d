@@ -699,7 +699,6 @@ function Scatter (regl, options) {
 		positionFractBuffer.destroy()
 		colorBuffer.destroy()
 		paletteTexture.destroy()
-		regl.destroy()
 	}
 
 	return scatter2d

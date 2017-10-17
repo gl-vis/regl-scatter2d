@@ -1,6 +1,6 @@
 # regl-scatter2d [![experimental](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)
 
-Scatter plot for lots of points.
+Fast and precise 2d scatter plot for lots of points.
 
 ![regl-scatter2d](https://github.com/dfcreative/regl-scatter2d/blob/master/preview.png?raw=true)
 
@@ -45,10 +45,10 @@ Option | Default | Description
 `opacity` | `1` | Regulate marker transparency separately from colors.
 `marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
-`viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left|x, top|y, width|bottom, height|right}`.
-`snap` | `1e5` | Number of points threshold to enable snapping, can be bool. See [snap-points-2d](https://github.com/gl-vis/snap-points-2d).
+`viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left, top, right, bottom}` or `{x, y, w, h}`.
+<!--`snap` | `1e5` | Number of points threshold to enable snapping, can be bool. See [snap-points-2d](https://github.com/gl-vis/snap-points-2d).
 `ids`, `elements` | `null` | Subset of `points` to draw, should be an array of point ids. If `undefined`, all available points are drawn.
-<!-- `draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors. -->
+`draw` | `true` | Redraw points. If `false`, options will be updated but no points drawn. If `'pick'`, the numeric indices will be drawn instead of colors. -->
 
 A list of options can be passed for batch rendering:
 
