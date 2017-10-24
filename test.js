@@ -98,15 +98,15 @@ scatter(Array.from({length: passes}, (x, i) => {
 
 		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
 		// size: 10,
-		// color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		color: 'rgba(0, 0, 0, .5)',
+		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		// color: 'rgba(0, 0, 0, .5)',
 
 		marker: markers[i],
 		// marjer: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
 		borderSize: 1,
-		borderColor: [[127,127,127,255]],
+		borderColor: [[.5,.5,.5,1]],
 		snap: true,
 		precise: true,
 

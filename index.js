@@ -1,6 +1,6 @@
 'use strict'
 
-const rgba = require('color-rgba')
+const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
@@ -391,11 +391,11 @@ function Scatter (regl, options) {
 			updateDiff(group, options, [{
 				snap: true,
 				size: s => {
-					sizeCount += s.length || 1
+					sizeCount += s.length ? 1 : 0
 					return s
 				},
 				borderSize: s => {
-					sizeCount += s.length || 1
+					sizeCount += s.length ? 1 : 0
 					return s
 				},
 				opacity: parseFloat,
@@ -403,12 +403,12 @@ function Scatter (regl, options) {
 				//add colors to palette, save references
 				color: c => {
 					c = updateColor(c)
-					colorCount += c.length || 1
+					colorCount++
 					return c
 				},
 				borderColor: c => {
 					c = updateColor(c)
-					colorCount += c.length || 1
+					colorCount++
 					return c
 				},
 
@@ -683,23 +683,7 @@ function Scatter (regl, options) {
 				continue
 			}
 
-			if (typeof color === 'string') {
-				color = rgba(color, false)
-				color[3] *= 255;
-				color = color.map(Math.floor)
-			}
-			else if (Array.isArray(color)) {
-				color = color.map(Math.floor)
-			}
-			else if (color instanceof Float32Array) {
-				color[0] = Math.floor(color[0] * 255)
-				color[1] = Math.floor(color[1] * 255)
-				color[2] = Math.floor(color[2] * 255)
-				color[3] = Math.floor(color[3] * 255)
-			}
-			else {
-				color = [127, 127, 127, 127]
-			}
+			color = rgba(color, 'uint8')
 
 			let id = colorId(color, false)
 			if (paletteIds[id] == null) {
