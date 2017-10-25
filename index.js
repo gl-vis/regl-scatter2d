@@ -207,6 +207,8 @@ function Scatter (regl, options) {
 		//make options a batch
 		if (opts && !Array.isArray(opts)) opts = [opts]
 		groups.forEach((group, i) => {
+			if (!group) return
+
 			if (opts) {
 				if (!opts[i]) group.draw = false
 				else group.draw = true
@@ -336,11 +338,10 @@ function Scatter (regl, options) {
 	function update (options) {
 		//direct points argument
 		if (options.length != null) {
-			if (typeof options[0] === 'number') options = {positions: options}
+			if (typeof options[0] === 'number') options = [{positions: options}]
 		}
-
 		//make options a batch
-		if (!Array.isArray(options)) options = [options]
+		else if (!Array.isArray(options)) options = [options]
 
 		//global count of points
 		let pointCount = 0, sizeCount = 0, colorCount = 0
@@ -348,7 +349,7 @@ function Scatter (regl, options) {
 		groups = options.map((options, i) => {
 			let group = groups[i]
 
-			if (!options) options = {}
+			if (!options) return group
 			else if (typeof options === 'function') options = {after: options}
 			else if (typeof options[0] === 'number') options = {positions: options}
 
@@ -571,7 +572,7 @@ function Scatter (regl, options) {
 
 		//put point/color data into buffers, if updated any of them
 		let len = groups.reduce((acc, group, i) => {
-			return acc + group.count
+			return acc + (group ? group.count : 0)
 		}, 0)
 
 		if (pointCount) {
@@ -579,6 +580,7 @@ function Scatter (regl, options) {
 			let positionFractData = new Float32Array(len * 2)
 
 			groups.forEach((group, i) => {
+				if (!group) return
 				let {positions, count, offset} = group
 				if (!count) return
 
@@ -594,6 +596,7 @@ function Scatter (regl, options) {
 			let sizeData = new Uint8Array(len * 2)
 
 			groups.forEach((group, i) => {
+				if (!group) return
 				let {positions, count, offset, size, borderSize} = group
 				if (!count) return
 
@@ -615,6 +618,7 @@ function Scatter (regl, options) {
 			let colorData = new Uint8Array(len * 2)
 
 			groups.forEach((group, i) => {
+				if (!group) return
 				let {count, offset, color, borderColor} = group
 				if (!count) return
 
