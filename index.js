@@ -203,69 +203,70 @@ function Scatter (regl, options) {
 
 	function draw (opts) {
 		if (typeof opts === 'number') return drawGroup(opts)
+		if (Array.isArray(opts)) {
+			opts.forEach((els, i) => {
+				if (els == null) return
+				if (els.length) return drawGroup(els, i)
+				return drawGroup(els)
+			})
+			return
+		}
 
 		//make options a batch
-		if (opts && !Array.isArray(opts)) opts = [opts]
 		groups.forEach((group, i) => {
 			if (!group) return
-
-			if (opts) {
-				if (!opts[i]) group.draw = false
-				else group.draw = true
-			}
-
-			//ignore draw flag for one pass
-			if (!group.draw) {
-				group.draw = true;
-				return
-			}
-
-			//draw subset of elements
-			//FIXME: this is not working very likely
-			if (opts && opts[i] && (opts[i].elements || opts[i].ids)) {
-				let els = opts[i].elements || opts[i].ids
-
-				let pending = {};
-
-				for (let i = 0; i < els.length; i++) {
-					pending[els[i]] = true;
-				}
-
-				let batch = []
-				for (let i = 0; i < group.markerIds.length; i++) {
-					let subIds = [], ids = group.markerIds[i]
-
-					for (let i = 0, l = ids.length; i < l; i++) {
-						if (pending[ids[i]]) {
-							subIds.push(ids[i])
-							pending[ids[i]] = null
-						}
-					}
-
-					batch.push({
-						elements: subIds,
-						offset: 0,
-						count: subIds.length,
-						marker: ids.id
-					})
-				}
-
-				regl._refresh()
-				drawCircle(batch.shift())
-				regl._refresh()
-				drawMarker(batch)
-
-				return
-			}
 
 			drawGroup(i)
 		})
 	}
 
-	function drawGroup (group) {
+	function drawGroup (group, id) {
 		if (typeof group === 'number') group = groups[group]
 
+		let els
+		if (Array.isArray(group)) {
+			els = group
+			group = groups[id]
+		}
+
 		if (!(group && group.count && group.opacity)) return
+
+		//draw subset of elements
+		if (els) {
+			let pending = {};
+
+			for (let i = 0; i < els.length; i++) {
+				pending[els[i]] = true
+			}
+
+			let batch = [], offset = group.offset
+			for (let i = 0; i < group.markerIds.length; i++) {
+				let subIds = [], ids = group.markerIds[i]
+
+				for (let i = 0, l = ids.length; i < l; i++) {
+					let id = ids[i]
+					if (pending[id]) {
+						subIds.push(id + offset)
+						pending[id] = null
+					}
+				}
+
+				batch.push(extend({}, group, {
+					elements: subIds,
+					offset: 0,
+					count: subIds.length,
+					marker: markerTextures[ids.id]
+				}))
+			}
+
+			regl._refresh()
+			drawCircle(batch.shift())
+			regl._refresh()
+			drawMarker(batch)
+
+			return
+		}
+
 
 		//draw circles
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
@@ -281,7 +282,7 @@ function Scatter (regl, options) {
 
 			if (!ids || !ids.length) continue
 
-			batch = batch.concat(getMarkerDrawOptions(ids, group))
+			batch = [].push.apply(batch, getMarkerDrawOptions(ids, group))
 		}
 
 		if (batch.length) {
@@ -336,6 +337,8 @@ function Scatter (regl, options) {
 	}
 
 	function update (options) {
+		if (!options) return
+
 		//direct points argument
 		if (options.length != null) {
 			if (typeof options[0] === 'number') options = [{positions: options}]
@@ -597,7 +600,7 @@ function Scatter (regl, options) {
 
 			groups.forEach((group, i) => {
 				if (!group) return
-				let {positions, count, offset, size, borderSize} = group
+				let {count, offset, size, borderSize} = group
 				if (!count) return
 
 				if (size.length || borderSize.length) {

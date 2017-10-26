@@ -64,9 +64,26 @@ scatter([
 
 Update options, not incurring redraw.
 
-### `scatter.draw(id?)`
+### `scatter.draw(id?|elements?)`
 
-Draw points based on last options. `id` integer can specify a scatter group to redraw defined via batch update.
+Draw points based on last options. `id` integer can specify a scatter group to redraw defined via batch update. `elements` can specify exact marker ids to draw:
+
+```js
+scatter.update([
+  {points: [0,1, 1,0], color: 'red', marker: squareSdf},
+  {points: [1,2, 2,1], color: 'green', marker: triangleSdf},
+  {points: [0,0, 1,1], color: 'blue', marker: null}
+])
+
+//draw red group
+scatter.draw(0)
+
+//draw green and blue group
+scatter.draw([1, 2])
+
+//draw second point of blue group and first point of red group
+scatter.draw([[1], null, [0]])
+```
 
 ### `scatter.destroy()`
 
