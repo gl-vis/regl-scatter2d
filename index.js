@@ -272,7 +272,7 @@ function Scatter (regl, options) {
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
 		if (group.markerIds[0]) {
 			regl._refresh()
-			drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
+			drawCircle(getMarkerDrawOptions(group.markerIds[0], group)[0])
 		}
 
 		//draw all other available markers
@@ -282,7 +282,7 @@ function Scatter (regl, options) {
 
 			if (!ids || !ids.length) continue
 
-			batch = [].push.apply(batch, getMarkerDrawOptions(ids, group))
+			[].push.apply(batch, getMarkerDrawOptions(ids, group))
 		}
 
 		if (batch.length) {
@@ -295,12 +295,12 @@ function Scatter (regl, options) {
 	function getMarkerDrawOptions(ids, group) {
 		//unsnapped options
 		if (!ids.snap) {
-			return extend({}, group, {
+			return [extend({}, group, {
 				elements: ids.elements,
 				offset: 0,
 				count: ids.length,
 				marker: markerTextures[ids.id]
-			})
+			})]
 		}
 
 		//scales batch
@@ -370,7 +370,6 @@ function Scatter (regl, options) {
 				viewport: 'viewport viewBox',
 				opacity: 'opacity alpha'
 			})
-
 			if (!group) {
 				groups[i] = group = {
 					id: i,
