@@ -203,7 +203,7 @@ function Scatter (regl, options) {
 
 	function draw (opts) {
 		if (typeof opts === 'number') return drawGroup(opts)
-		if (Array.isArray(opts) && typeof opts[0] === 'number') {
+		if (Array.isArray(opts[0])) {
 			opts.forEach((els, i) => {
 				if (els == null) return
 				if (els.length) return drawGroup(els, i)
