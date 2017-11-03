@@ -21,13 +21,13 @@ function Scatter (regl, options) {
 	}
 	else {
 		options = regl
+		regl = null
 	}
-	if (options.length) options.positions = options
+
+	if (options && options.length) options.positions = options
 	regl = options.regl
 
-	if (!regl.hasExtension('OES_element_index_uint')) {
-		throw Error('regl-error2d: `OES_element_index_uint` extension should be enabled');
-	}
+	const hasElementIndex = regl.hasExtension('OES_element_index_uint')
 
 	// persistent variables
 	let gl = regl._gl,
@@ -250,7 +250,6 @@ function Scatter (regl, options) {
 						pending[id] = null
 					}
 				}
-
 				batch.push(extend({}, group, {
 					elements: subIds,
 					offset: 0,
@@ -415,13 +414,17 @@ function Scatter (regl, options) {
 					return c
 				},
 
-				positions: (positions, group) => {
+				positions: (positions, group, options) => {
 					positions = flatten(positions, 'float64')
 
 					let count = group.count = Math.floor(positions.length / 2)
-					let bounds = group.bounds = getBounds(positions, 2)
+					let bounds = group.bounds = count ? getBounds(positions, 2) : null
 
-					if (!group.range) group.range = bounds
+					// if range is not provided updated - recalc it
+					if (!options.range && !group.range) {
+						delete group.range
+						options.range = bounds
+					}
 
 					group.offset = pointCount
 					pointCount += count
@@ -514,7 +517,7 @@ function Scatter (regl, options) {
 
 						ids.elements = regl.elements({
 							primitive: 'points',
-							type: 'uint32',
+							type: hasElementIndex ? 'uint32' : 'uint16',
 							data: els
 						})
 					}
@@ -522,6 +525,8 @@ function Scatter (regl, options) {
 
 				range: (range, group, options) => {
 					let bounds = group.bounds
+
+					if (!bounds) return
 					if (!range) range = bounds
 
 					group.scale = [1 / (range[2] - range[0]), 1 / (range[3] - range[1])]
@@ -585,7 +590,6 @@ function Scatter (regl, options) {
 				if (!group) return
 				let {positions, count, offset} = group
 				if (!count) return
-
 				positionData.set(float32(positions), offset * 2)
 				positionFractData.set(fract32(positions), offset * 2)
 			})
@@ -612,7 +616,6 @@ function Scatter (regl, options) {
 					sizeData.set(sizes, offset * 2)
 				}
 			})
-
 			sizeBuffer(sizeData)
 		}
 
