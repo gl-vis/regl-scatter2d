@@ -116,7 +116,7 @@ scatter(Array.from({length: passes}, (x, i) => {
 
 // setTimeout(() => {
 // 	scatter({snap: 1})
-// })
+	// })
 
 
 

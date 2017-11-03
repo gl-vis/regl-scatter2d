@@ -203,7 +203,7 @@ function Scatter (regl, options) {
 
 	function draw (opts) {
 		if (typeof opts === 'number') return drawGroup(opts)
-		if (Array.isArray(opts)) {
+		if (Array.isArray(opts) && typeof opts[0] === 'number') {
 			opts.forEach((els, i) => {
 				if (els == null) return
 				if (els.length) return drawGroup(els, i)
@@ -271,7 +271,7 @@ function Scatter (regl, options) {
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
 		if (group.markerIds[0]) {
 			regl._refresh()
-			drawCircle(getMarkerDrawOptions(group.markerIds[0], group)[0])
+			drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
 		}
 
 		//draw all other available markers
@@ -306,7 +306,7 @@ function Scatter (regl, options) {
 		let batch = []
 		let {range} = group
 		let {lod, x, id} = ids
-		let pixelSize = (range[2] - range[0]) / gl.drawingBufferWidth
+		let pixelSize = (range[2] - range[0]) / group.viewport.width
 
 		let els = ids.elements
 
@@ -314,7 +314,9 @@ function Scatter (regl, options) {
 			let level = lod[scaleNum]
 
 			//FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-			if (level.pixelSize && level.pixelSize < pixelSize && scaleNum > 1) continue
+			if (level.pixelSize && level.pixelSize < pixelSize && scaleNum > 1) {
+				continue
+			}
 
 			let intervalStart = level.offset
 			let intervalEnd = level.count + intervalStart
@@ -376,7 +378,6 @@ function Scatter (regl, options) {
 					translate: null,
 					scaleFract: null,
 					translateFract: null,
-					draw: true,
 
 					//list of ids corresponding to markers, with inner props
 					markerIds: []
@@ -575,7 +576,6 @@ function Scatter (regl, options) {
 
 			return group
 		})
-
 
 		//put point/color data into buffers, if updated any of them
 		let len = groups.reduce((acc, group, i) => {
