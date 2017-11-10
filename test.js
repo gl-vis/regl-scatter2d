@@ -1,5 +1,6 @@
 'use strict'
 
+require('enable-mobile')
 const createScatter = require('./')
 const panZoom = require('pan-zoom')
 const createSettings = require('settings-panel')
@@ -74,16 +75,16 @@ function show (arr) {
 
 
 
-let N = 1e6
+let N = 1e4
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null]//, dist]
+let markers = [dist]//, dist]
 let passes = markers.length
 
 let scatter = createScatter(regl)
 
-scatter(Array.from({length: passes}, (x, i) => {
+scatter(Array(passes).fill(null).map((x, i) => {
 	var pos = generate(N)
 	// var pos = [
 	// 	[0,0.75,0.5,0.85,1,0.75,1.25,null,1.5,0.85,1.75,null,2,0.75,2.5,0.85,3,0.75],

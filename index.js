@@ -147,7 +147,6 @@ function Scatter (regl, options) {
 			enable: true,
 			box: regl.prop('viewport')
 		},
-		stencil: false,
 		viewport: regl.prop('viewport'),
 
 		depth: {
