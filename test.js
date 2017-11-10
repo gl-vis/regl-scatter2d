@@ -1,12 +1,10 @@
 'use strict'
 
-require('enable-mobile')
 const createScatter = require('./')
 const panZoom = require('pan-zoom')
 const createSettings = require('settings-panel')
 const fps = require('fps-indicator')({css:`padding: 1.4rem`})
 const random = require('gauss-random')
-const cluster = require('../point-cluster')
 const rgba = require('color-rgba')
 const nanoraf = require('nanoraf')
 const palettes = require('nice-color-palettes')

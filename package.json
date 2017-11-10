@@ -2,11 +2,10 @@
   "name": "regl-scatter2d",
   "version": "2.0.3",
   "description": "Scatter2d plot built with regl",
-  "main": "dist/index.js",
+  "main": "./index.js",
   "scripts": {
     "test": "budo test",
-    "prepublishOnly": "browserify index.js -g bubleify > dist/index.js",
-    "build": "browserify test.js -g babelify | indexhtmlify | metadataify | github-cornerify > gh-pages/no-snapping.html"
+    "build": "browserify test.js | indexhtmlify | metadataify | github-cornerify | mobilify > gh-pages/no-snapping.html"
   },
   "repository": {
     "type": "git",
@@ -31,9 +30,10 @@
   "dependencies": {
     "array-bounds": "^1.0.0",
     "binary-search-bounds": "^2.0.3",
+    "bubleify": "^0.7.0",
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
-    "color-normalize": "^1.0.0",
+    "color-normalize": "^1.0.1",
     "flatten-vertex-data": "^1.0.0",
     "glslify": "^6.1.0",
     "object-assign": "^4.1.1",
@@ -42,18 +42,17 @@
     "update-diff": "^1.1.0"
   },
   "devDependencies": {
-    "bubleify": "^0.7.0",
-    "regl": "^1.3.0",
-    "nice-color-palettes": "^2.0.0",
-    "next-pow-2": "^1.0.0",
     "canvas-fit": "^1.5.0",
     "enable-mobile": "^1.0.7",
     "fps-indicator": "^1.1.0",
     "gauss-random": "^1.0.1",
+    "mobilify": "^1.0.1",
     "mouse-change": "^1.4.0",
     "mouse-wheel": "^1.2.0",
     "nanoraf": "^3.0.1",
+    "next-pow-2": "^1.0.0",
+    "nice-color-palettes": "^2.0.0",
     "pan-zoom": "^2.0.0",
-    "settings-panel": "^1.8.17"
+    "regl": "^1.3.0"
   }
 }
