@@ -64,6 +64,8 @@ function Scatter (regl, options) {
 		height: 1,
 		type: 'uint8',
 		format: 'rgba',
+		wrapS: 'clamp',
+		wrapT: 'clamp',
 		mag: 'nearest',
 		min: 'nearest'
 	})
@@ -682,10 +684,11 @@ function Scatter (regl, options) {
 
 		let start = palette.length
 		let idx = []
+
 		for (let i = 0; i < colors.length; i++) {
 			let color = colors[i]
 
-			//idx colors
+			//idx colors directly
 			if (typeof color === 'number') {
 				idx[i] = color
 				continue
@@ -694,6 +697,8 @@ function Scatter (regl, options) {
 			color = rgba(color, 'uint8')
 
 			let id = colorId(color, false)
+
+			// if new color - save it
 			if (paletteIds[id] == null) {
 				let pos = palette.length
 				paletteIds[id] = Math.floor(pos / 4)
@@ -702,18 +707,19 @@ function Scatter (regl, options) {
 				palette[pos+2] = color[2]
 				palette[pos+3] = color[3]
 			}
-			idx[i] = paletteIds[id]
+
+			idx[i] = Math.min(paletteIds[id], maxColors - 1)
 		}
 
-		let w = (palette.length - start) * .25
-
-		if (w > 0) {
+		if (start < maxColors * 4) {
+			// limit max color
 			paletteTexture.subimage({
-				width: w,
+				width: Math.min(palette.length * .25, maxColors),
 				height: 1,
-				data: palette.slice(start)
-			}, start * .25, 0)
+				data: palette.slice(0, maxColors * 4)
+			}, 0, 0)
 		}
+
 
 		//keep static index for single-color property
 		return idx.length === 1 ? idx[0] : idx
