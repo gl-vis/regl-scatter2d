@@ -56,7 +56,7 @@ function Scatter (regl, options) {
 		markerTextures = [null],
 		markerCache = [null]
 
-	const maxColors = 256, maxSize = 100
+	const maxColors = 4096, maxSize = 100
 
 	//texture with color palette
 	paletteTexture = regl.texture({
@@ -78,7 +78,7 @@ function Scatter (regl, options) {
 	})
 	colorBuffer = regl.buffer({
 		usage: 'dynamic',
-		type: 'uint8',
+		type: 'uint16',
 		data: null
 	})
 	positionBuffer = regl.buffer({
@@ -124,15 +124,16 @@ function Scatter (regl, options) {
 			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
 			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: colorBuffer,
-				stride: 2,
+				stride: 4,
 				offset: 0
 			} : {constant: [prop.color]},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
-				stride: 2,
-				offset: 1
+				stride: 4,
+				offset: 2
 			} : {constant: [prop.borderColor]}
 		},
+
 
 		blend: {
 			enable: true,
@@ -151,9 +152,8 @@ function Scatter (regl, options) {
 		},
 		viewport: regl.prop('viewport'),
 
-		depth: {
-			enable: false
-		},
+		stencil: {enable: false},
+		depth: {enable: false},
 
 		elements: regl.prop('elements'),
 		count: regl.prop('count'),
@@ -621,7 +621,7 @@ function Scatter (regl, options) {
 		}
 
 		if (colorCount) {
-			let colorData = new Uint8Array(len * 2)
+			let colorData = new Uint16Array(len * 2)
 
 			groups.forEach((group, i) => {
 				if (!group) return
@@ -629,7 +629,7 @@ function Scatter (regl, options) {
 				if (!count) return
 
 				if (color.length || borderColor.length) {
-					let colorIds = new Uint8Array(count*2)
+					let colorIds = new Uint16Array(count*2)
 					for (let i = 0; i < count; i++) {
 						colorIds[i*2] = color[i] == null ? color : color[i]
 						colorIds[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
@@ -637,7 +637,6 @@ function Scatter (regl, options) {
 					colorData.set(colorIds, offset * 2)
 				}
 			})
-
 			colorBuffer(colorData)
 		}
 	}
@@ -711,8 +710,8 @@ function Scatter (regl, options) {
 			idx[i] = Math.min(paletteIds[id], maxColors - 1)
 		}
 
+		// limit max color
 		if (start < maxColors * 4) {
-			// limit max color
 			paletteTexture.subimage({
 				width: Math.min(palette.length * .25, maxColors),
 				height: 1,
