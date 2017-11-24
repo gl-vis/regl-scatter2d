@@ -3,7 +3,7 @@
 require('enable-mobile')
 const createScatter = require('./')
 const panZoom = require('pan-zoom')
-const createSettings = require('settings-panel')
+// const createSettings = require('settings-panel')
 const fps = require('fps-indicator')({css:`padding: 1.4rem`})
 const random = require('gauss-random')
 const rgba = require('color-rgba')
@@ -16,7 +16,9 @@ const normalizePath = require('normalize-svg-coords')
 const pathBounds = require('svg-path-bounds')
 const isSvgPath = require('is-svg-path')
 const t = require('tape')
-const regl = require('regl')({extensions: ['OES_element_index_uint']})
+const regl = require('regl')({
+	extensions: ['OES_element_index_uint']
+})
 
 
 t('precision')
@@ -79,7 +81,7 @@ let N = 1e4
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [dist]//, dist]
+let markers = [null]//, dist]
 let passes = markers.length
 
 let scatter = createScatter(regl)

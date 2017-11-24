@@ -36,6 +36,7 @@
     "color-normalize": "^1.0.1",
     "flatten-vertex-data": "^1.0.0",
     "glslify": "^6.1.0",
+    "is-iexplorer": "^1.0.0",
     "object-assign": "^4.1.1",
     "pick-by-alias": "^1.0.0",
     "snap-points-2d": "^3.2.0",
@@ -44,7 +45,7 @@
   "devDependencies": {
     "canvas-fit": "^1.5.0",
     "enable-mobile": "^1.0.7",
-    "fps-indicator": "^1.1.0",
+    "fps-indicator": "^1.1.2",
     "gauss-random": "^1.0.1",
     "mobilify": "^1.0.1",
     "mouse-change": "^1.4.0",

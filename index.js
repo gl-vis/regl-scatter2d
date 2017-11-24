@@ -10,6 +10,7 @@ const search = require('binary-search-bounds')
 const pick = require('pick-by-alias')
 const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
+const ie = require('is-iexplorer')
 
 module.exports = Scatter
 
@@ -155,6 +156,7 @@ function Scatter (regl, options) {
 		stencil: {enable: false},
 		depth: {enable: false},
 
+
 		elements: regl.prop('elements'),
 		count: regl.prop('count'),
 		offset: regl.prop('offset'),
@@ -162,19 +164,52 @@ function Scatter (regl, options) {
 		primitive: 'points'
 	}
 
-	//draw sdf-marker
-	let markerOptions = extend({}, shaderOptions)
-	markerOptions.frag = glslify('./marker-frag.glsl')
-	markerOptions.vert = glslify('./marker-vert.glsl')
+	if (ie) {
+		drawCircle = regl(extend({}, shaderOptions, {
+			frag: glslify('./ie-frag.glsl'),
+			vert: glslify('./ie-vert.glsl'),
+			uniforms: {
+				// FIXME: generate attribute color data
+				color: (ctx, p) => {
+					let id = p.color.length ? p.color[0] : p.color;
+					return palette.slice(id * 4, id * 4 + 4).map(v => v / 255)
+				},
+				borderColor: (ctx, p) => {
+					let id = p.borderColor.length ? p.borderColor[0] : p.borderColor;
+					return palette.slice(id * 4, id * 4 + 4).map(v => v / 255)
+				},
+				pixelRatio: regl.context('pixelRatio'),
+				palette: paletteTexture,
+				scale: regl.prop('scale'),
+				scaleFract: regl.prop('scaleFract'),
+				translate: regl.prop('translate'),
+				translateFract: regl.prop('translateFract'),
+				opacity: regl.prop('opacity'),
+				marker: regl.prop('marker')
+			},
+			attributes: {
+				position: positionBuffer,
+				positionFract: positionFractBuffer,
+				size: shaderOptions.attributes.size,
+				borderSize: shaderOptions.attributes.borderSize
+			}
+		}))
+	}
+	else {
+		//draw sdf-marker
+		let markerOptions = extend({}, shaderOptions)
+		markerOptions.frag = glslify('./marker-frag.glsl')
+		markerOptions.vert = glslify('./marker-vert.glsl')
 
-	drawMarker = regl(markerOptions)
+		drawMarker = regl(markerOptions)
 
-	//draw circle
-	let circleOptions = extend({}, shaderOptions)
-	circleOptions.frag = glslify('./circle-frag.glsl')
-	circleOptions.vert = glslify('./circle-vert.glsl')
+		//draw circle
+		let circleOptions = extend({}, shaderOptions)
+		circleOptions.frag = glslify('./circle-frag.glsl')
+		circleOptions.vert = glslify('./circle-vert.glsl')
 
-	drawCircle = regl(circleOptions)
+		drawCircle = regl(circleOptions)
+	}
 
 	//expose API
 	extend(scatter2d, {

@@ -2,7 +2,7 @@ precision highp float;
 
 varying vec4 fragColor, fragBorderColor;
 
-uniform float pixelRatio, opacity;
+uniform float opacity;
 varying float fragBorderRadius, fragWidth;
 
 void main() {
