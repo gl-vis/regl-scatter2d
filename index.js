@@ -239,7 +239,9 @@ function Scatter (regl, options) {
 
 	function draw (opts) {
 		if (typeof opts === 'number') return drawGroup(opts)
-		if (Array.isArray(opts[0])) {
+
+		// highlight elements
+		if (Array.isArray(opts)) {
 			opts.forEach((els, i) => {
 				if (els == null) return
 				if (els.length) return drawGroup(els, i)
@@ -276,6 +278,7 @@ function Scatter (regl, options) {
 			}
 
 			let batch = [], offset = group.offset
+
 			for (let i = 0; i < group.markerIds.length; i++) {
 				let subIds = [], ids = group.markerIds[i]
 
