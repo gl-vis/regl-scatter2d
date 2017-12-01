@@ -359,7 +359,7 @@ function Scatter (regl, options) {
 
 			// whitelisted level requires subelements from the range
 			if (whitelist) {
-				let elements = filter(ids._els.slice(startOffset, endOffset), whitelist)
+				let elements = filter(ids.sortedByLevels.subarray(startOffset, endOffset), whitelist)
 
 				batch.push(extend({}, group, {
 					elements: elements,
@@ -565,7 +565,7 @@ function Scatter (regl, options) {
 								x[i] = positions[iid * 2]
 							}
 
-							ids._els = els
+							ids.sortedByLevels = els
 						}
 						else {
 							els = new Uint32Array(l)
