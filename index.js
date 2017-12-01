@@ -287,48 +287,21 @@ function Scatter (regl, options) {
 
 		if (!(group && group.count && group.opacity)) return
 
-		//draw subset of elements
+		//if subset of elements to redraw passed - form a whitelist
+		let whitelist
 		if (els) {
-			let pending = {};
+			whitelist = {};
 
 			for (let i = 0; i < els.length; i++) {
-				pending[els[i]] = true
+				whitelist[els[i]] = true
 			}
-
-			let batch = [], offset = group.offset
-
-			for (let i = 0; i < group.markerIds.length; i++) {
-				let subIds = [], ids = group.markerIds[i]
-
-				for (let i = 0, l = ids.length; i < l; i++) {
-					let id = ids[i]
-					if (pending[id]) {
-						subIds.push(id + offset)
-						pending[id] = null
-					}
-				}
-				batch.push(extend({}, group, {
-					elements: subIds,
-					offset: 0,
-					count: subIds.length,
-					marker: markerTextures[ids.id]
-				}))
-			}
-
-			regl._refresh()
-			drawCircle(batch.shift())
-			regl._refresh()
-			drawMarker(batch)
-
-			return
 		}
-
 
 		//draw circles
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
 		if (group.markerIds[0]) {
 			regl._refresh()
-			drawCircle(getMarkerDrawOptions(group.markerIds[0], group))
+			drawCircle(getMarkerDrawOptions(group.markerIds[0], group, whitelist))
 		}
 
 		//draw all other available markers
@@ -338,7 +311,7 @@ function Scatter (regl, options) {
 
 			if (!ids || !ids.length) continue
 
-			[].push.apply(batch, getMarkerDrawOptions(ids, group))
+			[].push.apply(batch, getMarkerDrawOptions(ids, group, whitelist))
 		}
 
 		if (batch.length) {
@@ -348,24 +321,25 @@ function Scatter (regl, options) {
 	}
 
 	// get options for the marker ids
-	function getMarkerDrawOptions(ids, group) {
+	function getMarkerDrawOptions(ids, group, whitelist) {
+		let {range, offset} = group
+
 		//unsnapped options
 		if (!ids.snap) {
+			let elements = whitelist ? filter(ids, whitelist) : ids.elements;
+
 			return [extend({}, group, {
-				elements: ids.elements,
+				elements: elements,
 				offset: 0,
-				count: ids.length,
+				count: whitelist ? elements.length : ids.length,
 				marker: markerTextures[ids.id]
 			})]
 		}
 
 		//scales batch
 		let batch = []
-		let {range} = group
 		let {lod, x, id} = ids
 		let pixelSize = (range[2] - range[0]) / group.viewport.width
-
-		let els = ids.elements
 
 		for (let scaleNum = lod.length; scaleNum--;) {
 			let level = lod[scaleNum]
@@ -383,12 +357,36 @@ function Scatter (regl, options) {
 
 			if (endOffset <= startOffset) continue
 
-			batch.push(extend({}, group, {
-				elements: els,
-				marker: markerTextures[id],
-				offset: startOffset,
-				count: endOffset - startOffset
-			}))
+			// whitelisted level requires subelements from the range
+			if (whitelist) {
+				let elements = filter(ids._els.slice(startOffset, endOffset), whitelist)
+
+				batch.push(extend({}, group, {
+					elements: elements,
+					marker: markerTextures[id],
+					offset: 0,
+					count: elements.length
+				}))
+			}
+			else {
+				batch.push(extend({}, group, {
+					elements: ids.elements,
+					marker: markerTextures[id],
+					offset: startOffset,
+					count: endOffset - startOffset
+				}))
+			}
+		}
+
+		function filter(ids, whitelist) {
+			let subIds = []
+			for (let i = 0, l = ids.length; i < l; i++) {
+				let id = ids[i]
+				if (whitelist[id]) {
+					subIds.push(id + offset)
+				}
+			}
+			return subIds
 		}
 
 		return batch
@@ -534,7 +532,7 @@ function Scatter (regl, options) {
 
 						ids.id = i;
 
-						if (snap && (snap === true || l * 2 > snap)) {
+						if (snap && (snap === true || l > snap)) {
 							ids.snap = true
 							let x = ids.x = Array(l)
 							let w = ids.w = Array(l)
@@ -566,6 +564,8 @@ function Scatter (regl, options) {
 								els[i] = iid + offset
 								x[i] = positions[iid * 2]
 							}
+
+							ids._els = els
 						}
 						else {
 							els = new Uint32Array(l)
@@ -576,7 +576,7 @@ function Scatter (regl, options) {
 
 						ids.elements = regl.elements({
 							primitive: 'points',
-							type: hasElementIndex ? 'uint32' : 'uint16',
+							type: 'uint32',
 							data: els
 						})
 					}
