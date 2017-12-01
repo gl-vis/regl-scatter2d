@@ -3,7 +3,6 @@
 require('enable-mobile')
 const createScatter = require('./')
 const panZoom = require('pan-zoom')
-// const createSettings = require('settings-panel')
 const fps = require('fps-indicator')({css:`padding: 1.4rem`})
 const random = require('gauss-random')
 const rgba = require('color-rgba')
@@ -77,7 +76,7 @@ function show (arr) {
 
 
 
-let N = 1e4
+let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
@@ -103,7 +102,7 @@ scatter(Array(passes).fill(null).map((x, i) => {
 		// color: 'rgba(0, 0, 0, .5)',
 
 		marker: markers[i],
-		// marjer: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
+		// marker: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
 		borderSize: 1,
@@ -117,7 +116,7 @@ scatter(Array(passes).fill(null).map((x, i) => {
 
 // setTimeout(() => {
 // 	scatter({snap: 1})
-	// })
+// 	})
 
 
 

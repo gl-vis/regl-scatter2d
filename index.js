@@ -11,6 +11,7 @@ const pick = require('pick-by-alias')
 const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
+const {float32, fract32} = require('to-float32')
 
 module.exports = Scatter
 
@@ -51,6 +52,8 @@ function Scatter (regl, options) {
 			positions: [],
 			snap: 1e4
 		},
+
+		//state
 		groups = [],
 
 		//textures for marker keys
@@ -93,8 +96,21 @@ function Scatter (regl, options) {
 		data: null
 	})
 
-	//init defaults
-	update(options)
+	//fast-create from existing regl-scatter instance
+	if (options.clone) {
+		groups = options.clone.groups.map(group => extend({}, group))
+
+		//create marker textures
+		options.clone.markers.forEach(sdf => {
+			addMarker(sdf)
+		})
+
+		updateBuffers({point: true, color: true, size: true})
+	}
+	//full create from options
+	else {
+		update(options)
+	}
 
 
 	//common shader options
@@ -164,6 +180,7 @@ function Scatter (regl, options) {
 		primitive: 'points'
 	}
 
+	// IE11 shader workaround
 	if (ie) {
 		drawCircle = regl(extend({}, shaderOptions, {
 			frag: glslify('./ie-frag.glsl'),
@@ -219,7 +236,8 @@ function Scatter (regl, options) {
 		regl: regl,
 		gl: gl,
 		canvas: gl.canvas,
-		groups: groups
+		groups: groups,
+		markers: markerCache
 	})
 
 
@@ -234,9 +252,10 @@ function Scatter (regl, options) {
 			destroy()
 		}
 
-		draw(opts)
+		draw()
 	}
 
+	// draw all groups or only indicated ones
 	function draw (opts) {
 		if (typeof opts === 'number') return drawGroup(opts)
 
@@ -250,7 +269,7 @@ function Scatter (regl, options) {
 			return
 		}
 
-		//make options a batch
+		// make options a batch
 		groups.forEach((group, i) => {
 			if (!group) return
 
@@ -258,6 +277,7 @@ function Scatter (regl, options) {
 		})
 	}
 
+	// draw specific scatter group
 	function drawGroup (group, id) {
 		if (typeof group === 'number') group = groups[group]
 
@@ -329,7 +349,7 @@ function Scatter (regl, options) {
 		}
 	}
 
-	//get options for the marker ids
+	// get options for the marker ids
 	function getMarkerDrawOptions(ids, group) {
 		//unsnapped options
 		if (!ids.snap) {
@@ -376,6 +396,7 @@ function Scatter (regl, options) {
 		return batch
 	}
 
+	// update groups options
 	function update (options) {
 		if (!options) return
 
@@ -389,7 +410,7 @@ function Scatter (regl, options) {
 		//global count of points
 		let pointCount = 0, sizeCount = 0, colorCount = 0
 
-		groups = options.map((options, i) => {
+		options.forEach((options, i) => {
 			let group = groups[i]
 
 			if (!options) return group
@@ -613,15 +634,24 @@ function Scatter (regl, options) {
 				}
 			}])
 
-			return group
+			groups[i] = group
 		})
 
+		updateBuffers({
+			point: pointCount,
+			size: sizeCount,
+			color: colorCount
+		})
+	}
+
+	// update buffers data based on existing groups
+	function updateBuffers({point, size, color}) {
 		//put point/color data into buffers, if updated any of them
 		let len = groups.reduce((acc, group, i) => {
 			return acc + (group ? group.count : 0)
 		}, 0)
 
-		if (pointCount) {
+		if (point) {
 			let positionData = new Float32Array(len * 2)
 			let positionFractData = new Float32Array(len * 2)
 
@@ -637,7 +667,7 @@ function Scatter (regl, options) {
 			positionFractBuffer(positionFractData)
 		}
 
-		if (sizeCount) {
+		if (size) {
 			let sizeData = new Uint8Array(len * 2)
 
 			groups.forEach((group, i) => {
@@ -658,7 +688,7 @@ function Scatter (regl, options) {
 			sizeBuffer(sizeData)
 		}
 
-		if (colorCount) {
+		if (color) {
 			let colorData = new Uint16Array(len * 2)
 
 			groups.forEach((group, i) => {
@@ -679,7 +709,7 @@ function Scatter (regl, options) {
 		}
 	}
 
-	//get (and create) marker texture id
+	// get (and create) marker texture id
 	function addMarker (sdf) {
 		let pos = sdf == null ? 0 : markerCache.indexOf(sdf)
 
@@ -713,7 +743,7 @@ function Scatter (regl, options) {
 		return pos
 	}
 
-	//register color to palette, return it's index or list of indexes
+	// register color to palette, return it's index or list of indexes
 	function updateColor (colors) {
 		if (!Array.isArray(colors)) {
 			colors = [colors]
@@ -762,7 +792,10 @@ function Scatter (regl, options) {
 		return idx.length === 1 ? idx[0] : idx
 	}
 
+	// remove unused stuff
 	function destroy () {
+		groups.length = 0
+
 		sizeBuffer.destroy()
 		positionBuffer.destroy()
 		positionFractBuffer.destroy()
@@ -771,21 +804,4 @@ function Scatter (regl, options) {
 	}
 
 	return scatter2d
-}
-
-//return fractional part of float32 array
-function fract32 (arr) {
-	let fract = new Float32Array(arr.length)
-	fract.set(arr)
-	for (let i = 0, l = fract.length; i < l; i++) {
-		fract[i] = arr[i] - fract[i]
-	}
-	return fract
-}
-function float32 (arr) {
-	if (arr instanceof Float32Array) return arr
-
-	let float = new Float32Array(arr)
-	float.set(arr)
-	return float
 }
