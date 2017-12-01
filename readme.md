@@ -46,9 +46,9 @@ Option | Default | Description
 `marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left, top, right, bottom}` or `{x, y, w, h}`.
+`clone` | `null` | Source _scatter2d_ instance to clone for faster creation.
 <!--
 `snap` | `1e5` | Number of points threshold to enable snapping, can be bool. See [snap-points-2d](https://github.com/gl-vis/snap-points-2d).
-`clone` | `` | Source regl-scatter2d instance to clone for faster creation
 -->
 
 A list of options can be passed for batch rendering:
@@ -65,9 +65,9 @@ scatter([
 
 Update options, not incurring redraw.
 
-### `scatter.draw(id?|elements?)`
+### `scatter.draw(groupId?|elements?)`
 
-Draw points based on last options. `id` integer can specify a scatter group to redraw defined via batch update. `elements` can specify exact marker ids to draw:
+Draw points based on last options. `groupId` integer can specify a batch group to redraw. `elements` can specify marker ids to draw:
 
 ```js
 scatter.update([

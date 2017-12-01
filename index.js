@@ -101,9 +101,7 @@ function Scatter (regl, options) {
 		groups = options.clone.groups.map(group => extend({}, group))
 
 		//create marker textures
-		options.clone.markers.forEach(sdf => {
-			addMarker(sdf)
-		})
+		options.clone.markers.forEach(addMarker)
 
 		updateBuffers({point: true, color: true, size: true})
 	}
