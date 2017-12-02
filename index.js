@@ -290,7 +290,7 @@ function Scatter (regl, options) {
 		//if subset of elements to redraw passed - form a whitelist
 		let whitelist
 		if (els) {
-			whitelist = {};
+			whitelist = Array(group.count);
 
 			for (let i = 0; i < els.length; i++) {
 				whitelist[els[i]] = true
