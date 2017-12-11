@@ -406,7 +406,7 @@ function Scatter (regl, options) {
 		//global count of points
 		let pointCount = 0, sizeCount = 0, colorCount = 0
 
-		options.forEach((options, i) => {
+		groups = options.map((options, i) => {
 			let group = groups[i]
 
 			if (!options) return group
@@ -632,7 +632,7 @@ function Scatter (regl, options) {
 				}
 			}])
 
-			groups[i] = group
+			return group
 		})
 
 		updateBuffers({
