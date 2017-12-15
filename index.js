@@ -301,7 +301,9 @@ function Scatter (regl, options) {
 		//FIXME remove regl._refresh hooks once regl issue #427 is fixed
 		if (group.markerIds[0]) {
 			regl._refresh()
-			drawCircle(getMarkerDrawOptions(group.markerIds[0], group, whitelist))
+
+			let opts = getMarkerDrawOptions(group.markerIds[0], group, whitelist)
+			drawCircle(opts)
 		}
 
 		//draw all other available markers
@@ -323,7 +325,6 @@ function Scatter (regl, options) {
 	// get options for the marker ids
 	function getMarkerDrawOptions(ids, group, whitelist) {
 		let {range, offset} = group
-
 		//unsnapped options
 		if (!ids.snap) {
 			let elements = whitelist ? filter(ids, whitelist) : ids.elements;
@@ -485,6 +486,12 @@ function Scatter (regl, options) {
 
 					group.offset = pointCount
 					pointCount += count
+
+					// reset marker
+					if (!options.marker && !group.marker) {
+						delete group.marker;
+						options.marker = null;
+					}
 
 					return positions
 				}
