@@ -1,6 +1,6 @@
 {
   "name": "regl-scatter2d",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "Scatter2d plot built with regl",
   "main": "./index.js",
   "scripts": {
