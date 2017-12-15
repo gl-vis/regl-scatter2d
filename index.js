@@ -29,8 +29,6 @@ function Scatter (regl, options) {
 	if (options && options.length) options.positions = options
 	regl = options.regl
 
-	const hasElementIndex = regl.hasExtension('OES_element_index_uint')
-
 	// persistent variables
 	let gl = regl._gl,
 		drawMarker, drawCircle,
@@ -566,13 +564,16 @@ function Scatter (regl, options) {
 							ids.lod = snapPoints(markerPoints, i2id, w, bounds)
 
 							els = new Uint32Array(l)
+							//FIXME: possibly we can handle sortedByLevels in a more efficient wat
+							let sortedByLevels = new Uint32Array(l)
 							for (let i = 0; i < l; i++) {
 								let id = i2id[i], iid = ids[id]
 								els[i] = iid + offset
+								sortedByLevels[i] = iid
 								x[i] = positions[iid * 2]
 							}
 
-							ids.sortedByLevels = els
+							ids.sortedByLevels = sortedByLevels
 						}
 						else {
 							els = new Uint32Array(l)
