@@ -76,11 +76,11 @@ function show (arr) {
 
 
 
-let N = 1e5
+let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null, dist]
+let markers = [null]//, dist]
 let passes = markers.length
 
 let scatter = createScatter(regl)
@@ -96,12 +96,12 @@ scatter(Array(passes).fill(null).map((x, i) => {
 		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
 		// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		// size: 10,
-		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		// color: 'rgba(0, 0, 0, .5)',
+		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
+		size: 10,
+		// color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: 'rgba(0, 0, 0, .5)',
 
-		marker: markers[i],
+		// marker: markers[i],
 		// marker: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,

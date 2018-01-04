@@ -96,10 +96,31 @@ function Scatter (regl, options) {
 
 	//fast-create from existing regl-scatter instance
 	if (options.clone) {
-		groups = options.clone.groups.map(group => extend({}, group))
+		groups = options.clone.groups.map(group => {
+			group = extend({}, group)
+			if (group.markerIds) {
+				group.markerIds = group.markerIds.map(ids => {
+					// recreate regl elements here
+					let newIds = ids.slice()
+					newIds.lod = ids.lod
+					newIds.snap = ids.snap
+					newIds.data = ids.data
+					newIds.id = ids.id
+					newIds.elements = regl.elements({
+						primitive: 'points',
+						type: 'uint32',
+						data: ids.data
+					})
+					return newIds
+				})
+			}
+			return group
+		})
 
 		//create marker textures
-		options.clone.markers.forEach(addMarker)
+		options.clone.markers.forEach(markers => {
+			addMarker(markers)
+		})
 
 		updateBuffers({point: true, color: true, size: true})
 	}
@@ -325,7 +346,7 @@ function Scatter (regl, options) {
 		let {range, offset} = group
 		//unsnapped options
 		if (!ids.snap) {
-			let elements = whitelist ? filter(ids, whitelist) : ids.elements;
+			let elements = whitelist ? filter(ids.data, whitelist) : ids.elements;
 
 			return [extend({}, group, {
 				elements: elements,
@@ -358,7 +379,7 @@ function Scatter (regl, options) {
 
 			// whitelisted level requires subelements from the range
 			if (whitelist) {
-				let elements = filter(ids.sortedByLevels.subarray(startOffset, endOffset), whitelist)
+				let elements = filter(ids.data.subarray(startOffset, endOffset), whitelist)
 
 				batch.push(extend({}, group, {
 					elements: elements,
@@ -377,15 +398,16 @@ function Scatter (regl, options) {
 			}
 		}
 
-		function filter(ids, whitelist) {
-			let subIds = []
-			for (let i = 0, l = ids.length; i < l; i++) {
-				let id = ids[i]
+		function filter(offsets, whitelist) {
+			let subEls = []
+			for (let i = 0, l = offsets.length; i < l; i++) {
+				let el = offsets[i]
+				let id = el - offset
 				if (whitelist[id]) {
-					subIds.push(id + offset)
+					subEls.push(el)
 				}
 			}
-			return subIds
+			return subEls
 		}
 
 		return batch
@@ -564,16 +586,11 @@ function Scatter (regl, options) {
 							ids.lod = snapPoints(markerPoints, i2id, w, bounds)
 
 							els = new Uint32Array(l)
-							//FIXME: possibly we can handle sortedByLevels in a more efficient wat
-							let sortedByLevels = new Uint32Array(l)
 							for (let i = 0; i < l; i++) {
 								let id = i2id[i], iid = ids[id]
 								els[i] = iid + offset
-								sortedByLevels[i] = iid
 								x[i] = positions[iid * 2]
 							}
-
-							ids.sortedByLevels = sortedByLevels
 						}
 						else {
 							els = new Uint32Array(l)
@@ -582,6 +599,7 @@ function Scatter (regl, options) {
 							}
 						}
 
+						ids.data = els;
 						ids.elements = regl.elements({
 							primitive: 'points',
 							type: 'uint32',
