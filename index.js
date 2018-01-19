@@ -106,6 +106,8 @@ function Scatter (regl, options) {
 					newIds.snap = ids.snap
 					newIds.data = ids.data
 					newIds.id = ids.id
+					newIds.x = ids.x
+					newIds.w = ids.w
 					newIds.elements = regl.elements({
 						primitive: 'points',
 						type: 'uint32',
@@ -359,6 +361,7 @@ function Scatter (regl, options) {
 		//scales batch
 		let batch = []
 		let {lod, x, id} = ids
+
 		let pixelSize = (range[2] - range[0]) / group.viewport.width
 
 		for (let scaleNum = lod.length; scaleNum--;) {
