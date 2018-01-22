@@ -62,6 +62,7 @@ function Scatter (regl, options) {
 
 	//texture with color palette
 	paletteTexture = regl.texture({
+		data: new Uint8Array(maxColors * 4),
 		width: maxColors,
 		height: 1,
 		type: 'uint8',
