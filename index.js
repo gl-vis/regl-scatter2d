@@ -12,6 +12,7 @@ const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
+const arrayRange = require('array-range')
 
 module.exports = Scatter
 
@@ -265,6 +266,7 @@ function Scatter (regl, options) {
 	})
 
 
+	// main update/draw function
 	function scatter2d (opts) {
 		// update
 		if (opts) {
@@ -330,6 +332,7 @@ function Scatter (regl, options) {
 			regl._refresh()
 
 			let opts = getMarkerDrawOptions(group.markerIds[0], group, whitelist)
+
 			drawCircle(opts)
 		}
 
@@ -436,7 +439,7 @@ function Scatter (regl, options) {
 		// global count of points
 		let pointCount = 0, sizeCount = 0, colorCount = 0
 
-		groups = options.map((options, i) => {
+		scatter2d.groups = groups = options.map((options, i) => {
 			let group = groups[i]
 
 			if (!options) return group
@@ -540,10 +543,7 @@ function Scatter (regl, options) {
 					if (!markers || typeof markers[0] === 'number') {
 						let id = addMarker(markers)
 
-						let elements = Array(group.count)
-						for (let i = 0; i < group.count; i++) {
-							elements[i] = i
-						}
+						let elements = arrayRange(group.count)
 
 						group.markerIds[id] = elements
 					}
