@@ -13,6 +13,7 @@ const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
 const arrayRange = require('array-range')
+const parseRect = require('parse-rect')
 
 module.exports = Scatter
 
@@ -639,37 +640,10 @@ function Scatter (regl, options) {
 				},
 
 				viewport: vp => {
-					let viewport
-
-					if (Array.isArray(vp)) {
-						viewport = {
-							x: vp[0],
-							y: vp[1],
-							width: vp[2] - vp[0],
-							height: vp[3] - vp[1]
-						}
-					}
-					else if (vp) {
-						viewport = {
-							x: vp.x || vp.left || 0,
-							y: vp.y || vp.top || 0
-						}
-
-						if (vp.right) viewport.width = vp.right - viewport.x
-						else viewport.width = vp.w || vp.width || 0
-
-						if (vp.bottom) viewport.height = vp.bottom - viewport.y
-						else viewport.height = vp.h || vp.height || 0
-					}
-					else {
-						viewport = {
-							x: 0, y: 0,
-							width: gl.drawingBufferWidth,
-							height: gl.drawingBufferHeight
-						}
-					}
-
-					return viewport
+					return parseRect(vp || [
+						gl.drawingBufferWidth,
+						gl.drawingBufferHeight
+					])
 				}
 			}])
 
