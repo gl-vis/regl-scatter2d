@@ -76,7 +76,7 @@ function show (arr) {
 
 
 
-let N = 1e6
+let N = 10001
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
@@ -96,17 +96,17 @@ scatter(Array(passes).fill(null).map((x, i) => {
 		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
 		// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 
-		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		size: 10,
-		// color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		color: 'rgba(0, 0, 0, .5)',
+		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
+		// size: 10,
+		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		// color: 'rgba(0, 0, 0, .5)',
 
 		// marker: markers[i],
 		// marker: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
-		borderSize: 1,
-		borderColor: [[.5,.5,.5,1]],
+		// borderSize: 1,
+		// borderColor: [[.5,.5,.5,1]],
 		snap: true,
 		precise: true,
 
@@ -164,6 +164,12 @@ function generate(N) {
 	for(var i=0; i<2*N; ++i) {
 	  positions[i] = random()
 	}
+
+
+	// for (var i = 0; i < N; i++)	{
+	// 	positions[i * 2] = i;
+	// 	positions[i * 2 + 1] = Math.random();
+	// }
 
 	return positions
 }

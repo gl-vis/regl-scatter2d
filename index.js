@@ -372,7 +372,7 @@ function Scatter (regl, options) {
 		let batch = []
 		let {lod, x, id} = ids
 
-		let pixelSize = (range[2] - range[0]) / group.viewport.width
+		let pixelSize = Math.min((range[2] - range[0]) / group.viewport.width, , (range[3] - range[1]) / group.viewport.height)
 
 		for (let scaleNum = lod.length; scaleNum--;) {
 			let level = lod[scaleNum]
