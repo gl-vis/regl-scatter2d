@@ -5,9 +5,8 @@ attribute float size, borderSize;
 
 uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float pixelRatio;
-uniform sampler2D palette;
 
-const float paletteSize = 4096., maxSize = 100.;
+const float maxSize = 100.;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragBorderRadius, fragWidth, fragBorderSize, fragSize;

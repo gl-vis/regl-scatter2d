@@ -7,15 +7,23 @@ attribute float colorId, borderColorId;
 uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float pixelRatio;
 uniform sampler2D palette;
+uniform vec2 paletteSize;
 
-const float paletteSize = 4096., maxSize = 100.;
+const float maxSize = 100.;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragBorderRadius, fragWidth;
 
+vec2 paletteCoord(float id) {
+  return vec2(
+    (mod(id, paletteSize.x) + .5) / paletteSize.x,
+    (floor(id / paletteSize.x) + .5) / paletteSize.y
+  );
+}
+
 void main() {
-  vec4 color = texture2D(palette, vec2((colorId + .5) / paletteSize, 0));
-  vec4 borderColor = texture2D(palette, vec2((borderColorId + .5) / paletteSize, 0));
+  vec4 color = texture2D(palette, paletteCoord(colorId));
+  vec4 borderColor = texture2D(palette, paletteCoord(borderColorId));
 
   float size = size * maxSize / 255.;
   float borderSize = borderSize * maxSize / 255.;

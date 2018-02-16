@@ -126,10 +126,8 @@ function Scatter (regl, options) {
 		options.clone.markers.forEach(markers => {
 			addMarker(markers)
 		})
-
 		// clone palette texture
 		updatePalette(options.clone.palette)
-
 		updateBuffers({point: true, color: true, size: true})
 	}
 	// full create from options
@@ -143,12 +141,13 @@ function Scatter (regl, options) {
 		uniforms: {
 			pixelRatio: regl.context('pixelRatio'),
 			palette: paletteTexture,
+			paletteSize: (ctx, prop) => [maxColors, paletteTexture.height],
 			scale: regl.prop('scale'),
 			scaleFract: regl.prop('scaleFract'),
 			translate: regl.prop('translate'),
 			translateFract: regl.prop('translateFract'),
 			opacity: regl.prop('opacity'),
-			marker: regl.prop('marker')
+			marker: regl.prop('marker'),
 		},
 
 		attributes: {
@@ -222,6 +221,7 @@ function Scatter (regl, options) {
 				},
 				pixelRatio: regl.context('pixelRatio'),
 				palette: paletteTexture,
+				paletteSize: (ctx, prop) => [maxColors, paletteTexture.height],
 				scale: regl.prop('scale'),
 				scaleFract: regl.prop('scaleFract'),
 				translate: regl.prop('translate'),
@@ -762,7 +762,6 @@ function Scatter (regl, options) {
 			colors = [colors]
 		}
 
-		let start = palette.length
 		let idx = []
 
 		for (let i = 0; i < colors.length; i++) {
@@ -788,24 +787,36 @@ function Scatter (regl, options) {
 				palette[pos+3] = color[3]
 			}
 
-			idx[i] = Math.min(paletteIds[id], maxColors - 1)
+			idx[i] = paletteIds[id]
 		}
 
 		// limit max color
-		if (start < maxColors * 4) {
-			updatePalette(palette)
-		}
+		updatePalette(palette)
 
 		// keep static index for single-color property
 		return idx.length === 1 ? idx[0] : idx
 	}
 
 	function updatePalette(palette) {
-		if (palette.length > maxColors * 4) palette	= palette.slice(0, maxColors * 4);
+		let requiredHeight = Math.ceil(palette.length * .25 / maxColors)
 
+		// pad data
+		if (requiredHeight > 1) {
+			palette = palette.slice()
+			for (let i = (palette.length * .25) % maxColors; i < requiredHeight * maxColors; i++) {
+				palette.push(0, 0, 0, 0)
+			}
+		}
+
+		// ensure height
+		if (paletteTexture.height < requiredHeight) {
+			paletteTexture.resize(maxColors, requiredHeight)
+		}
+
+		// update full data
 		paletteTexture.subimage({
 			width: Math.min(palette.length * .25, maxColors),
-			height: 1,
+			height: requiredHeight,
 			data: palette
 		}, 0, 0)
 	}
