@@ -98,8 +98,10 @@ scatter(Array(passes).fill(null).map((x, i) => {
 
 		size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
 		// size: 10,
+
 		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		// color: 'rgba(0, 0, 0, .5)',
+		// color: 'rgba(0, 0, 255, .5)',
+		// borderColor: 'rgba(255, 0, 0, .5)',
 
 		// marker: markers[i],
 		// marker: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),

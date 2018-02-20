@@ -2,7 +2,7 @@ precision highp float;
 
 attribute vec2 position, positionFract;
 attribute float size, borderSize;
-attribute float colorId, borderColorId;
+attribute vec2 colorId, borderColorId;
 
 uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float pixelRatio;
@@ -18,6 +18,12 @@ vec2 paletteCoord(float id) {
   return vec2(
     (mod(id, paletteSize.x) + .5) / paletteSize.x,
     (floor(id / paletteSize.x) + .5) / paletteSize.y
+  );
+}
+vec2 paletteCoord(vec2 id) {
+  return vec2(
+    (id.x + .5) / paletteSize.x,
+    (id.y + .5) / paletteSize.y
   );
 }
 

@@ -165,13 +165,13 @@ function Scatter (regl, options) {
 			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
 			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: colorBuffer,
-				stride: 4,
+				stride: 8,
 				offset: 0
 			} : {constant: [prop.color]},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
-				stride: 4,
-				offset: 2
+				stride: 8,
+				offset: 4
 			} : {constant: [prop.borderColor]}
 		},
 
@@ -443,7 +443,9 @@ function Scatter (regl, options) {
 		scatter2d.groups = groups = options.map((options, i) => {
 			let group = groups[i]
 
-			if (!options) return group
+			if (options === undefined) return group
+
+			if (options === null) options = { positions: null }
 			else if (typeof options === 'function') options = {after: options}
 			else if (typeof options[0] === 'number') options = {positions: options}
 
@@ -461,6 +463,9 @@ function Scatter (regl, options) {
 				viewport: 'viewport viewBox',
 				opacity: 'opacity alpha'
 			})
+
+			if (options.positions === null) options.positions = []
+
 			if (!group) {
 				groups[i] = group = {
 					id: i,
@@ -702,7 +707,7 @@ function Scatter (regl, options) {
 		}
 
 		if (color) {
-			let colorData = new Uint16Array(len * 2)
+			let colorData = new Uint16Array(len * 4)
 
 			groups.forEach((group, i) => {
 				if (!group) return
@@ -710,14 +715,23 @@ function Scatter (regl, options) {
 				if (!count) return
 
 				if (color.length || borderColor.length) {
-					let colorIds = new Uint16Array(count*2)
+					let colorIds = new Uint16Array(count * 4)
 					for (let i = 0; i < count; i++) {
-						colorIds[i*2] = color[i] == null ? color : color[i]
-						colorIds[i*2 + 1] = borderColor[i] == null ? borderColor : borderColor[i]
+						if (color[i] != null) {
+							colorIds[i*4] = color[i] % maxColors
+							colorIds[i*4 + 1] = Math.floor(color[i] / maxColors)
+						}
+						if (borderColor[i] != null) {
+							colorIds[i*4 + 2] = borderColor[i] % maxColors
+							colorIds[i*4 + 3] = Math.floor(borderColor[i] / maxColors)
+						}
 					}
-					colorData.set(colorIds, offset * 2)
+
+					colorData.set(colorIds, offset * 4)
 				}
 			})
+
+
 			colorBuffer(colorData)
 		}
 	}
