@@ -4,6 +4,7 @@ const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
 const snapPoints = require('snap-points-2d')
+const cluster = require('../point-cluster')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const search = require('binary-search-bounds')
@@ -109,8 +110,6 @@ function Scatter (regl, options) {
 					newIds.snap = ids.snap
 					newIds.data = ids.data
 					newIds.id = ids.id
-					newIds.x = ids.x
-					newIds.w = ids.w
 					newIds.elements = regl.elements({
 						primitive: 'points',
 						type: 'uint32',
@@ -287,7 +286,11 @@ function Scatter (regl, options) {
 		if (typeof opts === 'number') return drawGroup(opts)
 
 		// highlight elements
-		if (Array.isArray(opts)) {
+		if (Array.isArray(opts) || ArrayBuffer.isView(opts)) {
+			if (typeof opts[0] === 'number' && groups.length === 1) {
+				drawGroup(opts, 0)
+			}
+
 			opts.forEach((els, i) => {
 				if (els == null) return
 				if (els.length) return drawGroup(els, i)
@@ -310,7 +313,7 @@ function Scatter (regl, options) {
 
 		let els
 
-		if (Array.isArray(group)) {
+		if (Array.isArray(group) || ArrayBuffer.isView(group)) {
 			els = group
 			group = groups[id]
 		}
@@ -355,7 +358,7 @@ function Scatter (regl, options) {
 
 	// get options for the marker ids
 	function getMarkerDrawOptions(ids, group, whitelist) {
-		let {range, offset} = group
+		let {range, offset, bounds, positions} = group
 		// unsnapped options
 		if (!ids.snap) {
 			let elements = whitelist ? filter(ids.data, whitelist) : ids.elements;
@@ -370,28 +373,19 @@ function Scatter (regl, options) {
 
 		// scales batch
 		let batch = []
-		let {lod, x, id} = ids
+		let {lod, id} = ids
 
 		let pixelSize = Math.min((range[2] - range[0]) / group.viewport.width, (range[3] - range[1]) / group.viewport.height)
 
-		for (let scaleNum = lod.length; scaleNum--;) {
-			let level = lod[scaleNum]
+		let offsets = lod.offsets(pixelSize, ...range)
 
-			// FIXME: use minSize-adaptive coeff here, if makes sense, mb we need dist tho
-			if (level.pixelSize && level.pixelSize < pixelSize && scaleNum > 1) {
-				continue
-			}
-
-			let intervalStart = level.offset
-			let intervalEnd = level.count + intervalStart
-
-			let startOffset = search.ge(x, range[0], intervalStart, intervalEnd - 1)
-			let endOffset = search.lt(x, range[2], startOffset, intervalEnd - 1) + 1
-
-			if (endOffset <= startOffset) continue
+		for (let level = offsets.length; level--;) {
+			let [startOffset, endOffset] = offsets[level]
+			let items = lod.levels[level]
 
 			// whitelisted level requires subelements from the range
 			if (whitelist) {
+				// TODO: test this out, prob subrendering is broken
 				let elements = filter(ids.data.subarray(startOffset, endOffset), whitelist)
 
 				batch.push(extend({}, group, {
@@ -405,7 +399,7 @@ function Scatter (regl, options) {
 				batch.push(extend({}, group, {
 					elements: ids.elements,
 					marker: markerTextures[id],
-					offset: startOffset,
+					offset: startOffset + items.offset,
 					count: endOffset - startOffset
 				}))
 			}
@@ -582,8 +576,6 @@ function Scatter (regl, options) {
 
 						if (snap && (snap === true || l > snap)) {
 							ids.snap = true
-							let x = ids.x = Array(l)
-							let w = ids.w = Array(l)
 							let markerPoints
 
 							// multimarker snapping is computationally more intense
@@ -602,15 +594,26 @@ function Scatter (regl, options) {
 							}
 
 							// shuffled_id: real_id
-							let i2id = new Uint32Array(l)
+							// let i2id = new Uint32Array(l)
 
-							ids.lod = snapPoints(markerPoints, i2id, w, bounds)
+							ids.lod = cluster(markerPoints, {
+								bounds: bounds
+							})
 
+							// let i2id = index.ids
+
+							// augment levels with x- and offset params
 							els = new Uint32Array(l)
-							for (let i = 0; i < l; i++) {
-								let id = i2id[i], iid = ids[id]
-								els[i] = iid + offset
-								x[i] = positions[iid * 2]
+							for (let level = 0, off = 0; level < ids.lod.levels.length; level++) {
+								let items = ids.lod.levels[level],
+									l = items.length
+								for (let i = 0; i < l; i++) {
+									// let id = i2id[i], iid = ids[id]
+									let id = items[i], iid = ids[id]
+									els[i + off] = iid + offset
+								}
+								items.offset = off
+								off += l
 							}
 						}
 						else {
