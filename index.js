@@ -3,11 +3,9 @@
 const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
-const snapPoints = require('snap-points-2d')
 const cluster = require('../point-cluster')
 const extend = require('object-assign')
 const glslify = require('glslify')
-const search = require('binary-search-bounds')
 const pick = require('pick-by-alias')
 const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
@@ -61,7 +59,11 @@ function Scatter (regl, options) {
 		markerTextures = [null],
 		markerCache = [null]
 
-	const maxColors = 4096, maxSize = 100
+	const maxColors = 255, maxSize = 100
+
+	// direct color buffer mode
+	// IE does not support palette anyways
+	let tooManyColors = ie
 
 	// texture with color palette
 	paletteTexture = regl.texture({
@@ -84,7 +86,7 @@ function Scatter (regl, options) {
 	})
 	colorBuffer = regl.buffer({
 		usage: 'dynamic',
-		type: 'uint16',
+		type: 'uint8',
 		data: null
 	})
 	positionBuffer = regl.buffer({
@@ -140,7 +142,7 @@ function Scatter (regl, options) {
 		uniforms: {
 			pixelRatio: regl.context('pixelRatio'),
 			palette: paletteTexture,
-			paletteSize: (ctx, prop) => [maxColors, paletteTexture.height],
+			paletteSize: (ctx, prop) => [tooManyColors ? 0 : maxColors, paletteTexture.height],
 			scale: regl.prop('scale'),
 			scaleFract: regl.prop('scaleFract'),
 			translate: regl.prop('translate'),
@@ -162,16 +164,18 @@ function Scatter (regl, options) {
 				stride: 2,
 				offset: 1
 			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
-			colorId: (ctx, prop) => prop.color.length ? {
+			colorId: (ctx, prop) => {
+				return prop.color.length ? {
 				buffer: colorBuffer,
-				stride: 8,
+				stride: tooManyColors ? 8 : 4,
 				offset: 0
-			} : {constant: [prop.color]},
+			} : {constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]}
+		},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
-				stride: 8,
-				offset: 4
-			} : {constant: [prop.borderColor]}
+				stride: tooManyColors ? 8 : 4,
+				offset: tooManyColors ? 4 : 2
+			} : {constant: tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [prop.borderColor]}
 		},
 
 
@@ -203,54 +207,25 @@ function Scatter (regl, options) {
 		primitive: 'points'
 	}
 
-	// IE11 shader workaround
-	if (ie) {
-		drawCircle = regl(extend({}, shaderOptions, {
-			frag: glslify('./ie-frag.glsl'),
-			vert: glslify('./ie-vert.glsl'),
-			uniforms: {
-				// FIXME: generate attribute color data
-				color: (ctx, p) => {
-					let id = p.color.length ? p.color[0] : p.color;
-					return palette.slice(id * 4, id * 4 + 4).map(v => v / 255)
-				},
-				borderColor: (ctx, p) => {
-					let id = p.borderColor.length ? p.borderColor[0] : p.borderColor;
-					return palette.slice(id * 4, id * 4 + 4).map(v => v / 255)
-				},
-				pixelRatio: regl.context('pixelRatio'),
-				palette: paletteTexture,
-				paletteSize: (ctx, prop) => [maxColors, paletteTexture.height],
-				scale: regl.prop('scale'),
-				scaleFract: regl.prop('scaleFract'),
-				translate: regl.prop('translate'),
-				translateFract: regl.prop('translateFract'),
-				opacity: regl.prop('opacity'),
-				marker: regl.prop('marker')
-			},
-			attributes: {
-				position: positionBuffer,
-				positionFract: positionFractBuffer,
-				size: shaderOptions.attributes.size,
-				borderSize: shaderOptions.attributes.borderSize
-			}
-		}))
-	}
-	else {
-		// draw sdf-marker
-		let markerOptions = extend({}, shaderOptions)
-		markerOptions.frag = glslify('./marker-frag.glsl')
-		markerOptions.vert = glslify('./marker-vert.glsl')
+	// draw sdf-marker
+	let markerOptions = extend({}, shaderOptions)
+	markerOptions.frag = glslify('./marker-frag.glsl')
+	markerOptions.vert = glslify('./marker-vert.glsl')
 
+	try {
 		drawMarker = regl(markerOptions)
-
-		// draw circle
-		let circleOptions = extend({}, shaderOptions)
-		circleOptions.frag = glslify('./circle-frag.glsl')
-		circleOptions.vert = glslify('./circle-vert.glsl')
-
-		drawCircle = regl(circleOptions)
+	} catch (e) {
 	}
+
+	// draw circle
+	let circleOptions = extend({}, shaderOptions)
+	circleOptions.frag = glslify('./circle-frag.glsl')
+	circleOptions.vert = glslify('./circle-vert.glsl')
+
+	// polyfill IE
+	if (ie) circleOptions.frag = circleOptions.frag.replace('smoothstep', 'smoothStep')
+
+	drawCircle = regl(circleOptions)
 
 	// expose API
 	extend(scatter2d, {
@@ -358,7 +333,7 @@ function Scatter (regl, options) {
 
 	// get options for the marker ids
 	function getMarkerDrawOptions(ids, group, whitelist) {
-		let {range, offset, bounds, positions} = group
+		let {range, offset} = group
 		// unsnapped options
 		if (!ids.snap) {
 			let elements = whitelist ? filter(ids.data, whitelist) : ids.elements;
@@ -593,22 +568,14 @@ function Scatter (regl, options) {
 								markerPoints.set(positions)
 							}
 
-							// shuffled_id: real_id
-							// let i2id = new Uint32Array(l)
+							ids.lod = cluster(markerPoints, { bounds })
 
-							ids.lod = cluster(markerPoints, {
-								bounds: bounds
-							})
-
-							// let i2id = index.ids
-
-							// augment levels with x- and offset params
+							// augment levels offset params
 							els = new Uint32Array(l)
 							for (let level = 0, off = 0; level < ids.lod.levels.length; level++) {
 								let items = ids.lod.levels[level],
 									l = items.length
 								for (let i = 0; i < l; i++) {
-									// let id = i2id[i], iid = ids[id]
 									let id = items[i], iid = ids[id]
 									els[i + off] = iid + offset
 								}
@@ -710,30 +677,66 @@ function Scatter (regl, options) {
 		}
 
 		if (color) {
-			let colorData = new Uint16Array(len * 4)
+			let colorData
 
-			groups.forEach((group, i) => {
-				if (!group) return
-				let {count, offset, color, borderColor} = group
-				if (!count) return
+			// if too many colors - put colors to buffer directly
+			if (tooManyColors) {
+				colorData = new Uint8Array(len * 8)
 
-				if (color.length || borderColor.length) {
-					let colorIds = new Uint16Array(count * 4)
-					for (let i = 0; i < count; i++) {
-						if (color[i] != null) {
-							colorIds[i*4] = color[i] % maxColors
-							colorIds[i*4 + 1] = Math.floor(color[i] / maxColors)
+				groups.forEach((group, i) => {
+					if (!group) return
+					let {count, offset, color, borderColor} = group
+					if (!count) return
+
+					if (color.length || borderColor.length) {
+						let colors = new Uint8Array(count * 8)
+						for (let i = 0; i < count; i++) {
+							let colorId = color[i]
+							colors[i*8] = palette[colorId*4]
+							colors[i*8 + 1] = palette[colorId*4 + 1]
+							colors[i*8 + 2] = palette[colorId*4 + 2]
+							colors[i*8 + 3] = palette[colorId*4 + 3]
+
+							let borderColorId = borderColor[i]
+							colors[i*8 + 4] = palette[borderColorId*4]
+							colors[i*8 + 5] = palette[borderColorId*4 + 1]
+							colors[i*8 + 6] = palette[borderColorId*4 + 2]
+							colors[i*8 + 7] = palette[borderColorId*4 + 3]
 						}
-						if (borderColor[i] != null) {
-							colorIds[i*4 + 2] = borderColor[i] % maxColors
-							colorIds[i*4 + 3] = Math.floor(borderColor[i] / maxColors)
-						}
+
+						colorData.set(colors, offset * 8)
 					}
+				})
+			}
 
-					colorData.set(colorIds, offset * 4)
-				}
-			})
+			// if limited amount of colors - keep palette color picking
+			// that saves significant memory
+			else {
+				colorData = new Uint8Array(len * 4)
 
+				groups.forEach((group, i) => {
+					if (!group) return
+					let {count, offset, color, borderColor} = group
+					if (!count) return
+
+					if (color.length || borderColor.length) {
+						let colorIds = new Uint8Array(count * 4)
+						for (let i = 0; i < count; i++) {
+							// put color coords in palette texture
+							if (color[i] != null) {
+								colorIds[i*4] = color[i] % maxColors
+								colorIds[i*4 + 1] = Math.floor(color[i] / maxColors)
+							}
+							if (borderColor[i] != null) {
+								colorIds[i*4 + 2] = borderColor[i] % maxColors
+								colorIds[i*4 + 3] = Math.floor(borderColor[i] / maxColors)
+							}
+						}
+
+						colorData.set(colorIds, offset * 4)
+					}
+				})
+			}
 
 			colorBuffer(colorData)
 		}
@@ -781,14 +784,26 @@ function Scatter (regl, options) {
 
 		let idx = []
 
+		// if color groups - flatten them
+		if (typeof colors[0] === 'number') {
+			let grouped = []
+
+			if (Array.isArray(colors)) {
+				for (let i = 0; i < colors.length; i+=4) {
+					grouped.push(colors.slice(i, i+4))
+				}
+			}
+			else {
+				for (let i = 0; i < colors.length; i+=4) {
+					grouped.push(colors.subarray(i, i+4))
+				}
+			}
+
+			colors = grouped
+		}
+
 		for (let i = 0; i < colors.length; i++) {
 			let color = colors[i]
-
-			// idx colors directly
-			if (typeof color === 'number') {
-				idx[i] = color
-				continue
-			}
 
 			color = rgba(color, 'uint8')
 
@@ -807,6 +822,9 @@ function Scatter (regl, options) {
 			idx[i] = paletteIds[id]
 		}
 
+		// detect if too many colors in palette
+		if (!tooManyColors && palette.length > maxColors * maxColors * 4) tooManyColors = true
+
 		// limit max color
 		updatePalette(palette)
 
@@ -815,6 +833,8 @@ function Scatter (regl, options) {
 	}
 
 	function updatePalette(palette) {
+		if (tooManyColors) return
+
 		let requiredHeight = Math.ceil(palette.length * .25 / maxColors)
 
 		// pad data

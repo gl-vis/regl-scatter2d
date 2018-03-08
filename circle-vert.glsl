@@ -2,7 +2,7 @@ precision highp float;
 
 attribute vec2 position, positionFract;
 attribute float size, borderSize;
-attribute vec2 colorId, borderColorId;
+attribute vec4 colorId, borderColorId;
 
 uniform vec2 scale, scaleFract, translate, translateFract;
 uniform float pixelRatio;
@@ -27,9 +27,15 @@ vec2 paletteCoord(vec2 id) {
   );
 }
 
+vec4 getColor(vec4 id) {
+  // zero-palette means we deal with direct buffer
+  if (paletteSize.x == 0.) return id / 255.;
+  return texture2D(palette, paletteCoord(id.xy));
+}
+
 void main() {
-  vec4 color = texture2D(palette, paletteCoord(colorId));
-  vec4 borderColor = texture2D(palette, paletteCoord(borderColorId));
+  vec4 color = getColor(colorId);
+  vec4 borderColor = getColor(borderColorId);
 
   float size = size * maxSize / 255.;
   float borderSize = borderSize * maxSize / 255.;
