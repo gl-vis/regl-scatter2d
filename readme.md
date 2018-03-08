@@ -37,7 +37,7 @@ Draw scatter points, update options.
 
 Option | Default | Description
 ---|---|---
-`positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points as `[x,y, x,y, ...]` or array of points `[[x,y], [x,y], ...]`.
+`positions`, `points` | `[]` | An array of the unrolled xy coordinates of the points as `[x,y, x,y, ...points]` or array of points `[[x,y], [x,y], ...points]`. Can be an object with `{x: [...xValues], y: [...yValues]}` planar values. For more precise memory control, like in matrix case, `x` or `y` can be an object of the form `{x: {buffer: reglBuffer, offset: value}}`, then the `reglBuffer` will be reused.
 `size`, `sizes` | `12` | Number or array with marker sizes in pixels. Array length should correspond to `positions`.
 `borderSize`, `borderSizes` | `1` | Number or array with border sizes in pixels. Array length should correspond to `positions`.
 `color`, `colors` | `'black'` | Color or array with colors. Each color can be a css color string or an array with float `0..1` values.

@@ -76,11 +76,11 @@ function show (arr) {
 
 
 
-let N = 1e5
+let N = 1e3
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null]//, dist]
+let markers = [null, dist]
 let passes = markers.length
 
 let scatter = createScatter(regl)
@@ -108,7 +108,7 @@ scatter(Array(passes).fill(null).map((x, i) => {
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
 		// marker: markers[i],
-		// marker: Array(pos.length).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
+		marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
 		// borderSize: 1,

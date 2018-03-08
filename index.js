@@ -3,7 +3,7 @@
 const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
-const cluster = require('../point-cluster')
+const cluster = require('point-cluster')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const pick = require('pick-by-alias')
@@ -152,8 +152,34 @@ function Scatter (regl, options) {
 		},
 
 		attributes: {
-			position: positionBuffer,
-			positionFract: positionFractBuffer,
+			x: (ctx, prop) => {
+				return {
+					buffer: positionBuffer,
+					stride: 8,
+					offset: 0
+				}
+			},
+			y: (ctx, prop) => {
+				return {
+					buffer: positionBuffer,
+					stride: 8,
+					offset: 4
+				}
+			},
+			xFract: (ctx, prop) => {
+				return {
+					buffer: positionFractBuffer,
+					stride: 8,
+					offset: 0
+				}
+			},
+			yFract: (ctx, prop) => {
+				return {
+					buffer: positionFractBuffer,
+					stride: 8,
+					offset: 4
+				}
+			},
 			size: (ctx, prop) => prop.size.length ? {
 				buffer: sizeBuffer,
 				stride: 2,
@@ -164,13 +190,11 @@ function Scatter (regl, options) {
 				stride: 2,
 				offset: 1
 			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
-			colorId: (ctx, prop) => {
-				return prop.color.length ? {
+			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: colorBuffer,
 				stride: tooManyColors ? 8 : 4,
 				offset: 0
-			} : {constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]}
-		},
+			} : {constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
 				stride: tooManyColors ? 8 : 4,
@@ -524,7 +548,7 @@ function Scatter (regl, options) {
 					}
 					// per-point markers
 					else {
-						for (let i = 0, l = markers.length; i < l; i++) {
+						for (let i = 0, l = Math.min(markers.length, group.count); i < l; i++) {
 							let id = addMarker(markers[i])
 
 							if (!group.markerIds[id]) group.markerIds[id] = []
@@ -591,6 +615,7 @@ function Scatter (regl, options) {
 						}
 
 						ids.data = els;
+
 						ids.elements = regl.elements({
 							primitive: 'points',
 							type: 'uint32',

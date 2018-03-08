@@ -1,6 +1,6 @@
 precision highp float;
 
-attribute vec2 position, positionFract;
+attribute float x, y, xFract, yFract;
 attribute float size, borderSize;
 attribute vec4 colorId, borderColorId;
 
@@ -34,6 +34,9 @@ vec4 getColor(vec4 id) {
 }
 
 void main() {
+  vec2 position = vec2(x, y);
+  vec2 positionFract = vec2(xFract, yFract);
+
   vec4 color = getColor(colorId);
   vec4 borderColor = getColor(borderColorId);
 
