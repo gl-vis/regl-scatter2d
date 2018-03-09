@@ -1,4 +1,4 @@
-# regl-scatter2d [![experimental](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)
+# regl-scatter2d [![unstable](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)
 
 Fast and precise 2d scatter plot for lots of points.
 
@@ -82,7 +82,7 @@ scatter.draw(0)
 //draw green and blue group
 scatter.draw([1, 2])
 
-//draw second point of blue group and first point of red group
+//draw the second point of the blue group and the first point of the red group
 scatter.draw([[1], null, [0]])
 ```
 
@@ -101,6 +101,6 @@ Dispose scatter instance and associated resources.
 
 ## License
 
-(c) 2017 Dima Yv. MIT License
+© 2017 Dmitry Yv. MIT License
 
 Development supported by [plot.ly](https://github.com/plotly/).

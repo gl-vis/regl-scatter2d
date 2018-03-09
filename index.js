@@ -153,14 +153,14 @@ function Scatter (regl, options) {
 
 		attributes: {
 			x: (ctx, prop) => {
-				return {
+				return prop.xAttr || {
 					buffer: positionBuffer,
 					stride: 8,
 					offset: 0
 				}
 			},
 			y: (ctx, prop) => {
-				return {
+				return prop.yAttr || {
 					buffer: positionBuffer,
 					stride: 8,
 					offset: 4
@@ -332,8 +332,7 @@ function Scatter (regl, options) {
 		// draw circles
 		// FIXME remove regl._refresh hooks once regl issue #427 is fixed
 		if (group.markerIds[0]) {
-			regl._refresh()
-
+			// regl._refresh()
 			let opts = getMarkerDrawOptions(group.markerIds[0], group, whitelist)
 
 			drawCircle(opts)
@@ -350,7 +349,7 @@ function Scatter (regl, options) {
 		}
 
 		if (batch.length) {
-			regl._refresh()
+			// regl._refresh()
 			drawMarker(batch)
 		}
 	}
@@ -447,14 +446,15 @@ function Scatter (regl, options) {
 				positions: 'positions data points',
 				snap: 'snap cluster',
 				size: 'sizes size radius',
-				borderSize: 'borderSizes borderSize stroke-width strokeWidth outline',
+				borderSize: 'borderSizes borderSize border-size bordersize borderWidth borderWidths border-width borderwidth stroke-width strokeWidth strokewidth outline',
 				color: 'colors color fill fill-color fillColor',
 				borderColor: 'borderColors borderColor stroke stroke-color strokeColor',
 				palette: 'palette swatch',
 				marker: 'markers marker shape',
 				range: 'range dataBox',
-				viewport: 'viewport viewBox',
-				opacity: 'opacity alpha'
+				viewport: 'viewport viewBox viewbox',
+				opacity: 'opacity alpha',
+				bounds: 'bound bounds boundaries limits'
 			})
 
 			if (options.positions === null) options.positions = []
@@ -509,7 +509,54 @@ function Scatter (regl, options) {
 					return c
 				},
 
+				bounds: (bounds, group, options) => {
+					if (!('range' in options)) options.range = null
+					return bounds
+				},
+
 				positions: (positions, group, options) => {
+					// separate buffers for x/y coordinates
+					if (positions.x || positions.y) {
+						if (positions.x.length) {
+							group.xAttr = {
+								buffer: regl.buffer(positions.x),
+								offset: 0,
+								stride: 4,
+								count: positions.x.length
+							}
+						}
+						else {
+							group.xAttr = {
+								buffer: positions.x.buffer,
+								offset: positions.x.offset * 4 || 0,
+								stride: (positions.x.stride || 1) * 4,
+								count: positions.x.count
+							}
+						}
+						if (positions.y.length) {
+							group.yAttr = {
+								buffer: regl.buffer(positions.y),
+								offset: 0,
+								stride: 4,
+								count: positions.y.length
+							}
+						}
+						else {
+							group.yAttr = {
+								buffer: positions.y.buffer,
+								offset: positions.y.offset * 4 || 0,
+								stride: (positions.y.stride || 1) * 4,
+								count: positions.y.count
+							}
+						}
+
+						group.count = Math.max(group.xAttr.count, group.yAttr.count)
+						group.offset = 0
+						pointCount += group.count
+
+						return positions
+					}
+
 					positions = flatten(positions, 'float64')
 
 					let count = group.count = Math.floor(positions.length / 2)
@@ -563,6 +610,8 @@ function Scatter (regl, options) {
 				// first, it is faster to snap 100 points 100 times than 10000 points once (practically, not theoretically)
 				// second, it is easier to subset render per-marker than per-generic set
 				positions: (positions, group) => {
+					if (!positions || !positions.length) return
+
 					let {markerIds, snap, bounds, offset} = group
 
 					for (let i = 0; i < markerIds.length; i++) {
@@ -627,6 +676,7 @@ function Scatter (regl, options) {
 				range: (range, group, options) => {
 					let bounds = group.bounds
 
+					// FIXME: why do we need this?
 					if (!bounds) return
 					if (!range) range = bounds
 
