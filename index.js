@@ -6,10 +6,15 @@ let extend = require('object-assign')
 module.exports = function (regl, options) {
 	let scatter = new Scatter(regl, options)
 
+	let render = scatter.render.bind(scatter)
+
 	// expose API
-	extend(scatter2d, {
+	extend(render, {
+		render: scatter.render,
 		update: scatter.update,
+		updateItem: scatter.updateItem,
 		draw: scatter.draw,
+		drawItem: scatter.drawItem,
 		destroy: scatter.destroy,
 		regl: scatter.regl,
 		gl: scatter.gl,
@@ -19,19 +24,5 @@ module.exports = function (regl, options) {
 		palette: scatter.palette
 	})
 
-	function scatter2d (opts) {
-		// update
-		if (opts) {
-			scatter.update(opts)
-		}
-
-		// destroy
-		else if (opts === null) {
-			scatter.destroy()
-		}
-
-		scatter.draw()
-	}
-
-	return scatter2d
+	return render
 }

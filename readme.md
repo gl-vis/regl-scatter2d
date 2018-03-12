@@ -27,13 +27,21 @@ scatter({
 })
 ```
 
-### `createScatter(regl, options?)`
+### `createScatter(regl)`
 
-Create new scatter plot instance from `regl` and initial `options`. Note that `regl` instance should have `OES_element_index_uint` extension enabled.
+Create new scatter plot instance from `regl`. `regl` instance should have `OES_element_index_uint` extension enabled.
 
-### `scatter(options|list?)`
+### `scatter(optionsA, optionsB, ...rest)`
 
-Draw scatter points, update options.
+Draw scatter points corresponding to options.
+
+```js
+// render multiple point groups
+scatter(
+  {points: [0,0, 1,1], color: 'blue', marker: null},
+  {points: [0,1, 1,0], color: 'red', marker: someSdf}
+)
+```
 
 Option | Default | Description
 ---|---|---
@@ -50,40 +58,49 @@ Option | Default | Description
 <!--
 `snap` | `1e5` | Number of points threshold to enable snapping, can be bool. See [snap-points-2d](https://github.com/gl-vis/snap-points-2d).
 -->
-
-A list of options can be passed for batch rendering:
-
-```js
-//draw multiple point groups
-scatter([
-  {points: [0,0, 1,1], color: 'blue', marker: null},
-  {points: [0,1, 1,0], color: 'red', marker: someSdf}
-])
 ```
 
-### `scatter.update(options|list)`
+### `scatter.update(optionsA, optionsB, ...rest)`
 
-Update options, not incurring redraw.
-
-### `scatter.draw(groupId?|elements?)`
-
-Draw points based on last options. `groupId` integer can specify a batch group to redraw. `elements` can specify marker ids to draw:
+Update options corresponding to passes, not incurring redraw. Passing `null` will remove previously loaded pass.
 
 ```js
-scatter.update([
+// update 3 passes
+scatter.update(a, b, c)
+
+// update 1st pass, remove 2nd pass, ignore 3rd pass
+scatter.update(a, null)
+
+// update 2nd pass (former 3rd pass)
+scatter.update(null, b)
+
+// update n-th pass
+scatter.update.apply(scatter, Array.from({length: 10, 9: options}))
+```
+
+### `scatter.draw(id1|els1?, id2|els2?, ...)`
+
+Draw groups corresponding to `id`s, optionally specify marker ids to draw via `els`:
+
+```js
+// create 3 groups of points
+scatter.update(
   {points: [0,1, 1,0], color: 'red', marker: squareSdf},
   {points: [1,2, 2,1], color: 'green', marker: triangleSdf},
   {points: [0,0, 1,1], color: 'blue', marker: null}
-])
+)
 
-//draw red group
+// draw all groups
+scatter.draw()
+
+// draw red group
 scatter.draw(0)
 
-//draw green and blue group
-scatter.draw([1, 2])
+// draw green and blue group
+scatter.draw(1, 2)
 
-//draw the second point of the blue group and the first point of the red group
-scatter.draw([[1], null, [0]])
+// draw the second point of the blue group and the first point of the red group
+scatter.draw([1], null, [0])
 ```
 
 ### `scatter.destroy()`

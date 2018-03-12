@@ -256,46 +256,43 @@ function Scatter (regl, options) {
 }
 
 
-// draw all groups or only indicated ones
-Scatter.prototype.draw = function (opts) {
-	let { groups } = this
-
-	if (typeof opts === 'number') return this.drawGroup(opts)
-
-	// highlight elements
-	if (Array.isArray(opts) || ArrayBuffer.isView(opts)) {
-		if (typeof opts[0] === 'number' && groups.length === 1) {
-			this.drawGroup(opts, 0)
-		}
-
-		opts.forEach((els, i) => {
-			if (els == null) return
-			if (els.length) return this.drawGroup(els, i)
-			return this.drawGroup(els)
-		})
-		return
+// update & redraw
+Scatter.prototype.render = function () {
+	// update
+	if (arguments.length) {
+		this.update(...arguments)
 	}
 
-	// make options a batch
-	groups.forEach((group, i) => {
-		if (!group) return
+	this.draw()
 
-		this.drawGroup(i)
-	})
+	return this
+}
+
+
+// draw all groups or only indicated ones
+Scatter.prototype.draw = function () {
+	let { groups } = this
+
+	if (arguments.length) {
+		for (let i = 0; i < arguments.length; i++) {
+			this.drawItem(i, arguments[i])
+		}
+	}
+	else {
+		groups.forEach((group, i) => {
+			this.drawItem(i)
+		})
+	}
+
+	return this
 }
 
 // draw specific scatter group
-Scatter.prototype.drawGroup = function (group, id) {
+Scatter.prototype.drawItem = function (id, els) {
 	let { groups } = this
+	let group = groups[id]
 
-	if (typeof group === 'number') group = groups[group]
-
-	let els
-
-	if (Array.isArray(group) || ArrayBuffer.isView(group)) {
-		els = group
-		group = groups[id]
-	}
+	if (typeof els === 'number') group = groups[els]
 
 	if (!(group && group.count && group.opacity)) return
 
@@ -310,9 +307,7 @@ Scatter.prototype.drawGroup = function (group, id) {
 	}
 
 	// draw circles
-	// FIXME remove regl._refresh hooks once regl issue #427 is fixed
 	if (group.markerIds[0]) {
-		// regl._refresh()
 		let opts = this.getMarkerDrawOptions(group.markerIds[0], group, whitelist)
 
 		this.drawCircle(opts)
@@ -329,7 +324,6 @@ Scatter.prototype.drawGroup = function (group, id) {
 	}
 
 	if (batch.length) {
-		// regl._refresh()
 		this.drawMarker(batch)
 	}
 }
@@ -401,22 +395,17 @@ Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
 }
 
 // update groups options
-Scatter.prototype.update = function (options) {
-	if (!options) return
+Scatter.prototype.update = function () {
+	if (!arguments.length) return
 
-	// direct points argument
-	if (options.length != null) {
-		if (typeof options[0] === 'number') options = [{positions: options}]
-	}
-	// make options a batch
-	else if (!Array.isArray(options)) options = [options]
+	let args = [].slice.apply(arguments)
 
 	// global count of points
 	let pointCount = 0, sizeCount = 0, colorCount = 0
 
 	let { groups, gl, regl } = this
 
-	this.groups = groups = options.map((options, i) => {
+	this.groups = groups = args.map((options, i) => {
 		let group = groups[i]
 
 		if (options === undefined) return group
