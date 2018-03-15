@@ -33,6 +33,7 @@
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
     "color-normalize": "^1.0.3",
+    "defined": "^1.0.0",
     "flatten-vertex-data": "^1.0.0",
     "glslify": "^6.1.0",
     "is-iexplorer": "^1.0.0",

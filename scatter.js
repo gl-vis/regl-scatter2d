@@ -13,6 +13,7 @@ const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
 const arrayRange = require('array-range')
 const parseRect = require('parse-rect')
+const defined = require('defined')
 
 module.exports = Scatter
 
@@ -256,6 +257,24 @@ function Scatter (regl, options) {
 }
 
 
+Scatter.defaults = {
+	color: 'black',
+	borderColor: 'transparent',
+	borderSize: 1,
+	size: 12,
+	opacity: 1,
+	marker: undefined,
+	viewport: null,
+	range: null,
+	pixelSize: null,
+	offset: 0,
+	count: 0,
+	bounds: null,
+	positions: [],
+	snap: 1e4
+}
+
+
 // update & redraw
 Scatter.prototype.render = function () {
 	// update
@@ -272,7 +291,6 @@ Scatter.prototype.render = function () {
 // draw all groups or only indicated ones
 Scatter.prototype.draw = function () {
 	let { groups } = this
-
 	if (arguments.length) {
 		for (let i = 0; i < arguments.length; i++) {
 			this.drawItem(i, arguments[i])
@@ -292,7 +310,10 @@ Scatter.prototype.drawItem = function (id, els) {
 	let { groups } = this
 	let group = groups[id]
 
-	if (typeof els === 'number') group = groups[els]
+	if (typeof els === 'number') {
+		group = groups[els]
+		els = null
+	}
 
 	if (!(group && group.count && group.opacity)) return
 
@@ -422,11 +443,10 @@ Scatter.prototype.update = function () {
 			borderSize: 'borderSizes borderSize border-size bordersize borderWidth borderWidths border-width borderwidth stroke-width strokeWidth strokewidth outline',
 			color: 'colors color fill fill-color fillColor',
 			borderColor: 'borderColors borderColor stroke stroke-color strokeColor',
-			palette: 'palette swatch',
 			marker: 'markers marker shape',
 			range: 'range dataBox',
 			viewport: 'viewport viewBox viewbox',
-			opacity: 'opacity alpha',
+			opacity: 'opacity alpha transparency',
 			bounds: 'bound bounds boundaries limits'
 		})
 
@@ -443,22 +463,7 @@ Scatter.prototype.update = function () {
 				// list of ids corresponding to markers, with inner props
 				markerIds: []
 			}
-			options = extend({
-				color: 'black',
-				borderColor: 'transparent',
-				borderSize: 1,
-				size: 12,
-				opacity: 1,
-				marker: undefined,
-				viewport: null,
-				range: null,
-				pixelSize: null,
-				offset: 0,
-				count: 0,
-				bounds: null,
-				positions: [],
-				snap: 1e4
-			}, options)
+			options = extend({}, Scatter.defaults, options)
 		}
 
 		// force update triggers
@@ -476,22 +481,26 @@ Scatter.prototype.update = function () {
 		updateDiff(group, options, [{
 			snap: true,
 			size: s => {
-				sizeCount += s.length ? 1 : 0
+				if (!defined(s)) s = Scatter.defaults.size
+				sizeCount += s && s.length ? 1 : 0
 				return s
 			},
 			borderSize: s => {
-				sizeCount += s.length ? 1 : 0
+				if (!defined(s)) s = Scatter.defaults.borderSize
+				sizeCount += s && s.length ? 1 : 0
 				return s
 			},
 			opacity: parseFloat,
 
 			// add colors to palette, save references
-			color: c => {
+			color: (c, group) => {
+				if (!defined(c)) c = Scatter.defaults.color
 				c = this.updateColor(c)
 				colorCount++
 				return c
 			},
-			borderColor: c => {
+			borderColor: (c, group) => {
+				if (!defined(c)) c = Scatter.defaults.borderColor
 				c = this.updateColor(c)
 				colorCount++
 				return c
@@ -537,7 +546,6 @@ Scatter.prototype.update = function () {
 							count: positions.y.count
 						}
 					}
-
 					group.count = Math.max(group.xAttr.count, group.yAttr.count)
 					group.offset = 0
 					pointCount += group.count
