@@ -3,7 +3,7 @@
 const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
-const cluster = require('point-cluster')
+const cluster = require('../point-cluster')
 const extend = require('object-assign')
 const glslify = require('glslify')
 const pick = require('pick-by-alias')
@@ -101,7 +101,8 @@ function Scatter (regl, options) {
 		maxColors,
 		positionBuffer,
 		positionFractBuffer,
-		colorBuffer
+		colorBuffer,
+		canvas: gl.canvas
 	})
 
 	// fast-create from existing regl-scatter instance
@@ -276,10 +277,9 @@ Scatter.defaults = {
 
 
 // update & redraw
-Scatter.prototype.render = function () {
-	// update
-	if (arguments.length) {
-		this.update(...arguments)
+Scatter.prototype.render = function (...args) {
+	if (args.length) {
+		this.update(...args)
 	}
 
 	this.draw()
@@ -686,10 +686,15 @@ Scatter.prototype.update = function () {
 			},
 
 			viewport: vp => {
-				return parseRect(vp || [
+				let rect = parseRect(vp || [
 					gl.drawingBufferWidth,
 					gl.drawingBufferHeight
 				])
+
+				// normalize viewport to the canvas coordinates
+				rect.y = gl.drawingBufferHeight - rect.height - rect.y
+
+				return rect
 			}
 		}])
 

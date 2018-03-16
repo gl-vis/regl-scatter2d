@@ -3,7 +3,7 @@
 require('enable-mobile')
 const createScatter = require('./')
 const panZoom = require('pan-zoom')
-const fps = require('fps-indicator')({css:`padding: 1.4rem`})
+const fps = require('fps-indicator')({ css: `padding: 1.4rem` })
 const random = require('gauss-random')
 const rgba = require('color-rgba')
 const nanoraf = require('nanoraf')
@@ -116,7 +116,7 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		snap: true,
 		precise: true,
 
-		// viewport: [100,100,300,300]
+		// viewport: [0,0,300,600]
 	}
 }))
 
@@ -170,7 +170,7 @@ function generate(N) {
 	var positions = new Float64Array(2 * N)
 
 	for(var i=0; i<2*N; ++i) {
-	  positions[i] = random()
+	  positions[i] = random() * 3
 	}
 
 
