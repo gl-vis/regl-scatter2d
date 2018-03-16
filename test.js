@@ -116,7 +116,7 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		snap: true,
 		precise: true,
 
-		// viewport: [0,0,300,600]
+		// viewport: [0,100,300,300]
 	}
 }))
 

@@ -444,8 +444,8 @@ Scatter.prototype.update = function () {
 			color: 'colors color fill fill-color fillColor',
 			borderColor: 'borderColors borderColor stroke stroke-color strokeColor',
 			marker: 'markers marker shape',
-			range: 'range dataBox',
-			viewport: 'viewport viewBox viewbox',
+			range: 'range dataBox databox',
+			viewport: 'viewport viewPort viewBox viewbox',
 			opacity: 'opacity alpha transparency',
 			bounds: 'bound bounds boundaries limits'
 		})
@@ -692,7 +692,7 @@ Scatter.prototype.update = function () {
 				])
 
 				// normalize viewport to the canvas coordinates
-				rect.y = gl.drawingBufferHeight - rect.height - rect.y
+				// rect.y = gl.drawingBufferHeight - rect.height - rect.y
 
 				return rect
 			}
