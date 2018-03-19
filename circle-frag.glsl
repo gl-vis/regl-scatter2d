@@ -26,5 +26,6 @@ void main() {
 	float ratio = smoothstep(borderRadius - delta, borderRadius + delta, radius);
 	vec4 color = mix(fragColor, fragBorderColor, ratio);
 	color.a *= alpha * opacity;
+
 	gl_FragColor = color;
 }

@@ -99,9 +99,11 @@ function Scatter (regl, options) {
 		tooManyColors,
 		paletteTexture,
 		maxColors,
+		maxSize,
 		positionBuffer,
 		positionFractBuffer,
 		colorBuffer,
+		sizeBuffer,
 		canvas: gl.canvas
 	})
 
@@ -289,11 +291,12 @@ Scatter.prototype.render = function (...args) {
 
 
 // draw all groups or only indicated ones
-Scatter.prototype.draw = function () {
+Scatter.prototype.draw = function (...args) {
 	let { groups } = this
-	if (arguments.length) {
-		for (let i = 0; i < arguments.length; i++) {
-			this.drawItem(i, arguments[i])
+
+	if (args.length) {
+		for (let i = 0; i < args.length; i++) {
+			this.drawItem(i, args[i])
 		}
 	}
 	else {
@@ -311,6 +314,7 @@ Scatter.prototype.drawItem = function (id, els) {
 	let group = groups[id]
 
 	if (typeof els === 'number') {
+		id = els
 		group = groups[els]
 		els = null
 	}
@@ -330,7 +334,6 @@ Scatter.prototype.drawItem = function (id, els) {
 	// draw circles
 	if (group.markerIds[0]) {
 		let opts = this.getMarkerDrawOptions(group.markerIds[0], group, whitelist)
-
 		this.drawCircle(opts)
 	}
 
@@ -351,7 +354,7 @@ Scatter.prototype.drawItem = function (id, els) {
 
 // get options for the marker ids
 Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
-	let {range, offset} = group
+	let { range, offset } = group
 	let { markerTextures } = this
 
 	// unsnapped options
@@ -416,10 +419,11 @@ Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
 }
 
 // update groups options
-Scatter.prototype.update = function () {
-	if (!arguments.length) return
+Scatter.prototype.update = function (...args) {
+	if (!args.length) return
 
-	let args = [].slice.apply(arguments)
+	// passes are as single array
+	if (args.length === 1 && Array.isArray(args[0])) args = args[0]
 
 	// global count of points
 	let pointCount = 0, sizeCount = 0, colorCount = 0
@@ -710,7 +714,7 @@ Scatter.prototype.update = function () {
 
 // update buffers data based on existing groups
 Scatter.prototype.updateBuffers = function({point, size, color}) {
-	let { paletteIds, palette, groups, tooManyColors, colorBuffer, positionBuffer, positionFractBuffer, maxColors } = this
+	let { paletteIds, palette, groups, tooManyColors, colorBuffer, positionBuffer, positionFractBuffer, maxColors, maxSize, sizeBuffer } = this
 
 	// put point/color data into buffers, if updated any of them
 	let len = groups.reduce((acc, group, i) => {
@@ -738,7 +742,7 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 
 		groups.forEach((group, i) => {
 			if (!group) return
-			let {count, offset, size, borderSize} = group
+			let { count, offset, size, borderSize } = group
 			if (!count) return
 
 			if (size.length || borderSize.length) {

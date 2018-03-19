@@ -10,12 +10,10 @@ module.exports = function (regl, options) {
 
 	// expose API
 	extend(render, {
-		render: scatter.render,
-		update: scatter.update,
-		updateItem: scatter.updateItem,
-		draw: scatter.draw,
-		drawItem: scatter.drawItem,
-		destroy: scatter.destroy,
+		render: render,
+		update: scatter.update.bind(scatter),
+		draw: scatter.draw.bind(scatter),
+		destroy: scatter.destroy.bind(scatter),
 		regl: scatter.regl,
 		gl: scatter.gl,
 		canvas: scatter.gl.canvas,
