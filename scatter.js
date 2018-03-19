@@ -15,6 +15,7 @@ const arrayRange = require('array-range')
 const parseRect = require('parse-rect')
 const defined = require('defined')
 
+
 module.exports = Scatter
 
 
