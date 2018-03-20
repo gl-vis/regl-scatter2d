@@ -36,7 +36,6 @@ function Scatter (regl, options) {
 
 	// persistent variables
 	let gl = regl._gl,
-		drawMarker, drawCircle,
 		sizeBuffer, positionBuffer, positionFractBuffer, colorBuffer,
 		paletteTexture, palette = [], paletteIds = {},
 
@@ -132,11 +131,11 @@ function Scatter (regl, options) {
 
 		// create marker textures
 		options.clone.markers.forEach(markers => {
-			addMarker(markers)
+			this.addMarker(markers)
 		})
 		// clone palette texture
-		updatePalette(options.clone.palette)
-		updateBuffers({point: true, color: true, size: true})
+		this.updatePalette(options.clone.palette)
+		this.updateBuffers({point: true, color: true, size: true})
 	}
 	// full create from options
 	else {
@@ -201,14 +200,17 @@ function Scatter (regl, options) {
 				buffer: colorBuffer,
 				stride: tooManyColors ? 8 : 4,
 				offset: 0
-			} : {constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]},
+			} : {
+				constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]
+			},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
 				buffer: colorBuffer,
 				stride: tooManyColors ? 8 : 4,
 				offset: tooManyColors ? 4 : 2
-			} : {constant: tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [prop.borderColor]}
+			} : {
+				constant: tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [prop.borderColor]
+			}
 		},
-
 
 		blend: {
 			enable: true,
@@ -330,7 +332,6 @@ Scatter.prototype.drawItem = function (id, els) {
 			whitelist[els[i]] = true
 		}
 	}
-
 	// draw circles
 	if (group.markerIds[0]) {
 		let opts = this.getMarkerDrawOptions(group.markerIds[0], group, whitelist)
@@ -361,12 +362,12 @@ Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
 	if (!ids.snap) {
 		let elements = whitelist ? filter(ids.data, whitelist) : ids.elements;
 
-		return [extend({}, group, {
+		return [ extend({}, group, {
 			elements: elements,
 			offset: 0,
 			count: whitelist ? elements.length : ids.length,
 			marker: markerTextures[ids.id]
-		})]
+		}) ]
 	}
 
 	// scales batch
@@ -714,7 +715,7 @@ Scatter.prototype.update = function (...args) {
 
 // update buffers data based on existing groups
 Scatter.prototype.updateBuffers = function({point, size, color}) {
-	let { paletteIds, palette, groups, tooManyColors, colorBuffer, positionBuffer, positionFractBuffer, maxColors, maxSize, sizeBuffer } = this
+	let { palette, groups, tooManyColors, colorBuffer, positionBuffer, positionFractBuffer, maxColors, maxSize, sizeBuffer } = this
 
 	// put point/color data into buffers, if updated any of them
 	let len = groups.reduce((acc, group, i) => {
@@ -733,8 +734,14 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 			positionFractData.set(fract32(positions), offset * 2)
 		})
 
-		positionBuffer(positionData)
-		positionFractBuffer(positionFractData)
+		positionBuffer({
+			data: positionData,
+			usage: 'dynamic'
+		})
+		positionFractBuffer({
+			data: positionFractData,
+			usage: 'dynamic'
+		})
 	}
 
 	if (size) {
@@ -755,7 +762,10 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 				sizeData.set(sizes, offset * 2)
 			}
 		})
-		sizeBuffer(sizeData)
+		sizeBuffer({
+			data: sizeData,
+			usage: 'dynamic'
+		})
 	}
 
 	if (color) {
@@ -794,7 +804,8 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 		// if limited amount of colors - keep palette color picking
 		// that saves significant memory
 		else {
-			colorData = new Uint8Array(len * 4)
+			// we need slight data increase by 2 due to vec4 borderId in shader
+			colorData = new Uint8Array(len * 4 + 2)
 
 			groups.forEach((group, i) => {
 				if (!group) return
@@ -819,8 +830,10 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 				}
 			})
 		}
-
-		colorBuffer(colorData)
+		colorBuffer({
+			data: colorData,
+			usage: 'dynamic'
+		})
 	}
 }
 
@@ -948,11 +961,13 @@ Scatter.prototype.updatePalette = function(palette) {
 
 // remove unused stuff
 Scatter.prototype.destroy = function () {
-	groups.length = 0
+	this.groups.length = 0
 
-	sizeBuffer.destroy()
-	positionBuffer.destroy()
-	positionFractBuffer.destroy()
-	colorBuffer.destroy()
-	paletteTexture.destroy()
+	this.sizeBuffer.destroy()
+	this.positionBuffer.destroy()
+	this.positionFractBuffer.destroy()
+	this.colorBuffer.destroy()
+	this.paletteTexture.destroy()
+
+	return this
 }

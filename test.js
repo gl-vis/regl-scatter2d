@@ -76,7 +76,7 @@ function show (arr) {
 
 
 
-let N = 1e4
+let N = 1e5
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
@@ -102,19 +102,18 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 
 		// color: 'red',
 		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
-		color: Array(pos.length).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		// color: 'rgba(0, 0, 255, .5)',
-		// color: Array(pos.length * 4).fill(0).map(Math.random),
+		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
 		// marker: markers[i],
 		marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
-		// borderSize: 1,
-		// borderColor: [[.5,.5,.5,1]],
+		borderSize: 3,
+		borderColor: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		snap: true,
-		precise: true,
 
 		// viewport: [0,100,300,300]
 	}
