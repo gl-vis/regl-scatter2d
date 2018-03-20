@@ -13,7 +13,6 @@ const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
 const arrayRange = require('array-range')
 const parseRect = require('parse-rect')
-const defined = require('defined')
 
 
 module.exports = Scatter
@@ -486,12 +485,12 @@ Scatter.prototype.update = function (...args) {
 		updateDiff(group, options, [{
 			snap: true,
 			size: s => {
-				if (!defined(s)) s = Scatter.defaults.size
+				if (s == null) s = Scatter.defaults.size
 				sizeCount += s && s.length ? 1 : 0
 				return s
 			},
 			borderSize: s => {
-				if (!defined(s)) s = Scatter.defaults.borderSize
+				if (s == null) s = Scatter.defaults.borderSize
 				sizeCount += s && s.length ? 1 : 0
 				return s
 			},
@@ -499,13 +498,13 @@ Scatter.prototype.update = function (...args) {
 
 			// add colors to palette, save references
 			color: (c, group) => {
-				if (!defined(c)) c = Scatter.defaults.color
+				if (c == null) c = Scatter.defaults.color
 				c = this.updateColor(c)
 				colorCount++
 				return c
 			},
 			borderColor: (c, group) => {
-				if (!defined(c)) c = Scatter.defaults.borderColor
+				if (c == null) c = Scatter.defaults.borderColor
 				c = this.updateColor(c)
 				colorCount++
 				return c
@@ -613,7 +612,7 @@ Scatter.prototype.update = function (...args) {
 			positions: (positions, group) => {
 				if (!positions || !positions.length) return
 
-				let {markerIds, snap, bounds, offset} = group
+				let { markerIds, snap, bounds, offset } = group
 
 				for (let i = 0; i < markerIds.length; i++) {
 					let ids = markerIds[i]

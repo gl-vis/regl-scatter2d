@@ -46,9 +46,9 @@ void main() {
   gl_PointSize = (size + borderSize) * pixelRatio;
 
   vec2 pos = (position + translate) * scale
-			+ (positionFract + translateFract) * scale
-			+ (position + translate) * scaleFract
-			+ (positionFract + translateFract) * scaleFract;
+      + (positionFract + translateFract) * scale
+      + (position + translate) * scaleFract
+      + (positionFract + translateFract) * scaleFract;
 
   gl_Position = vec4(pos * 2. - 1., 0, 1);
 
