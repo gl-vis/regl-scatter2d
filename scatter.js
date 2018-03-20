@@ -186,11 +186,13 @@ function Scatter (regl, options) {
 					offset: 4
 				}
 			},
-			size: (ctx, prop) => prop.size.length ? {
+			size: (ctx, prop) => {
+				return prop.size.length ? {
 				buffer: sizeBuffer,
 				stride: 2,
 				offset: 0
-			} : {constant: [Math.round(prop.size * 255 / maxSize)]},
+			} : {constant: [Math.round(prop.size * 255 / maxSize)]}
+		},
 			borderSize: (ctx, prop) => prop.borderSize.length ? {
 				buffer: sizeBuffer,
 				stride: 2,

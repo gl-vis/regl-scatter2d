@@ -54,6 +54,6 @@ void main() {
 
   fragBorderRadius = 1. - 2. * borderSize / (size + borderSize);
   fragColor = color;
-  fragBorderColor = borderColor.a == 0. ? vec4(color.rgb, 0.) : borderColor;
+  fragBorderColor = borderColor.a == 0. || borderSize == 0. ? vec4(color.rgb, 0.) : borderColor;
   fragWidth = 1. / gl_PointSize;
 }
