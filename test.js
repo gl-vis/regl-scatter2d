@@ -20,6 +20,12 @@ const regl = require('regl')({
 })
 
 
+t('unsnapped elements render')
+t('snapped elements render')
+t('multimarker multipass render')
+t('too many colors render')
+t('palette colors render')
+t('single color render')
 t('precision')
 t('1e6 points')
 t('marker size')
@@ -76,15 +82,16 @@ function show (arr) {
 
 
 
-let N = 1e5
+let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [null]//, dist]
+let markers = [ null ]
 let passes = markers.length
 
 let scatter = createScatter(regl)
 
+console.time(1)
 scatter(...Array(passes).fill(null).map((x, i) => {
 	var pos = generate(N)
 	// var pos = [
@@ -98,26 +105,28 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
 		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		size: 8,
+		size: 10,
+		opacity: .5,
 
-		// color: 'red',
+		color: 'gray',
 		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
-		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		// color: 'rgba(0, 0, 255, .5)',
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
 		// marker: markers[i],
-		marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
+		// marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
-		borderSize: 3,
-		borderColor: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		snap: true,
+		// borderSize: 3,
+		// borderColor: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		snap: false,
 
 		// viewport: [0,100,300,300]
 	}
 }))
+console.timeEnd(1)
 
 // setTimeout(() => {
 // 	scatter.regl.clear({color: true})

@@ -3,6 +3,7 @@ precision mediump float;
 attribute float x, y, xFract, yFract;
 attribute float size, borderSize;
 attribute vec4 colorId, borderColorId;
+attribute float isActive;
 
 uniform vec2 scale, scaleFract, translate, translateFract, paletteSize;
 uniform float pixelRatio;
@@ -13,7 +14,8 @@ const float borderLevel = .5;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragPointSize, fragBorderRadius,
-		fragWidth, fragBorderColorLevel, fragColorLevel;
+    fragWidth, fragBorderColorLevel, fragColorLevel;
+
 
 vec2 paletteCoord(float id) {
   return vec2(
@@ -34,6 +36,8 @@ vec4 getColor(vec4 id) {
 }
 
 void main() {
+  if (isActive == 0.) return;
+
   vec2 position = vec2(x, y);
   vec2 positionFract = vec2(xFract, yFract);
 

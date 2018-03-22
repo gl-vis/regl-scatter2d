@@ -35,9 +35,7 @@ function Scatter (regl, options) {
 	regl = options.regl
 
 	// persistent variables
-	let gl = regl._gl,
-		sizeBuffer, positionBuffer, positionFractBuffer, colorBuffer,
-		paletteTexture, palette = [], paletteIds = {},
+	let gl = regl._gl, paletteTexture, palette = [], paletteIds = {},
 
 		// state
 		groups = [],
@@ -50,7 +48,7 @@ function Scatter (regl, options) {
 
 	// direct color buffer mode
 	// IE does not support palette anyways
-	let tooManyColors = ie
+	this.tooManyColors = ie
 
 	// texture with color palette
 	paletteTexture = regl.texture({
@@ -65,28 +63,6 @@ function Scatter (regl, options) {
 		min: 'nearest'
 	})
 
-	// buffers to reuse
-	sizeBuffer = regl.buffer({
-		usage: 'dynamic',
-		type: 'float',
-		data: null
-	})
-	colorBuffer = regl.buffer({
-		usage: 'dynamic',
-		type: 'uint8',
-		data: null
-	})
-	positionBuffer = regl.buffer({
-		usage: 'dynamic',
-		type: 'float',
-		data: null
-	})
-	positionFractBuffer = regl.buffer({
-		usage: 'dynamic',
-		type: 'float',
-		data: null
-	})
-
 	extend(this, {
 		regl,
 		gl,
@@ -95,14 +71,9 @@ function Scatter (regl, options) {
 		markerTextures,
 		palette,
 		paletteIds,
-		tooManyColors,
 		paletteTexture,
 		maxColors,
 		maxSize,
-		positionBuffer,
-		positionFractBuffer,
-		colorBuffer,
-		sizeBuffer,
 		canvas: gl.canvas
 	})
 
@@ -110,20 +81,14 @@ function Scatter (regl, options) {
 	if (options.clone) {
 		groups = options.clone.groups.map(group => {
 			group = extend({}, group)
-			if (group.markerIds) {
-				group.markerIds = group.markerIds.map(ids => {
-					// recreate regl elements here
-					let newIds = ids.slice()
-					newIds.lod = ids.lod
-					newIds.snap = ids.snap
-					newIds.data = ids.data
-					newIds.id = ids.id
-					newIds.elements = regl.elements({
-						primitive: 'points',
-						type: 'uint32',
-						data: ids.data
+			if (group.activeMarkers) {
+				// clone every buffer
+				group.activeMarkers = group.activeMarkers.map(buffer => {
+					if (!buffer.data) return buffer
+
+					return regl.buffer({
+						usage: 'static', data: buffer.data
 					})
-					return newIds
 				})
 			}
 			return group
@@ -148,75 +113,77 @@ function Scatter (regl, options) {
 		uniforms: {
 			pixelRatio: regl.context('pixelRatio'),
 			palette: paletteTexture,
-			paletteSize: (ctx, prop) => [tooManyColors ? 0 : maxColors, paletteTexture.height],
+			paletteSize: (ctx, prop) => [this.tooManyColors ? 0 : maxColors, paletteTexture.height],
 			scale: regl.prop('scale'),
 			scaleFract: regl.prop('scaleFract'),
 			translate: regl.prop('translate'),
 			translateFract: regl.prop('translateFract'),
 			opacity: regl.prop('opacity'),
-			marker: regl.prop('marker'),
+			marker: (ctx, prop) => markerTextures[prop.markerId],
 		},
 
 		attributes: {
-			x: (ctx, prop) => {
-				return prop.xAttr || {
-					buffer: positionBuffer,
-					stride: 8,
-					offset: 0
-				}
+			// FIXME: optimize these parts
+			x: (ctx, prop) => prop.xAttr || {
+				buffer: prop.positionBuffer,
+				stride: 8,
+				offset: 0
 			},
-			y: (ctx, prop) => {
-				return prop.yAttr || {
-					buffer: positionBuffer,
-					stride: 8,
-					offset: 4
-				}
+			y: (ctx, prop) => prop.yAttr || {
+				buffer: prop.positionBuffer,
+				stride: 8,
+				offset: 4
 			},
-			xFract: (ctx, prop) => {
-				return {
-					buffer: positionFractBuffer,
-					stride: 8,
-					offset: 0
-				}
-			},
-			yFract: (ctx, prop) => {
-				return {
-					buffer: positionFractBuffer,
-					stride: 8,
-					offset: 4
-				}
-			},
-			size: (ctx, prop) => {
-				return prop.size.length ? {
-				buffer: sizeBuffer,
+			xFract: (ctx, prop) => { return {
+				buffer: prop.positionFractBuffer,
+				stride: 8,
+				offset: 0
+			}},
+			yFract: (ctx, prop) => { return {
+				buffer: prop.positionFractBuffer,
+				stride: 8,
+				offset: 4
+			}},
+			size: (ctx, prop) => prop.size.length ? {
+				buffer: prop.sizeBuffer,
 				stride: 2,
 				offset: 0
-			} : {constant: [Math.round(prop.size * 255 / maxSize)]}
-		},
+			} : {
+				constant: [ Math.round(prop.size * 255 / maxSize) ]
+			},
 			borderSize: (ctx, prop) => prop.borderSize.length ? {
-				buffer: sizeBuffer,
+				buffer: prop.sizeBuffer,
 				stride: 2,
 				offset: 1
-			} : {constant: [Math.round(prop.borderSize * 255 / maxSize)]},
+			} : {
+				constant: [ Math.round(prop.borderSize * 255 / maxSize) ]
+			},
 			colorId: (ctx, prop) => prop.color.length ? {
-				buffer: colorBuffer,
-				stride: tooManyColors ? 8 : 4,
+				buffer: prop.colorBuffer,
+				stride: this.tooManyColors ? 8 : 4,
 				offset: 0
 			} : {
-				constant: tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [prop.color]
+				constant: this.tooManyColors ? palette.slice(prop.color * 4, prop.color * 4 + 4) : [ prop.color ]
 			},
 			borderColorId: (ctx, prop) => prop.borderColor.length ? {
-				buffer: colorBuffer,
-				stride: tooManyColors ? 8 : 4,
-				offset: tooManyColors ? 4 : 2
+				buffer: prop.colorBuffer,
+				stride: this.tooManyColors ? 8 : 4,
+				offset: this.tooManyColors ? 4 : 2
 			} : {
-				constant: tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [prop.borderColor]
+				constant: this.tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [ prop.borderColor ]
+			},
+			isActive: (ctx, prop) => {
+				let activeMarkers = prop.activeMarkers[prop.markerId]
+				if (activeMarkers === true) return { constant: [1] }
+				return activeMarkers
 			}
 		},
 
 		blend: {
 			enable: true,
 			color: [0,0,0,1],
+
+			// photoshop blending
 			func: {
 				srcRGB: 'src alpha',
 				dstRGB: 'one minus src alpha',
@@ -237,7 +204,6 @@ function Scatter (regl, options) {
 
 		elements: regl.prop('elements'),
 		count: regl.prop('count'),
-		offset: regl.prop('offset'),
 
 		primitive: 'points'
 	}
@@ -267,14 +233,13 @@ function Scatter (regl, options) {
 Scatter.defaults = {
 	color: 'black',
 	borderColor: 'transparent',
-	borderSize: 1,
+	borderSize: 0,
 	size: 12,
 	opacity: 1,
 	marker: undefined,
 	viewport: null,
 	range: null,
 	pixelSize: null,
-	offset: 0,
 	count: 0,
 	bounds: null,
 	positions: [],
@@ -325,29 +290,17 @@ Scatter.prototype.drawItem = function (id, els) {
 
 	if (!(group && group.count && group.opacity)) return
 
-	// if subset of elements to redraw passed - form a whitelist
-	let whitelist
-	if (els) {
-		whitelist = Array(group.count);
-
-		for (let i = 0; i < els.length; i++) {
-			whitelist[els[i]] = true
-		}
-	}
 	// draw circles
-	if (group.markerIds[0]) {
-		let opts = this.getMarkerDrawOptions(group.markerIds[0], group, whitelist)
-		this.drawCircle(opts)
+	if (group.activeMarkers[0]) {
+		this.drawCircle(...this.getMarkerDrawOptions(0, group, els))
 	}
 
 	// draw all other available markers
 	let batch = []
-	for (let i = 1; i < group.markerIds.length; i++) {
-		let ids = group.markerIds[i]
+	for (let i = 1; i < group.activeMarkers.length; i++) {
+		if (!group.activeMarkers[i] || (group.activeMarkers[i] !== true && !group.activeMarkers[i].data.length)) continue
 
-		if (!ids || !ids.length) continue
-
-		[].push.apply(batch, this.getMarkerDrawOptions(ids, group, whitelist))
+		batch.push(...this.getMarkerDrawOptions(i, group, els))
 	}
 
 	if (batch.length) {
@@ -356,27 +309,18 @@ Scatter.prototype.drawItem = function (id, els) {
 }
 
 // get options for the marker ids
-Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
-	let { range, offset } = group
-	let { markerTextures } = this
+Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
+	let { range, lod, viewport } = group
 
 	// unsnapped options
-	if (!ids.snap) {
-		let elements = whitelist ? filter(ids.data, whitelist) : ids.elements;
-
-		return [ extend({}, group, {
-			elements: elements,
-			offset: 0,
-			count: whitelist ? elements.length : ids.length,
-			marker: markerTextures[ids.id]
-		}) ]
+	if (!lod) {
+		return [ extend( { markerId, elements }, group ) ]
 	}
 
 	// scales batch
 	let batch = []
-	let {lod, id} = ids
 
-	let pixelSize = Math.min((range[2] - range[0]) / group.viewport.width, (range[3] - range[1]) / group.viewport.height)
+	let pixelSize = Math.min((range[2] - range[0]) / viewport.width, (range[3] - range[1]) / viewport.height)
 
 	let offsets = lod.offsets(pixelSize, ...range)
 
@@ -384,38 +328,25 @@ Scatter.prototype.getMarkerDrawOptions = function(ids, group, whitelist) {
 		let [startOffset, endOffset] = offsets[level]
 		let items = lod.levels[level]
 
-		// whitelisted level requires subelements from the range
-		if (whitelist) {
-			// TODO: test this out, prob subrendering is broken
-			let elements = filter(ids.data.subarray(startOffset, endOffset), whitelist)
+		// FIXME: test this out, prob subrendering is broken
+		// // whitelisted level requires subelements from the range
+		// if (whitelist) {
+		// 	let elements = filter(ids.subarray(startOffset, endOffset), whitelist)
 
+		// 	batch.push(extend({}, group, {
+		// 		elements: elements,
+		// 		marker: markerTextures[id],
+		// 		offset: 0,
+		// 		count: elements.length
+		// 	}))
+		// }
+		// else {
 			batch.push(extend({}, group, {
-				elements: elements,
-				marker: markerTextures[id],
-				offset: 0,
-				count: elements.length
-			}))
-		}
-		else {
-			batch.push(extend({}, group, {
-				elements: ids.elements,
-				marker: markerTextures[id],
+				markerId, elements,
 				offset: startOffset + items.offset,
 				count: endOffset - startOffset
 			}))
-		}
-	}
-
-	function filter(offsets, whitelist) {
-		let subEls = []
-		for (let i = 0, l = offsets.length; i < l; i++) {
-			let el = offsets[i]
-			let id = el - offset
-			if (whitelist[id]) {
-				subEls.push(el)
-			}
-		}
-		return subEls
+		// }
 	}
 
 	return batch
@@ -428,9 +359,6 @@ Scatter.prototype.update = function (...args) {
 	// passes are as single array
 	if (args.length === 1 && Array.isArray(args[0])) args = args[0]
 
-	// global count of points
-	let pointCount = 0, sizeCount = 0, colorCount = 0
-
 	let { groups, gl, regl } = this
 
 	this.groups = groups = args.map((options, i) => {
@@ -439,13 +367,13 @@ Scatter.prototype.update = function (...args) {
 		if (options === undefined) return group
 
 		if (options === null) options = { positions: null }
-		else if (typeof options === 'function') options = {after: options}
-		else if (typeof options[0] === 'number') options = {positions: options}
+		else if (typeof options === 'function') options = { ondraw: options }
+		else if (typeof options[0] === 'number') options = { positions: options }
 
 		// copy options to avoid mutation & handle aliases
 		options = pick(options, {
 			positions: 'positions data points',
-			snap: 'snap cluster',
+			snap: 'snap cluster lod',
 			size: 'sizes size radius',
 			borderSize: 'borderSizes borderSize border-size bordersize borderWidth borderWidths border-width borderwidth stroke-width strokeWidth strokewidth outline',
 			color: 'colors color fill fill-color fillColor',
@@ -467,8 +395,27 @@ Scatter.prototype.update = function (...args) {
 				scaleFract: null,
 				translateFract: null,
 
-				// list of ids corresponding to markers, with inner props
-				markerIds: []
+				// buffers for active markers
+				activeMarkers: [],
+
+				// buffers with data: it is faster to switch them per-pass
+				// than provide one congregate buffer
+				sizeBuffer: regl.buffer({
+					usage: 'dynamic',
+					type: 'uint8'
+				}),
+				colorBuffer: regl.buffer({
+					usage: 'dynamic',
+					type: 'uint8'
+				}),
+				positionBuffer: regl.buffer({
+					usage: 'dynamic',
+					type: 'float'
+				}),
+				positionFractBuffer: regl.buffer({
+					usage: 'dynamic',
+					type: 'float'
+				})
 			}
 			options = extend({}, Scatter.defaults, options)
 		}
@@ -485,16 +432,19 @@ Scatter.prototype.update = function (...args) {
 			delete group.positions
 		}
 
+		// global count of points
+		let hasSize = 0, hasColor = 0
+
 		updateDiff(group, options, [{
 			snap: true,
-			size: s => {
+			size: (s, group) => {
 				if (s == null) s = Scatter.defaults.size
-				sizeCount += s && s.length ? 1 : 0
+				hasSize += s && s.length ? 1 : 0
 				return s
 			},
-			borderSize: s => {
+			borderSize: (s, group) => {
 				if (s == null) s = Scatter.defaults.borderSize
-				sizeCount += s && s.length ? 1 : 0
+				hasSize += s && s.length ? 1 : 0
 				return s
 			},
 			opacity: parseFloat,
@@ -503,13 +453,13 @@ Scatter.prototype.update = function (...args) {
 			color: (c, group) => {
 				if (c == null) c = Scatter.defaults.color
 				c = this.updateColor(c)
-				colorCount++
+				hasColor++
 				return c
 			},
 			borderColor: (c, group) => {
 				if (c == null) c = Scatter.defaults.borderColor
 				c = this.updateColor(c)
-				colorCount++
+				hasColor++
 				return c
 			},
 
@@ -519,6 +469,8 @@ Scatter.prototype.update = function (...args) {
 			},
 
 			positions: (positions, group, options) => {
+				let { positionBuffer, positionFractBuffer } = group
+
 				// separate buffers for x/y coordinates
 				if (positions.x || positions.y) {
 					if (positions.x.length) {
@@ -554,8 +506,7 @@ Scatter.prototype.update = function (...args) {
 						}
 					}
 					group.count = Math.max(group.xAttr.count, group.yAttr.count)
-					group.offset = 0
-					pointCount += group.count
+					hasPoints += group.count
 
 					return positions
 				}
@@ -571,38 +522,65 @@ Scatter.prototype.update = function (...args) {
 					options.range = bounds
 				}
 
-				group.offset = pointCount
-				pointCount += count
-
 				// reset marker
 				if (!options.marker && !group.marker) {
 					delete group.marker;
 					options.marker = null;
 				}
 
+				// update position buffers
+				positionBuffer({
+					data: float32(positions),
+					usage: 'dynamic'
+				})
+				positionFractBuffer({
+					data: fract32(positions),
+					usage: 'dynamic'
+				})
+
 				return positions
 			}
 		}, {
 			// create marker ids corresponding to known marker textures
 			marker: (markers, group, options) => {
+				let { activeMarkers } = group
+
 				// reset marker elements
-				group.markerIds.length = 0
+				activeMarkers.forEach(buffer => buffer && buffer.destroy && buffer.destroy())
+				activeMarkers.length = 0
 
 				// single sdf marker
 				if (!markers || typeof markers[0] === 'number') {
 					let id = this.addMarker(markers)
-
-					let elements = arrayRange(group.count)
-
-					group.markerIds[id] = elements
+					activeMarkers[id] = true
 				}
-				// per-point markers
+
+				// per-point markers use mask buffers to enable markers in vert shader
 				else {
+					let markerData = []
+
 					for (let i = 0, l = Math.min(markers.length, group.count); i < l; i++) {
 						let id = this.addMarker(markers[i])
 
-						if (!group.markerIds[id]) group.markerIds[id] = []
-						group.markerIds[id].push(i)
+						if (!markerData[id]) markerData[id] = new Uint8Array(group.count)
+
+						markerData[id][i] = 1
+					}
+
+					for (let id = 0; id < markerData.length; id++) {
+						let opts = {
+							data: markerData[id],
+							type: 'uint8',
+							usage: 'static'
+						}
+						if (!activeMarkers[id]) {
+							activeMarkers[id] = regl.buffer(opts)
+						}
+						else {
+							activeMarkers[id](opts)
+						}
+
+						activeMarkers[id].data = markerData[id]
 					}
 				}
 
@@ -615,64 +593,15 @@ Scatter.prototype.update = function (...args) {
 			positions: (positions, group) => {
 				if (!positions || !positions.length) return
 
-				let { markerIds, snap, bounds, offset } = group
+				let { snap, bounds, count } = group
 
-				for (let i = 0; i < markerIds.length; i++) {
-					let ids = markerIds[i]
-					if (!ids || !ids.length) continue
-
-					let l = ids.length, els
-
-					ids.id = i;
-
-					if (snap && (snap === true || l > snap)) {
-						ids.snap = true
-						let markerPoints
-
-						// multimarker snapping is computationally more intense
-						if (markerIds.length > 1) {
-							markerPoints = Array(l * 2)
-
-							for (let i = 0; i < l; i++) {
-								let id = ids[i]
-								markerPoints[i * 2] = positions[id * 2]
-								markerPoints[i * 2 + 1] = positions[id * 2 + 1]
-							}
-						}
-						else {
-							markerPoints = new Float64Array(positions.length)
-							markerPoints.set(positions)
-						}
-
-						ids.lod = cluster(markerPoints, { bounds })
-
-						// augment levels offset params
-						els = new Uint32Array(l)
-						for (let level = 0, off = 0; level < ids.lod.levels.length; level++) {
-							let items = ids.lod.levels[level],
-								l = items.length
-							for (let i = 0; i < l; i++) {
-								let id = items[i], iid = ids[id]
-								els[i + off] = iid + offset
-							}
-							items.offset = off
-							off += l
-						}
-					}
-					else {
-						els = new Uint32Array(l)
-						for (let i = 0; i < l; i++) {
-							els[i] = ids[i] + offset
-						}
-					}
-
-					ids.data = els;
-
-					ids.elements = regl.elements({
-						primitive: 'points',
-						type: 'uint32',
-						data: els
-					})
+				// build cluster tree if required
+				if (snap && (snap === true || count > snap)) {
+					group.lod = cluster(positions, { bounds })
+				}
+				// existing tree instance
+				else if (snap.offsets) {
+					group.lod = snap
 				}
 			},
 
@@ -705,85 +634,34 @@ Scatter.prototype.update = function (...args) {
 			}
 		}])
 
-		return group
-	})
 
-	this.updateBuffers({
-		point: pointCount,
-		size: sizeCount,
-		color: colorCount
-	})
-}
+		// update size buffer, if needed
+		if (hasSize) {
+			let { count, size, borderSize, sizeBuffer } = group
 
-// update buffers data based on existing groups
-Scatter.prototype.updateBuffers = function({point, size, color}) {
-	let { palette, groups, tooManyColors, colorBuffer, positionBuffer, positionFractBuffer, maxColors, maxSize, sizeBuffer } = this
-
-	// put point/color data into buffers, if updated any of them
-	let len = groups.reduce((acc, group, i) => {
-		return acc + (group ? group.count : 0)
-	}, 0)
-
-	if (point) {
-		let positionData = new Float32Array(len * 2)
-		let positionFractData = new Float32Array(len * 2)
-
-		groups.forEach((group, i) => {
-			if (!group) return
-			let {positions, count, offset} = group
-			if (!count) return
-			positionData.set(float32(positions), offset * 2)
-			positionFractData.set(fract32(positions), offset * 2)
-		})
-
-		positionBuffer({
-			data: positionData,
-			usage: 'dynamic'
-		})
-		positionFractBuffer({
-			data: positionFractData,
-			usage: 'dynamic'
-		})
-	}
-
-	if (size) {
-		let sizeData = new Uint8Array(len * 2)
-
-		groups.forEach((group, i) => {
-			if (!group) return
-			let { count, offset, size, borderSize } = group
-			if (!count) return
-
+			let sizes = new Uint8Array(count*2)
 			if (size.length || borderSize.length) {
-				let sizes = new Uint8Array(count*2)
 				for (let i = 0; i < count; i++) {
 					// we downscale size to allow for fractions
 					sizes[i*2] = Math.round((size[i] == null ? size : size[i]) * 255 / maxSize)
 					sizes[i*2 + 1] = Math.round((borderSize[i] == null ? borderSize : borderSize[i]) * 255 / maxSize)
 				}
-				sizeData.set(sizes, offset * 2)
 			}
-		})
-		sizeBuffer({
-			data: sizeData,
-			usage: 'dynamic'
-		})
-	}
+			sizeBuffer({
+				data: sizes,
+				usage: 'dynamic'
+			})
+		}
 
-	if (color) {
-		let colorData
+		// update color buffer if needed
+		if (hasColor) {
+			let {count, color, borderColor, colorBuffer} = group
+			let colors
 
-		// if too many colors - put colors to buffer directly
-		if (tooManyColors) {
-			colorData = new Uint8Array(len * 8)
-
-			groups.forEach((group, i) => {
-				if (!group) return
-				let {count, offset, color, borderColor} = group
-				if (!count) return
-
+			// if too many colors - put colors to buffer directly
+			if (this.tooManyColors) {
 				if (color.length || borderColor.length) {
-					let colors = new Uint8Array(count * 8)
+					colors = new Uint8Array(count * 8)
 					for (let i = 0; i < count; i++) {
 						let colorId = color[i]
 						colors[i*8] = palette[colorId*4]
@@ -797,47 +675,40 @@ Scatter.prototype.updateBuffers = function({point, size, color}) {
 						colors[i*8 + 6] = palette[borderColorId*4 + 2]
 						colors[i*8 + 7] = palette[borderColorId*4 + 3]
 					}
-
-					colorData.set(colors, offset * 8)
 				}
-			})
-		}
+			}
 
-		// if limited amount of colors - keep palette color picking
-		// that saves significant memory
-		else {
-			// we need slight data increase by 2 due to vec4 borderId in shader
-			colorData = new Uint8Array(len * 4 + 2)
-
-			groups.forEach((group, i) => {
-				if (!group) return
-				let {count, offset, color, borderColor} = group
-				if (!count) return
-
+			// if limited amount of colors - keep palette color picking
+			// that saves significant memory
+			else {
 				if (color.length || borderColor.length) {
-					let colorIds = new Uint8Array(count * 4)
+					// we need slight data increase by 2 due to vec4 borderId in shader
+					colors = new Uint8Array(count * 4 + 2)
 					for (let i = 0; i < count; i++) {
 						// put color coords in palette texture
 						if (color[i] != null) {
-							colorIds[i*4] = color[i] % maxColors
-							colorIds[i*4 + 1] = Math.floor(color[i] / maxColors)
+							colors[i*4] = color[i] % maxColors
+							colors[i*4 + 1] = Math.floor(color[i] / maxColors)
 						}
 						if (borderColor[i] != null) {
-							colorIds[i*4 + 2] = borderColor[i] % maxColors
-							colorIds[i*4 + 3] = Math.floor(borderColor[i] / maxColors)
+							colors[i*4 + 2] = borderColor[i] % maxColors
+							colors[i*4 + 3] = Math.floor(borderColor[i] / maxColors)
 						}
 					}
-
-					colorData.set(colorIds, offset * 4)
 				}
+			}
+
+			colorBuffer({
+				data: colors,
+				type: 'uint8',
+				usage: 'dynamic'
 			})
 		}
-		colorBuffer({
-			data: colorData,
-			usage: 'dynamic'
-		})
-	}
+
+		return group
+	})
 }
+
 
 // get (and create) marker texture id
 Scatter.prototype.addMarker = function (sdf) {
@@ -877,7 +748,7 @@ Scatter.prototype.addMarker = function (sdf) {
 
 // register color to palette, return it's index or list of indexes
 Scatter.prototype.updateColor = function (colors) {
-	let { paletteIds, palette, tooManyColors, maxColors } = this
+	let { paletteIds, palette, maxColors } = this
 
 	if (!Array.isArray(colors)) {
 		colors = [colors]
@@ -924,7 +795,7 @@ Scatter.prototype.updateColor = function (colors) {
 	}
 
 	// detect if too many colors in palette
-	if (!tooManyColors && palette.length > maxColors * maxColors * 4) tooManyColors = true
+	if (!this.tooManyColors && palette.length > maxColors * maxColors * 4) this.tooManyColors = true
 
 	// limit max color
 	this.updatePalette(palette)
@@ -933,7 +804,7 @@ Scatter.prototype.updateColor = function (colors) {
 	return idx.length === 1 ? idx[0] : idx
 }
 
-Scatter.prototype.updatePalette = function(palette) {
+Scatter.prototype.updatePalette = function (palette) {
 	if (this.tooManyColors) return
 
 	let { maxColors, paletteTexture } = this
@@ -963,12 +834,16 @@ Scatter.prototype.updatePalette = function(palette) {
 
 // remove unused stuff
 Scatter.prototype.destroy = function () {
+	this.groups.forEach(group => {
+		group.sizeBuffer.destroy()
+		group.positionBuffer.destroy()
+		group.positionFractBuffer.destroy()
+		group.colorBuffer.destroy()
+		groups.activeMarkers.forEach(b => b && b.destroy && b.destroy())
+	})
 	this.groups.length = 0
 
-	this.sizeBuffer.destroy()
-	this.positionBuffer.destroy()
-	this.positionFractBuffer.destroy()
-	this.colorBuffer.destroy()
+
 	this.paletteTexture.destroy()
 
 	return this
