@@ -11,7 +11,6 @@ const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
-const arrayRange = require('array-range')
 const parseRect = require('parse-rect')
 
 
@@ -134,29 +133,29 @@ function Scatter (regl, options) {
 				stride: 8,
 				offset: 4
 			},
-			xFract: (ctx, prop) => { return {
+			xFract: (ctx, prop) => prop.xAttr ? { constant: [0, 0] } : {
 				buffer: prop.positionFractBuffer,
 				stride: 8,
 				offset: 0
-			}},
-			yFract: (ctx, prop) => { return {
+			},
+			yFract: (ctx, prop) => prop.yAttr ? { constant: [0, 0] } : {
 				buffer: prop.positionFractBuffer,
 				stride: 8,
 				offset: 4
-			}},
+			},
 			size: (ctx, prop) => prop.size.length ? {
 				buffer: prop.sizeBuffer,
 				stride: 2,
 				offset: 0
 			} : {
-				constant: [ Math.round(prop.size * 255 / maxSize) ]
+				constant: [ Math.round(prop.size * 255 / this.maxSize) ]
 			},
 			borderSize: (ctx, prop) => prop.borderSize.length ? {
 				buffer: prop.sizeBuffer,
 				stride: 2,
 				offset: 1
 			} : {
-				constant: [ Math.round(prop.borderSize * 255 / maxSize) ]
+				constant: [ Math.round(prop.borderSize * 255 / this.maxSize) ]
 			},
 			colorId: (ctx, prop) => prop.color.length ? {
 				buffer: prop.colorBuffer,
@@ -359,7 +358,7 @@ Scatter.prototype.update = function (...args) {
 	// passes are as single array
 	if (args.length === 1 && Array.isArray(args[0])) args = args[0]
 
-	let { groups, gl, regl } = this
+	let { groups, gl, regl, maxSize, maxColors, palette } = this
 
 	this.groups = groups = args.map((options, i) => {
 		let group = groups[i]
@@ -506,7 +505,6 @@ Scatter.prototype.update = function (...args) {
 						}
 					}
 					group.count = Math.max(group.xAttr.count, group.yAttr.count)
-					hasPoints += group.count
 
 					return positions
 				}
@@ -839,7 +837,7 @@ Scatter.prototype.destroy = function () {
 		group.positionBuffer.destroy()
 		group.positionFractBuffer.destroy()
 		group.colorBuffer.destroy()
-		groups.activeMarkers.forEach(b => b && b.destroy && b.destroy())
+		group.activeMarkers.forEach(b => b && b.destroy && b.destroy())
 	})
 	this.groups.length = 0
 
