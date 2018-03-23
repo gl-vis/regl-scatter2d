@@ -203,6 +203,7 @@ function Scatter (regl, options) {
 
 		elements: regl.prop('elements'),
 		count: regl.prop('count'),
+		offset: regl.prop('offset'),
 
 		primitive: 'points'
 	}
@@ -240,6 +241,7 @@ Scatter.defaults = {
 	range: null,
 	pixelSize: null,
 	count: 0,
+	offset: 0,
 	bounds: null,
 	positions: [],
 	snap: 1e4
@@ -278,8 +280,15 @@ Scatter.prototype.draw = function (...args) {
 
 // draw specific scatter group
 Scatter.prototype.drawItem = function (id, els) {
-	let { groups } = this
+	let { groups, regl, gl } = this
 	let group = groups[id]
+
+	// debug viewport
+	// let { viewport } = group
+	// gl.enable(gl.SCISSOR_TEST);
+	// gl.scissor(viewport.x, viewport.y, viewport.width, viewport.height);
+	// gl.clearColor(0, 0, 0, .5);
+	// gl.clear(gl.COLOR_BUFFER_BIT);
 
 	if (typeof els === 'number') {
 		id = els
@@ -291,7 +300,7 @@ Scatter.prototype.drawItem = function (id, els) {
 
 	// draw circles
 	if (group.activeMarkers[0]) {
-		this.drawCircle(...this.getMarkerDrawOptions(0, group, els))
+		this.drawCircle(this.getMarkerDrawOptions(0, group, els))
 	}
 
 	// draw all other available markers
@@ -309,11 +318,11 @@ Scatter.prototype.drawItem = function (id, els) {
 
 // get options for the marker ids
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
-	let { range, lod, viewport } = group
+	let { range, tree, viewport } = group
 
 	// unsnapped options
-	if (!lod) {
-		return [ extend( { markerId, elements }, group ) ]
+	if (!tree) {
+		return [ extend( { markerId, elements, offset: 0 }, group ) ]
 	}
 
 	// scales batch
@@ -321,11 +330,11 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 
 	let pixelSize = Math.min((range[2] - range[0]) / viewport.width, (range[3] - range[1]) / viewport.height)
 
-	let offsets = lod.offsets(pixelSize, ...range)
+	let offsets = tree.lod(pixelSize, ...range)
 
 	for (let level = offsets.length; level--;) {
 		let [startOffset, endOffset] = offsets[level]
-		let items = lod.levels[level]
+		let items = tree.levels[level]
 
 		// FIXME: test this out, prob subrendering is broken
 		// // whitelisted level requires subelements from the range
@@ -372,7 +381,7 @@ Scatter.prototype.update = function (...args) {
 		// copy options to avoid mutation & handle aliases
 		options = pick(options, {
 			positions: 'positions data points',
-			snap: 'snap cluster lod',
+			snap: 'snap cluster lod tree',
 			size: 'sizes size radius',
 			borderSize: 'borderSizes borderSize border-size bordersize borderWidth borderWidths border-width borderwidth stroke-width strokeWidth strokewidth outline',
 			color: 'colors color fill fill-color fillColor',
@@ -468,7 +477,7 @@ Scatter.prototype.update = function (...args) {
 			},
 
 			positions: (positions, group, options) => {
-				let { positionBuffer, positionFractBuffer } = group
+				let { positionBuffer, positionFractBuffer, snap } = group
 
 				// separate buffers for x/y coordinates
 				if (positions.x || positions.y) {
@@ -525,6 +534,37 @@ Scatter.prototype.update = function (...args) {
 					delete group.marker;
 					options.marker = null;
 				}
+
+
+				// build cluster tree if required
+				if (snap && (snap === true || count > snap)) {
+					group.tree = cluster(positions, { bounds })
+				}
+				// existing tree instance
+				else if (snap.offsets && snap.levels) {
+					group.tree = snap
+				}
+
+				// mark levels offsets since they are directly placed in buffer
+				if (group.tree) {
+					let mappedPositions = new Float64Array(count * 2)
+
+					for (let level = 0, off = 0; level < group.tree.levels.length; level++) {
+						let items = group.tree.levels[level]
+						items.offset = off
+
+						for (let i = 0; i < items.length; i++) {
+							let id = items[i]
+							mappedPositions[(i + off) * 2] = positions[id * 2]
+							mappedPositions[(i + off) * 2 + 1] = positions[id * 2 + 1]
+						}
+
+						off += group.tree.levels[level].length
+					}
+
+					positions = mappedPositions
+				}
+
 
 				// update position buffers
 				positionBuffer({
@@ -583,24 +623,6 @@ Scatter.prototype.update = function (...args) {
 				}
 
 				return markers
-			}
-		}, {
-			// recalculate per-marker snapping
-			// first, it is faster to snap 100 points 100 times than 10000 points once (practically, not theoretically)
-			// second, it is easier to subset render per-marker than per-generic set
-			positions: (positions, group) => {
-				if (!positions || !positions.length) return
-
-				let { snap, bounds, count } = group
-
-				// build cluster tree if required
-				if (snap && (snap === true || count > snap)) {
-					group.lod = cluster(positions, { bounds })
-				}
-				// existing tree instance
-				else if (snap.offsets) {
-					group.lod = snap
-				}
 			},
 
 			range: (range, group, options) => {
@@ -631,7 +653,6 @@ Scatter.prototype.update = function (...args) {
 				return rect
 			}
 		}])
-
 
 		// update size buffer, if needed
 		if (hasSize) {

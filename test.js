@@ -33,6 +33,7 @@ t('circle size')
 t('multipass rendering')
 t('single point')
 t('no-boundaries')
+t('cluster with external buffer')
 
 
 //create square test sdf image
@@ -105,12 +106,12 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
 		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		size: 10,
+		size: 8,
 		opacity: .5,
 
-		color: 'gray',
+		// color: 'gray',
 		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
-		// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		// color: 'rgba(0, 0, 255, .5)',
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
@@ -121,7 +122,7 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		range: range,
 		// borderSize: 3,
 		// borderColor: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		snap: false,
+		snap: true,
 
 		// viewport: [0,100,300,300]
 	}
