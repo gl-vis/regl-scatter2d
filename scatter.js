@@ -76,36 +76,7 @@ function Scatter (regl, options) {
 		canvas: gl.canvas
 	})
 
-	// fast-create from existing regl-scatter instance
-	if (options.clone) {
-		groups = options.clone.groups.map(group => {
-			group = extend({}, group)
-			if (group.activeMarkers) {
-				// clone every buffer
-				group.activeMarkers = group.activeMarkers.map(buffer => {
-					if (!buffer.data) return buffer
-
-					return regl.buffer({
-						usage: 'static', data: buffer.data
-					})
-				})
-			}
-			return group
-		})
-
-		// create marker textures
-		options.clone.markers.forEach(markers => {
-			this.addMarker(markers)
-		})
-		// clone palette texture
-		this.updatePalette(options.clone.palette)
-		this.updateBuffers({point: true, color: true, size: true})
-	}
-	// full create from options
-	else {
-		this.update(options)
-	}
-
+	this.update(options)
 
 	// common shader options
 	let shaderOptions = {
@@ -265,7 +236,7 @@ Scatter.prototype.draw = function (...args) {
 	let { groups } = this
 
 	// if directly array passed - treat as passes
-	if (args.length === 1 && Array.isArray(args[0])  && args[0][0] && args[0][0].length) {
+	if (args.length === 1 && Array.isArray(args[0])  && (args[0][0] === null || (args[0][0] && args[0][0].length))) {
 		args = args[0]
 	}
 
