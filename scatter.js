@@ -320,12 +320,16 @@ Scatter.prototype.drawItem = function (id, els) {
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 	let { range, tree, viewport } = group
 
-	// unsnapped options
+	// if elements array - draw unclustered points
+	if (elements) return [extend({}, group, { markerId, count: elements.length, elements, offset: 0 })]
+
+	// direct points
 	if (!tree) {
-		return [ extend( { markerId, elements, offset: 0 }, group ) ]
+
+		return [ extend({ markerId, offset: 0 }, group) ]
 	}
 
-	// scales batch
+	// clustered points
 	let batch = []
 
 	let pixelSize = Math.min((range[2] - range[0]) / viewport.width, (range[3] - range[1]) / viewport.height)
@@ -336,25 +340,11 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 		let [startOffset, endOffset] = offsets[level]
 		let items = tree.levels[level]
 
-		// FIXME: test this out, prob subrendering is broken
-		// // whitelisted level requires subelements from the range
-		// if (whitelist) {
-		// 	let elements = filter(ids.subarray(startOffset, endOffset), whitelist)
-
-		// 	batch.push(extend({}, group, {
-		// 		elements: elements,
-		// 		marker: markerTextures[id],
-		// 		offset: 0,
-		// 		count: elements.length
-		// 	}))
-		// }
-		// else {
-			batch.push(extend({}, group, {
-				markerId, elements,
-				offset: startOffset + items.offset,
-				count: endOffset - startOffset
-			}))
-		// }
+		batch.push(extend({}, group, {
+			markerId, elements,
+			offset: startOffset + items.offset,
+			count: endOffset - startOffset
+		}))
 	}
 
 	return batch
@@ -861,7 +851,6 @@ Scatter.prototype.destroy = function () {
 		group.activeMarkers.forEach(b => b && b.destroy && b.destroy())
 	})
 	this.groups.length = 0
-
 
 	this.paletteTexture.destroy()
 

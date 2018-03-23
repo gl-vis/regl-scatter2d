@@ -87,13 +87,13 @@ let N = 1e6
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
-let markers = [ null ]
+let markers = [ null /*, dist*/ ]
 let passes = markers.length
 
 let scatter = createScatter(regl)
 
 console.time(1)
-scatter(...Array(passes).fill(null).map((x, i) => {
+scatter.update(...Array(passes).fill(null).map((x, i) => {
 	var pos = generate(N)
 	// var pos = [
 	// 	[0,0.75,0.5,0.85,1,0.75,1.25,null,1.5,0.85,1.75,null,2,0.75,2.5,0.85,3,0.75],
@@ -101,7 +101,7 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 	// ][i]
 	return {
 		positions: pos,
-		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1],
+		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1].map(v => v * (i + 1) ),
 		// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
@@ -109,14 +109,13 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		size: 8,
 		opacity: .5,
 
-		// color: 'gray',
 		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
-		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		// color: 'rgba(0, 0, 255, .5)',
+		// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		color: 'rgba(0, 0, 255, .5)',
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
-		// marker: markers[i],
+		marker: markers[i],
 		// marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
@@ -127,6 +126,7 @@ scatter(...Array(passes).fill(null).map((x, i) => {
 		// viewport: [0,100,300,300]
 	}
 }))
+scatter.draw()
 console.timeEnd(1)
 
 // setTimeout(() => {

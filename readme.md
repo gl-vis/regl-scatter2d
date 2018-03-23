@@ -55,7 +55,7 @@ Option | Default | Description
 `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left, top, right, bottom}` or `{x, y, w, h}`.
 `clone` | `null` | Source _scatter2d_ instance to clone for faster creation.
-`cluster` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/dfcreative/point-cluster) instance.
+`snap` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/dfcreative/point-cluster) tree instance.
 
 ### `scatter.update(optionsA, optionsB, ...rest)`
 
