@@ -264,11 +264,17 @@ Scatter.prototype.render = function (...args) {
 Scatter.prototype.draw = function (...args) {
 	let { groups } = this
 
+	// if directly array passed - treat as passes
+	if (args.length === 1 && Array.isArray(args[0])  && args[0][0] && args[0][0].length) {
+		args = args[0]
+	}
+
 	if (args.length) {
 		for (let i = 0; i < args.length; i++) {
 			this.drawItem(i, args[i])
 		}
 	}
+	// draw all passes
 	else {
 		groups.forEach((group, i) => {
 			this.drawItem(i)
