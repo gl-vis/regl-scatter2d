@@ -115,7 +115,7 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
-		marker: markers[i],
+		// marker: markers[i],
 		// marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,

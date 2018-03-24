@@ -12,6 +12,7 @@ const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
 const parseRect = require('parse-rect')
+const rearrange = require('array-rearrange')
 
 
 module.exports = Scatter
@@ -171,7 +172,6 @@ function Scatter (regl, options) {
 		stencil: {enable: false},
 		depth: {enable: false},
 
-
 		elements: regl.prop('elements'),
 		count: regl.prop('count'),
 		offset: regl.prop('offset'),
@@ -302,25 +302,24 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 
 	// direct points
 	if (!tree) {
-
 		return [ extend({ markerId, offset: 0 }, group) ]
 	}
 
 	// clustered points
 	let batch = []
 
-	let pixelSize = Math.min((range[2] - range[0]) / viewport.width, (range[3] - range[1]) / viewport.height)
+	let lod = tree.range(range, { lod: true, px: [
+		(range[2] - range[0]) / viewport.width,
+		(range[3] - range[1]) / viewport.height
+	]})
 
-	let offsets = tree.lod(pixelSize, ...range)
-
-	for (let level = offsets.length; level--;) {
-		let [startOffset, endOffset] = offsets[level]
-		let items = tree.levels[level]
+	for (let l = 0; l < lod.length; l++) {
+		let [from, to] = lod[l]
 
 		batch.push(extend({}, group, {
 			markerId, elements,
-			offset: startOffset + items.offset,
-			count: endOffset - startOffset
+			offset: from,
+			count: to - from
 		}))
 	}
 
@@ -444,7 +443,8 @@ Scatter.prototype.update = function (...args) {
 			},
 
 			positions: (positions, group, options) => {
-				let { positionBuffer, positionFractBuffer, snap } = group
+				let { snap } = options
+				let { positionBuffer, positionFractBuffer } = group
 
 				// separate buffers for x/y coordinates
 				if (positions.x || positions.y) {
@@ -508,28 +508,13 @@ Scatter.prototype.update = function (...args) {
 					group.tree = cluster(positions, { bounds })
 				}
 				// existing tree instance
-				else if (snap.offsets && snap.levels) {
+				else if (snap.length) {
 					group.tree = snap
 				}
 
 				// mark levels offsets since they are directly placed in buffer
 				if (group.tree) {
-					let mappedPositions = new Float64Array(count * 2)
-
-					for (let level = 0, off = 0; level < group.tree.levels.length; level++) {
-						let items = group.tree.levels[level]
-						items.offset = off
-
-						for (let i = 0; i < items.length; i++) {
-							let id = items[i]
-							mappedPositions[(i + off) * 2] = positions[id * 2]
-							mappedPositions[(i + off) * 2 + 1] = positions[id * 2 + 1]
-						}
-
-						off += group.tree.levels[level].length
-					}
-
-					positions = mappedPositions
+					rearrange(positions, group.tree.slice())
 				}
 
 

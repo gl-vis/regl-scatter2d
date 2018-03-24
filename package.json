@@ -1,6 +1,6 @@
 {
   "name": "regl-scatter2d",
-  "version": "2.1.17",
+  "version": "2.2.0",
   "description": "Scatter2d plot built with regl",
   "main": "./index.js",
   "scripts": {
@@ -29,6 +29,7 @@
   "homepage": "https://github.com/dfcreative/regl-scatter2d#readme",
   "dependencies": {
     "array-range": "^1.0.1",
+    "array-rearrange": "^2.2.0",
     "bubleify": "^1.0.0",
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
@@ -39,7 +40,7 @@
     "object-assign": "^4.1.1",
     "parse-rect": "^1.1.0",
     "pick-by-alias": "^1.0.0",
-    "point-cluster": "^2.0.0",
+    "point-cluster": "^3.0.0",
     "to-float32": "^1.0.0",
     "update-diff": "^1.1.0"
   },
