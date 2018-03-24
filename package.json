@@ -29,7 +29,7 @@
   "homepage": "https://github.com/dfcreative/regl-scatter2d#readme",
   "dependencies": {
     "array-range": "^1.0.1",
-    "array-rearrange": "^2.2.0",
+    "array-rearrange": "^2.2.1",
     "bubleify": "^1.0.0",
     "clamp": "^1.0.1",
     "color-id": "^1.1.0",
