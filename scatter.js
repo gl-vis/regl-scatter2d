@@ -533,7 +533,7 @@ Scatter.prototype.update = function (...args) {
 		}, {
 			// create marker ids corresponding to known marker textures
 			marker: (markers, group, options) => {
-				let { activeMarkers } = group
+				let { activeMarkers, tree } = group
 
 				// reset marker elements
 				activeMarkers.forEach(buffer => buffer && buffer.destroy && buffer.destroy())
@@ -550,7 +550,7 @@ Scatter.prototype.update = function (...args) {
 					let markerData = []
 
 					for (let i = 0, l = Math.min(markers.length, group.count); i < l; i++) {
-						let id = this.addMarker(markers[i])
+						let id = this.addMarker(markers[tree ? tree[i] : i])
 
 						if (!markerData[id]) markerData[id] = new Uint8Array(group.count)
 
@@ -608,7 +608,15 @@ Scatter.prototype.update = function (...args) {
 
 		// update size buffer, if needed
 		if (hasSize) {
-			let { count, size, borderSize, sizeBuffer } = group
+			let { count, size, borderSize, sizeBuffer, tree } = group
+
+			// rearrange size by tree
+			if (size.length) {
+				rearrange(size, tree.slice())
+			}
+			if (borderSize.length) {
+				rearrange(borderSize, tree.slice())
+			}
 
 			let sizes = new Uint8Array(count*2)
 			if (size.length || borderSize.length) {
@@ -626,8 +634,18 @@ Scatter.prototype.update = function (...args) {
 
 		// update color buffer if needed
 		if (hasColor) {
-			let {count, color, borderColor, colorBuffer} = group
+			let {count, color, borderColor, colorBuffer, tree} = group
 			let colors
+
+			// rearrange color by tree
+			if (tree) {
+				if (color.length) {
+					rearrange(color, tree.slice())
+				}
+				if (borderColor.length) {
+					rearrange(borderColor, tree.slice())
+				}
+			}
 
 			// if too many colors - put colors to buffer directly
 			if (this.tooManyColors) {

@@ -101,11 +101,10 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 	// ][i]
 	return {
 		positions: pos,
-		// positions: [0,0, .1,.1, .2,.2, .3,.3, .4,.4, .5,.5, .6,.6, .7,.7, .8,.8, .9,.9, 1,1].map(v => v * (i + 1) ),
-		// positions: [0,0, 1,1, -1,-1, 1,-1, -1,1, 0,1, 0,-1, 1,0, -1,0],
 		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
 		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
+		// size: [2, 3, 4, 5, 6, 7, 8, 9],
 		size: 8,
 		opacity: .5,
 
@@ -115,7 +114,8 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
-		// marker: markers[i],
+		// marker: [null, null, null, null, dist, dist, dist, dist],
+		//marker: markers[i],
 		// marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
 
 		range: range,
