@@ -282,6 +282,7 @@ Scatter.prototype.drawItem = function (id, els) {
 
 	// draw all other available markers
 	let batch = []
+
 	for (let i = 1; i < group.activeMarkers.length; i++) {
 		if (!group.activeMarkers[i] || (group.activeMarkers[i] !== true && !group.activeMarkers[i].data.length)) continue
 
@@ -568,10 +569,13 @@ Scatter.prototype.update = function (...args) {
 
 						if (!markerData[id]) markerData[id] = new Uint8Array(group.count)
 
+						// enable marker by default
 						markerData[id][i] = 1
 					}
 
 					for (let id = 0; id < markerData.length; id++) {
+						if (!markerData[id]) continue
+
 						let opts = {
 							data: markerData[id],
 							type: 'uint8',
