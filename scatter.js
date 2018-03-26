@@ -297,6 +297,21 @@ Scatter.prototype.drawItem = function (id, els) {
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 	let { range, tree, viewport } = group
 
+	if (elements && tree) {
+		// map elements by whitelist in case of tree
+		// FIXME: find a better way for it
+		let whitelist = {}
+		for (let i = 0; i < elements.length; i++) {
+			whitelist[elements[i]] = true
+		}
+		let els = []
+		for (let i = 0; i < tree.length; i++) {
+			let id = tree[i]
+			if (whitelist[id]) els.push(i)
+		}
+		elements = els
+	}
+
 	// if elements array - draw unclustered points
 	if (elements) return [extend({}, group, { markerId, count: elements.length, elements, offset: 0 })]
 

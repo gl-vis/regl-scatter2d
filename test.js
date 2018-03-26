@@ -100,17 +100,17 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 	// 	[0,0.5,1,0.6,2,0.5,2.5,null,3,0.5]
 	// ][i]
 	return {
-		positions: pos,
-		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
+		// positions: pos,
+		positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
 		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		// size: [2, 3, 4, 5, 6, 7, 8, 9],
-		size: 8,
-		opacity: .5,
+		size: [2, 3, 4, 5, 6, 7, 8, 9],
+		// size: 8,
+		// opacity: .55,
 
-		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
+		color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
 		// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
-		color: 'rgba(0, 0, 255, .5)',
+		// color: 'rgba(0, 0, 255, .5)',
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
@@ -126,7 +126,7 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 		// viewport: [0,100,300,300]
 	}
 }))
-scatter.draw()
+scatter.draw([[4,5,6,7]])
 console.timeEnd(1)
 
 // setTimeout(() => {
