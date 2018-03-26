@@ -517,13 +517,12 @@ Scatter.prototype.update = function (...args) {
 					options.marker = null;
 				}
 
-
 				// build cluster tree if required
 				if (snap && (snap === true || count > snap)) {
 					group.tree = cluster(positions, { bounds })
 				}
 				// existing tree instance
-				else if (snap.length) {
+				else if (snap && snap.length) {
 					group.tree = snap
 				}
 
@@ -626,11 +625,13 @@ Scatter.prototype.update = function (...args) {
 			let { count, size, borderSize, sizeBuffer, tree } = group
 
 			// rearrange size by tree
-			if (size.length) {
-				rearrange(size, tree.slice())
-			}
-			if (borderSize.length) {
-				rearrange(borderSize, tree.slice())
+			if (tree) {
+				if (size.length) {
+					rearrange(size, tree.slice())
+				}
+				if (borderSize.length) {
+					rearrange(borderSize, tree.slice())
+				}
 			}
 
 			let sizes = new Uint8Array(count*2)
