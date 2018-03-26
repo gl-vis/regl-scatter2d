@@ -236,7 +236,7 @@ Scatter.prototype.draw = function (...args) {
 	let { groups } = this
 
 	// if directly array passed - treat as passes
-	if (args.length === 1 && Array.isArray(args[0])  && (args[0][0] === null || (args[0][0] && args[0][0].length))) {
+	if (args.length === 1 && Array.isArray(args[0])  && (args[0][0] === null || Array.isArray(args[0][0]))) {
 		args = args[0]
 	}
 
