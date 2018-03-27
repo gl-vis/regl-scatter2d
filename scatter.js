@@ -329,7 +329,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 		(range[3] - range[1]) / viewport.height
 	]})
 
-	for (let l = 0; l < lod.length; l++) {
+	for (let l = lod.length; l--;) {
 		let [from, to] = lod[l]
 
 		batch.push(extend({}, group, {

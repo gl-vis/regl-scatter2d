@@ -35,7 +35,7 @@
     "color-id": "^1.1.0",
     "color-normalize": "^1.0.3",
     "flatten-vertex-data": "^1.0.0",
-    "glslify": "^6.1.0",
+    "glslify": "^6.1.1",
     "is-iexplorer": "^1.0.0",
     "object-assign": "^4.1.1",
     "parse-rect": "^1.1.0",

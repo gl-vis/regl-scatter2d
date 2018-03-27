@@ -83,7 +83,7 @@ function show (arr) {
 
 
 
-let N = 1e6
+let N = 1e5
 let ratio = window.innerWidth / window.innerHeight
 let range = [-10 * ratio, -10, 10 * ratio, 10]
 let colors = palettes[Math.floor(Math.random() * palettes.length)]
@@ -100,20 +100,21 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 	// 	[0,0.5,1,0.6,2,0.5,2.5,null,3,0.5]
 	// ][i]
 	return {
-		// positions: pos,
-		positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
+		positions: pos,
+		// positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
 
-		// size:  Array(pos.length).fill(100).map(x => Math.random() * 5 + 5),
-		size: [2, 3, 4, 5, 6, 7, 8, 9],
-		// size: 8,
-		// opacity: .55,
+		// size:  Array(pos.length).fill(15).map(x => Math.random() * x/2  + x/2),
+		// size: [2, 3, 4, 5, 6, 7, 8, 9],
+		size: 8,
+		// opacity: .15,
 
-		color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
-		// color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
+		// color: ['red', 'green', 'blue', 'black', 'red', 'red', 'red', 'gray'],
+		color: Array(N).fill(0).map(() => colors[Math.floor(Math.random() * colors.length)]),
 		// color: 'rgba(0, 0, 255, .5)',
 		// color: Array(N * 4).fill(0).map(Math.random),
 		// borderColor: 'rgba(0, 255, 0, .5)',
 
+		// marker: getCharSdf('©'),
 		// marker: [null, null, null, null, dist, dist, dist, dist],
 		//marker: markers[i],
 		// marker: Array(N).fill(0).map(() => markers[Math.floor(Math.random() * markers.length)]),
@@ -126,7 +127,7 @@ scatter.update(...Array(passes).fill(null).map((x, i) => {
 		// viewport: [0,100,300,300]
 	}
 }))
-scatter.draw([[4,5,6,7]])
+scatter.draw()
 console.timeEnd(1)
 
 // setTimeout(() => {
@@ -219,7 +220,7 @@ function getCharSdf(char, size) {
 	ctx.fillText(char, size/2, size/2)
 
 	let data = sdf(ctx, {
-		cutoff: .1,
+		cutoff: .48,
 		radius: size/2
 	})
 
