@@ -309,11 +309,11 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			})]
 		}
 
-		return [ extend({
+		return [ extend({}, group, {
 			markerTexture: this.markerTextures[markerId],
 			activation: activation[markerId],
 			offset: 0
-		}, group) ]
+		}) ]
 	}
 
 	// clustered points
