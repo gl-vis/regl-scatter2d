@@ -349,7 +349,9 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			activation: elements ? selection[markerId] : activation[markerId],
 			offset: from,
 			count: to - from,
-			elements: tree
+
+			// send tree elements
+			elements: group.elements
 		}))
 	}
 
@@ -542,6 +544,17 @@ Scatter.prototype.update = function (...args) {
 				// existing tree instance
 				else if (snap && snap.length) {
 					group.tree = snap
+				}
+
+				if (group.tree) {
+					let opts = {
+						primitive: 'points',
+						usage: 'static',
+						data: group.tree,
+						type: 'uint32'
+					}
+					if (group.elements) group.elements(opts)
+					else group.elements = regl.elements(opts)
 				}
 
 				// update position buffers
@@ -841,6 +854,8 @@ Scatter.prototype.destroy = function () {
 		group.colorBuffer.destroy()
 		group.activation.forEach(b => b && b.destroy && b.destroy())
 		group.selection.forEach(b => b && b.destroy && b.destroy())
+
+		if (group.elements) group.elements.destroy()
 	})
 	this.groups.length = 0
 
