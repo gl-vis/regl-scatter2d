@@ -12,7 +12,6 @@ const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
 const {float32, fract32} = require('to-float32')
 const parseRect = require('parse-rect')
-const rearrange = require('array-rearrange')
 
 
 module.exports = Scatter
@@ -253,7 +252,7 @@ Scatter.prototype.draw = function (...args) {
 
 // draw specific scatter group
 Scatter.prototype.drawItem = function (id, els) {
-	let { groups, regl, gl } = this
+	let { groups, } = this
 	let group = groups[id]
 
 	// debug viewport
@@ -293,7 +292,7 @@ Scatter.prototype.drawItem = function (id, els) {
 
 // get options for the marker ids
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
-	let { range, tree, viewport, activation, selection, treeLookup, count } = group
+	let { range, tree, viewport, activation, selection, count } = group
 	let { regl } = this
 
 	// direct points
@@ -330,7 +329,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 		let mask = markerActivation.data
 		let data = new Uint8Array(count)
 		for (let i = 0; i < elements.length; i++) {
-			let id = treeLookup[elements[i]]
+			let id = elements[i]
 			data[id] = mask ? mask[id] : 1
 		}
 		let opts = {
@@ -349,7 +348,8 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			markerTexture: this.markerTextures[markerId],
 			activation: elements ? selection[markerId] : activation[markerId],
 			offset: from,
-			count: to - from
+			count: to - from,
+			elements: tree
 		}))
 	}
 
@@ -544,18 +544,6 @@ Scatter.prototype.update = function (...args) {
 					group.tree = snap
 				}
 
-				// mark levels offsets since they are directly placed in buffer
-				if (group.tree) {
-					rearrange(positions, group.tree.slice())
-
-					// realId: treeId map
-					let lookup = group.treeLookup = new Uint32Array(group.tree.length)
-					for (let i = 0; i < group.tree.length; i++) {
-						lookup[group.tree[i]] = i
-					}
-				}
-
-
 				// update position buffers
 				positionBuffer({
 					data: float32(positions),
@@ -571,7 +559,7 @@ Scatter.prototype.update = function (...args) {
 		}, {
 			// create marker ids corresponding to known marker textures
 			marker: (markers, group, options) => {
-				let { activation, tree, selection } = group
+				let { activation } = group
 
 				// reset marker elements
 				activation.forEach(buffer => buffer && buffer.destroy && buffer.destroy())
@@ -588,7 +576,7 @@ Scatter.prototype.update = function (...args) {
 					let markerMasks = []
 
 					for (let i = 0, l = Math.min(markers.length, group.count); i < l; i++) {
-						let id = this.addMarker(markers[tree ? tree[i] : i])
+						let id = this.addMarker(markers[i])
 
 						if (!markerMasks[id]) markerMasks[id] = new Uint8Array(group.count)
 
@@ -649,17 +637,7 @@ Scatter.prototype.update = function (...args) {
 
 		// update size buffer, if needed
 		if (hasSize) {
-			let { count, size, borderSize, sizeBuffer, tree } = group
-
-			// rearrange size by tree
-			if (tree) {
-				if (size.length) {
-					rearrange(size, tree.slice())
-				}
-				if (borderSize.length) {
-					rearrange(borderSize, tree.slice())
-				}
-			}
+			let { count, size, borderSize, sizeBuffer } = group
 
 			let sizes = new Uint8Array(count*2)
 			if (size.length || borderSize.length) {
@@ -677,18 +655,8 @@ Scatter.prototype.update = function (...args) {
 
 		// update color buffer if needed
 		if (hasColor) {
-			let {count, color, borderColor, colorBuffer, tree} = group
+			let {count, color, borderColor, colorBuffer } = group
 			let colors
-
-			// rearrange color by tree
-			if (tree) {
-				if (color.length) {
-					rearrange(color, tree.slice())
-				}
-				if (borderColor.length) {
-					rearrange(borderColor, tree.slice())
-				}
-			}
 
 			// if too many colors - put colors to buffer directly
 			if (this.tooManyColors) {
