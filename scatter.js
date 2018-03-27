@@ -90,7 +90,7 @@ function Scatter (regl, options) {
 			translate: regl.prop('translate'),
 			translateFract: regl.prop('translateFract'),
 			opacity: regl.prop('opacity'),
-			marker: (ctx, prop) => markerTextures[prop.markerId],
+			marker: regl.prop('markerTexture'),
 		},
 
 		attributes: {
@@ -143,11 +143,7 @@ function Scatter (regl, options) {
 			} : {
 				constant: this.tooManyColors ? palette.slice(prop.borderColor * 4, prop.borderColor * 4 + 4) : [ prop.borderColor ]
 			},
-			isActive: (ctx, prop) => {
-				let activeMarkers = prop.activeMarkers[prop.markerId]
-				if (activeMarkers === true) return { constant: [1] }
-				return activeMarkers
-			}
+			isActive: (ctx, prop) => prop.activation === true ? { constant: [1] } : prop.activation ? prop.activation : { constant: [0] }
 		},
 
 		blend: {
@@ -276,15 +272,16 @@ Scatter.prototype.drawItem = function (id, els) {
 	if (!(group && group.count && group.opacity)) return
 
 	// draw circles
-	if (group.activeMarkers[0]) {
+	if (group.activation[0]) {
+		// TODO: optimize this performance by making groups and regl.this props
 		this.drawCircle(this.getMarkerDrawOptions(0, group, els))
 	}
 
 	// draw all other available markers
 	let batch = []
 
-	for (let i = 1; i < group.activeMarkers.length; i++) {
-		if (!group.activeMarkers[i] || (group.activeMarkers[i] !== true && !group.activeMarkers[i].data.length)) continue
+	for (let i = 1; i < group.activation.length; i++) {
+		if (!group.activation[i] || (group.activation[i] !== true && !group.activation[i].data.length)) continue
 
 		batch.push(...this.getMarkerDrawOptions(i, group, els))
 	}
@@ -296,29 +293,27 @@ Scatter.prototype.drawItem = function (id, els) {
 
 // get options for the marker ids
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
-	let { range, tree, viewport } = group
-
-	if (elements && tree) {
-		// map elements by whitelist in case of tree
-		// FIXME: find a better way for it
-		let whitelist = {}
-		for (let i = 0; i < elements.length; i++) {
-			whitelist[elements[i]] = true
-		}
-		let els = []
-		for (let i = 0; i < tree.length; i++) {
-			let id = tree[i]
-			if (whitelist[id]) els.push(i)
-		}
-		elements = els
-	}
-
-	// if elements array - draw unclustered points
-	if (elements) return [extend({}, group, { markerId, count: elements.length, elements, offset: 0 })]
+	let { range, tree, viewport, activation, selection, treeLookup, count } = group
+	let { regl } = this
 
 	// direct points
 	if (!tree) {
-		return [ extend({ markerId, offset: 0 }, group) ]
+		// if elements array - draw unclustered points
+		if (elements) {
+			return [extend({}, group, {
+				markerTexture: this.markerTextures[markerId],
+				activation: activation[markerId],
+				count: elements.length,
+				elements,
+				offset: 0
+			})]
+		}
+
+		return [ extend({
+			markerTexture: this.markerTextures[markerId],
+			activation: activation[markerId],
+			offset: 0
+		}, group) ]
 	}
 
 	// clustered points
@@ -329,11 +324,30 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 		(range[3] - range[1]) / viewport.height
 	]})
 
+	// enable elements by using selection buffer
+	if (elements) {
+		let markerActivation = activation[markerId]
+		let mask = markerActivation.data
+		let data = new Uint8Array(count)
+		for (let i = 0; i < elements.length; i++) {
+			let id = treeLookup[elements[i]]
+			data[id] = mask ? mask[id] : 1
+		}
+		let opts = {
+			data,
+			type: 'uint8',
+			usage: 'dynamic'
+		}
+		if (!selection[markerId]) selection[markerId] = regl.buffer(opts)
+		else selection[markerId](opts)
+	}
+
 	for (let l = lod.length; l--;) {
 		let [from, to] = lod[l]
 
 		batch.push(extend({}, group, {
-			markerId, elements,
+			markerTexture: this.markerTextures[markerId],
+			activation: elements ? selection[markerId] : activation[markerId],
 			offset: from,
 			count: to - from
 		}))
@@ -386,7 +400,10 @@ Scatter.prototype.update = function (...args) {
 				translateFract: null,
 
 				// buffers for active markers
-				activeMarkers: [],
+				activation: [],
+
+				// buffers for filtered markers
+				selection: [],
 
 				// buffers with data: it is faster to switch them per-pass
 				// than provide one congregate buffer
@@ -530,6 +547,12 @@ Scatter.prototype.update = function (...args) {
 				// mark levels offsets since they are directly placed in buffer
 				if (group.tree) {
 					rearrange(positions, group.tree.slice())
+
+					// realId: treeId map
+					let lookup = group.treeLookup = new Uint32Array(group.tree.length)
+					for (let i = 0; i < group.tree.length; i++) {
+						lookup[group.tree[i]] = i
+					}
 				}
 
 
@@ -548,47 +571,47 @@ Scatter.prototype.update = function (...args) {
 		}, {
 			// create marker ids corresponding to known marker textures
 			marker: (markers, group, options) => {
-				let { activeMarkers, tree } = group
+				let { activation, tree, selection } = group
 
 				// reset marker elements
-				activeMarkers.forEach(buffer => buffer && buffer.destroy && buffer.destroy())
-				activeMarkers.length = 0
+				activation.forEach(buffer => buffer && buffer.destroy && buffer.destroy())
+				activation.length = 0
 
 				// single sdf marker
 				if (!markers || typeof markers[0] === 'number') {
 					let id = this.addMarker(markers)
-					activeMarkers[id] = true
+					activation[id] = true
 				}
 
 				// per-point markers use mask buffers to enable markers in vert shader
 				else {
-					let markerData = []
+					let markerMasks = []
 
 					for (let i = 0, l = Math.min(markers.length, group.count); i < l; i++) {
 						let id = this.addMarker(markers[tree ? tree[i] : i])
 
-						if (!markerData[id]) markerData[id] = new Uint8Array(group.count)
+						if (!markerMasks[id]) markerMasks[id] = new Uint8Array(group.count)
 
 						// enable marker by default
-						markerData[id][i] = 1
+						markerMasks[id][i] = 1
 					}
 
-					for (let id = 0; id < markerData.length; id++) {
-						if (!markerData[id]) continue
+					for (let id = 0; id < markerMasks.length; id++) {
+						if (!markerMasks[id]) continue
 
 						let opts = {
-							data: markerData[id],
+							data: markerMasks[id],
 							type: 'uint8',
 							usage: 'static'
 						}
-						if (!activeMarkers[id]) {
-							activeMarkers[id] = regl.buffer(opts)
+						if (!activation[id]) {
+							activation[id] = regl.buffer(opts)
 						}
 						else {
-							activeMarkers[id](opts)
+							activation[id](opts)
 						}
 
-						activeMarkers[id].data = markerData[id]
+						activation[id].data = markerMasks[id]
 					}
 				}
 
@@ -848,7 +871,8 @@ Scatter.prototype.destroy = function () {
 		group.positionBuffer.destroy()
 		group.positionFractBuffer.destroy()
 		group.colorBuffer.destroy()
-		group.activeMarkers.forEach(b => b && b.destroy && b.destroy())
+		group.activation.forEach(b => b && b.destroy && b.destroy())
+		group.selection.forEach(b => b && b.destroy && b.destroy())
 	})
 	this.groups.length = 0
 
