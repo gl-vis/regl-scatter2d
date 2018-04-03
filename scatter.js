@@ -292,7 +292,7 @@ Scatter.prototype.drawItem = function (id, els) {
 
 // get options for the marker ids
 Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
-	let { range, tree, viewport, activation, selection, count } = group
+	let { range, tree, viewport, activation, selectionBuffer, count } = group
 	let { regl } = this
 
 	// direct points
@@ -332,13 +332,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			let id = elements[i]
 			data[id] = mask ? mask[id] : 1
 		}
-		let opts = {
-			data,
-			type: 'uint8',
-			usage: 'dynamic'
-		}
-		if (!selection[markerId]) selection[markerId] = regl.buffer(opts)
-		else selection[markerId](opts)
+		selectionBuffer.subdata(data)
 	}
 
 	for (let l = lod.length; l--;) {
@@ -346,7 +340,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 
 		batch.push(extend({}, group, {
 			markerTexture: this.markerTextures[markerId],
-			activation: elements ? selection[markerId] : activation[markerId],
+			activation: elements ? selectionBuffer : activation[markerId],
 			offset: from,
 			count: to - from,
 
@@ -404,8 +398,11 @@ Scatter.prototype.update = function (...args) {
 				// buffers for active markers
 				activation: [],
 
-				// buffers for filtered markers
-				selection: [],
+				// buffer for filtered markers
+				selectionBuffer: regl.buffer({
+					usage: 'stream',
+					type: 'uint8'
+				}),
 
 				// buffers with data: it is faster to switch them per-pass
 				// than provide one congregate buffer
@@ -479,7 +476,7 @@ Scatter.prototype.update = function (...args) {
 
 			positions: (positions, group, options) => {
 				let { snap } = options
-				let { positionBuffer, positionFractBuffer } = group
+				let { positionBuffer, positionFractBuffer, selectionBuffer } = group
 
 				// separate buffers for x/y coordinates
 				if (positions.x || positions.y) {
@@ -565,6 +562,13 @@ Scatter.prototype.update = function (...args) {
 				positionFractBuffer({
 					data: fract32(positions),
 					usage: 'dynamic'
+				})
+
+				// expand selectionBuffer
+				selectionBuffer({
+					data: new Uint8Array(count),
+					type: 'uint8',
+					usage: 'stream'
 				})
 
 				return positions
@@ -853,13 +857,15 @@ Scatter.prototype.destroy = function () {
 		group.positionFractBuffer.destroy()
 		group.colorBuffer.destroy()
 		group.activation.forEach(b => b && b.destroy && b.destroy())
-		group.selection.forEach(b => b && b.destroy && b.destroy())
+		group.selectionBuffer.destroy()
 
 		if (group.elements) group.elements.destroy()
 	})
 	this.groups.length = 0
 
 	this.paletteTexture.destroy()
+
+	this.markerTextures.forEach(txt => txt.destroy())
 
 	return this
 }
