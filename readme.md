@@ -2,11 +2,11 @@
 
 Fast and precise 2d scatter plot for lots of points.
 
-![regl-scatter2d](https://github.com/dfcreative/regl-scatter2d/blob/master/preview.png?raw=true)
+![regl-scatter2d](https://github.com/dy/regl-scatter2d/blob/master/preview.png?raw=true)
 
 Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), covering other scatter-related components.
 
-[Demo](https://dfcreative.github.io/regl-scatter2d).
+[Demo](https://dy.github.io/regl-scatter2d).
 
 
 ## Usage
@@ -51,10 +51,10 @@ Option | Default | Description
 `color`, `colors` | `'black'` | Color or array with colors. Each color can be a css color string or an array with float `0..1` values.
 `borderColor`, `borderColors` | `'transparent'` | Border color or array with border colors.
 `opacity` | `1` | Regulate marker transparency separately from colors.
-`marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dfcreative/bitmap-sdf) or [svg-path-sdf](https://github.com/dfcreative/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
+`marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dy/bitmap-sdf) or [svg-path-sdf](https://github.com/dy/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left, top, right, bottom}` or `{x, y, w, h}`.
-`snap` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/dfcreative/point-cluster) tree instance.
+`snap` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/dy/point-cluster) tree instance.
 
 ### `scatter.update(optionsA, optionsB, ...rest)`
 
@@ -105,8 +105,8 @@ Dispose scatter instance and associated resources.
 
 ## Related
 
-* [regl-line2d](https://github.com/dfcreative/regl-line2d)
-* [regl-error2d](https://github.com/dfcreative/regl-error2d)
+* [regl-line2d](https://github.com/dy/regl-line2d)
+* [regl-error2d](https://github.com/dy/regl-error2d)
 
 ## Similar
 
