@@ -865,7 +865,7 @@ Scatter.prototype.destroy = function () {
 
 	this.paletteTexture.destroy()
 
-	this.markerTextures.forEach(txt => txt.destroy())
+	this.markerTextures.forEach(txt => txt && txt.destroy && txt.destroy())
 
 	return this
 }
