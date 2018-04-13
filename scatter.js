@@ -195,7 +195,7 @@ function Scatter (regl, options) {
 	this.drawCircle = regl(circleOptions)
 }
 
-
+// single pass defaults
 Scatter.defaults = {
 	color: 'black',
 	borderColor: 'transparent',
