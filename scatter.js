@@ -235,6 +235,9 @@ Scatter.prototype.draw = function (...args) {
 		args = args[0]
 	}
 
+	// FIXME: remove once https://github.com/regl-project/regl/issues/474 resolved
+	this.regl._refresh()
+
 	if (args.length) {
 		for (let i = 0; i < args.length; i++) {
 			this.drawItem(i, args[i])
@@ -252,7 +255,7 @@ Scatter.prototype.draw = function (...args) {
 
 // draw specific scatter group
 Scatter.prototype.drawItem = function (id, els) {
-	let { groups, } = this
+	let { groups } = this
 	let group = groups[id]
 
 	// debug viewport
@@ -342,10 +345,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			markerTexture: this.markerTextures[markerId],
 			activation: elements ? selectionBuffer : activation[markerId],
 			offset: from,
-			count: to - from,
-
-			// send tree elements
-			elements: group.elements
+			count: to - from
 		}))
 	}
 
