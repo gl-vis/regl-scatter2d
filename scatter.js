@@ -400,6 +400,7 @@ Scatter.prototype.update = function (...args) {
 
 				// buffer for filtered markers
 				selectionBuffer: regl.buffer({
+					data: new Uint8Array(0),
 					usage: 'stream',
 					type: 'uint8'
 				}),
@@ -407,18 +408,22 @@ Scatter.prototype.update = function (...args) {
 				// buffers with data: it is faster to switch them per-pass
 				// than provide one congregate buffer
 				sizeBuffer: regl.buffer({
+					data: new Uint8Array(0),
 					usage: 'dynamic',
 					type: 'uint8'
 				}),
 				colorBuffer: regl.buffer({
+					data: new Uint8Array(0),
 					usage: 'dynamic',
 					type: 'uint8'
 				}),
 				positionBuffer: regl.buffer({
+					data: new Uint8Array(0),
 					usage: 'dynamic',
 					type: 'float'
 				}),
 				positionFractBuffer: regl.buffer({
+					data: new Uint8Array(0),
 					usage: 'dynamic',
 					type: 'float'
 				})
@@ -536,7 +541,6 @@ Scatter.prototype.update = function (...args) {
 
 				// build cluster tree if required
 				if (snap && (snap === true || count > snap)) {
-					console.log('yai')
 					group.tree = cluster(positions, { bounds })
 				}
 				// existing tree instance
@@ -717,7 +721,7 @@ Scatter.prototype.update = function (...args) {
 			}
 
 			colorBuffer({
-				data: colors,
+				data: colors || new Uint8Array(0),
 				type: 'uint8',
 				usage: 'dynamic'
 			})
