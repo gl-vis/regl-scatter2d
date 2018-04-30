@@ -475,7 +475,7 @@ Scatter.prototype.update = function (...args) {
 			},
 
 			positions: (positions, group, options) => {
-				let { snap } = options
+				let { snap } = group
 				let { positionBuffer, positionFractBuffer, selectionBuffer } = group
 
 				// separate buffers for x/y coordinates
@@ -536,6 +536,7 @@ Scatter.prototype.update = function (...args) {
 
 				// build cluster tree if required
 				if (snap && (snap === true || count > snap)) {
+					console.log('yai')
 					group.tree = cluster(positions, { bounds })
 				}
 				// existing tree instance
