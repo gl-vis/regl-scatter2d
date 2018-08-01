@@ -20,17 +20,17 @@ void main() {
   if (fragBorderColorLevel == fragColorLevel || fragBorderColor.a == 0.) {
     float colorAmt = smoothstep(.5 - delta, .5 + delta, dist);
     gl_FragColor = vec4(fragColor.rgb, colorAmt * fragColor.a * opacity);
-    return;
+  }
+  else {
+    float borderColorAmt = smoothstep(fragBorderColorLevel - delta, fragBorderColorLevel + delta, dist);
+    float colorAmt = smoothstep(fragColorLevel - delta, fragColorLevel + delta, dist);
+
+    vec4 color = fragBorderColor;
+    color.a *= borderColorAmt;
+    color = mix(color, fragColor, colorAmt);
+    color.a *= opacity;
+
+    gl_FragColor = color;
   }
 
-
-  float borderColorAmt = smoothstep(fragBorderColorLevel - delta, fragBorderColorLevel + delta, dist);
-  float colorAmt = smoothstep(fragColorLevel - delta, fragColorLevel + delta, dist);
-
-  vec4 color = fragBorderColor;
-  color.a *= borderColorAmt;
-  color = mix(color, fragColor, colorAmt);
-  color.a *= opacity;
-
-  gl_FragColor = color;
 }

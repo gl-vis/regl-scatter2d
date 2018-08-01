@@ -179,10 +179,7 @@ function Scatter (regl, options) {
 	markerOptions.frag = glslify('./marker-frag.glsl')
 	markerOptions.vert = glslify('./marker-vert.glsl')
 
-	try {
-		this.drawMarker = regl(markerOptions)
-	} catch (e) {
-	}
+	this.drawMarker = regl(markerOptions)
 
 	// draw circle
 	let circleOptions = extend({}, shaderOptions)
@@ -190,7 +187,10 @@ function Scatter (regl, options) {
 	circleOptions.vert = glslify('./circle-vert.glsl')
 
 	// polyfill IE
-	if (ie) circleOptions.frag = circleOptions.frag.replace('smoothstep', 'smoothStep')
+	if (ie) {
+		circleOptions.frag = circleOptions.frag.replace('smoothstep', 'smoothStep')
+		markerOptions.frag = markerOptions.frag.replace('smoothstep', 'smoothStep')
+	}
 
 	this.drawCircle = regl(circleOptions)
 }
