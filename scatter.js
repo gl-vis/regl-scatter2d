@@ -10,7 +10,7 @@ const pick = require('pick-by-alias')
 const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
 const ie = require('is-iexplorer')
-const {float32, fract32} = require('to-float32')
+const f32 = require('to-float32')
 const parseRect = require('parse-rect')
 
 
@@ -561,11 +561,11 @@ Scatter.prototype.update = function (...args) {
 
 				// update position buffers
 				positionBuffer({
-					data: float32(positions),
+					data: f32.float(positions),
 					usage: 'dynamic'
 				})
 				positionFractBuffer({
-					data: fract32(positions),
+					data: f32.fract(positions),
 					usage: 'dynamic'
 				})
 
@@ -638,8 +638,8 @@ Scatter.prototype.update = function (...args) {
 				group.scale = [1 / (range[2] - range[0]), 1 / (range[3] - range[1])]
 				group.translate = [-range[0], -range[1]]
 
-				group.scaleFract = fract32(group.scale)
-				group.translateFract = fract32(group.translate)
+				group.scaleFract = f32.fract(group.scale)
+				group.translateFract = f32.fract(group.translate)
 
 				return range
 			},
