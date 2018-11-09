@@ -43,7 +43,7 @@ function Scatter (regl, options) {
 		markerTextures = [null],
 		markerCache = [null]
 
-	const maxColors = 255, maxSize = 100
+	const maxColors = 4096, maxSize = 100
 
 	// direct color buffer mode
 	// IE does not support palette anyways
