@@ -13,7 +13,6 @@ const regl = require('regl')({
 })
 
 
-
 t('colors/shapes', async t => {
 	//create square test sdf image
 	let w = 200, h = 200

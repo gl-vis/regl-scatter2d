@@ -2,11 +2,12 @@
   "name": "regl-scatter2d",
   "version": "3.0.6",
   "description": "Scatter2d plot built with regl",
-  "main": "./index.js",
+  "main": "./bundle.js",
   "scripts": {
     "test": "node test",
     "test-browser": "budo test",
-    "build": "browserify test.js -g bubleify | indexhtmlify | metadataify | github-cornerify | mobilify > gh-pages/no-snapping.html"
+    "prepublishOnly": "npm run buikd",
+    "build": "rollup -c rollup.config.js"
   },
   "repository": {
     "type": "git",
@@ -55,6 +56,10 @@
     "mobilify": "^1.0.1",
     "next-pow-2": "^1.0.0",
     "regl": "^1.3.0",
+    "rollup": "^0.67.1",
+    "rollup-plugin-commonjs": "^9.2.0",
+    "rollup-plugin-json": "^3.1.0",
+    "rollup-plugin-node-resolve": "^3.4.0",
     "seed-random": "^2.2.0",
     "tape": "^4.9.1"
   }
