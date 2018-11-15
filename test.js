@@ -13,6 +13,7 @@ const regl = require('regl')({
 })
 
 
+
 t('colors/shapes', async t => {
 	//create square test sdf image
 	let w = 200, h = 200
@@ -55,6 +56,7 @@ t('colors/shapes', async t => {
 
 	t.end()
 })
+
 t('1e6 points', async t => {
 	var random = seed('1e6')
 	var N = 1e6
@@ -77,18 +79,31 @@ t('1e6 points', async t => {
 
 	t.end()
 })
+
 t('unsnapped elements render')
+
 t('snapped elements render')
+
 t('multimarker multipass render')
+
 t('too many colors render')
+
 t('palette colors render')
+
 t('single color render')
+
 t('precision')
+
 t('marker size')
+
 t('circle size')
+
 t('multipass rendering')
+
 t('single point')
+
 t('no-boundaries')
+
 t('cluster with external buffer')
 
 
