@@ -50,7 +50,7 @@ t('colors/shapes', async t => {
 	})
 	scatter.draw()
 
-	t.ok(eq(await load('./baseline/mixed-markers-colors.png'), scatter.gl))
+	t.ok(eq(await load('./baseline/mixed-markers-colors.png'), scatter.gl, .05))
 
 	regl.clear({color: [0,0,0,0]})
 
