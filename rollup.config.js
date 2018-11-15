@@ -1,6 +1,6 @@
 // rollup.config.js
 import commonjs from 'rollup-plugin-commonjs'
-import nodeResolve from 'rollup-plugin-node-resolve'
+import babel from 'rollup-plugin-babel'
 
 export default {
   input: 'index.js',
@@ -9,10 +9,6 @@ export default {
     format: 'cjs'
   },
   plugins: [
-    nodeResolve({
-      jsnext: true,
-      main: true
-    }),
     commonjs({
       sourceMap: false,
       include: ['index.js', 'scatter.js'],
@@ -31,6 +27,9 @@ export default {
         'to-float32',
         'parse-rect'
       ]
+    }),
+    babel({
+      'presets': ['@babel/preset-env']
     })
   ]
 };
