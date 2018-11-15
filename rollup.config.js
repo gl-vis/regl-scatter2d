@@ -1,6 +1,8 @@
 // rollup.config.js
 import commonjs from 'rollup-plugin-commonjs'
 import babel from 'rollup-plugin-babel'
+import tr from 'rollup-plugin-browserify-transform'
+import glslify from 'glslify'
 
 export default {
   input: 'index.js',
@@ -28,6 +30,7 @@ export default {
         'parse-rect'
       ]
     }),
+    tr(glslify),
     babel({
       'presets': ['@babel/preset-env']
     })
