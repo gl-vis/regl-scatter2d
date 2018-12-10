@@ -6,8 +6,6 @@ Fast and precise 2d scatter plot for lots of points.
 
 Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), covering other scatter-related components.
 
-[Demo](https://dy.github.io/regl-scatter2d).
-
 
 ## Usage
 
