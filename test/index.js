@@ -93,8 +93,9 @@ t('Color palette interference (#3232)', async t => {
 
 	scatter.update(passes)
 	scatter.render()
-	t.ok(eq(scatter.gl, await load('./test/img/3232.png'), {threshold: .1}))
+	t.ok(eq(scatter, await load('./test/img/3232.png'), {threshold: .1}))
 
+	regl.clear({color: [0,0,0,0]})
 	t.end()
 })
 
