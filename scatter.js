@@ -382,10 +382,13 @@ Scatter.prototype.update = function (...args) {
 			range: 'range dataBox databox',
 			viewport: 'viewport viewPort viewBox viewbox',
 			opacity: 'opacity alpha transparency',
-			bounds: 'bound bounds boundaries limits'
+			bounds: 'bound bounds boundaries limits',
+			tooManyColors: 'tooManyColors palette paletteMode optimizePalette enablePalette'
 		})
 
 		if (options.positions === null) options.positions = []
+
+		if (options.tooManyColors != null) this.tooManyColors = options.tooManyColors
 
 		if (!group) {
 			groups[i] = group = {
@@ -467,6 +470,7 @@ Scatter.prototype.update = function (...args) {
 				hasColor++
 				return c
 			},
+
 			borderColor: (c, group) => {
 				if (c == null) c = Scatter.defaults.borderColor
 				c = this.updateColor(c)
@@ -817,7 +821,7 @@ Scatter.prototype.updateColor = function (colors) {
 	}
 
 	// detect if too many colors in palette
-	if (!this.tooManyColors && palette.length > maxColors * maxColors * 4) this.tooManyColors = true
+	if (!this.tooManyColors && palette.length > maxColors * 4) this.tooManyColors = true
 
 	// limit max color
 	this.updatePalette(palette)

@@ -477,9 +477,11 @@ Scatter.prototype.update = function () {
       range: 'range dataBox databox',
       viewport: 'viewport viewPort viewBox viewbox',
       opacity: 'opacity alpha transparency',
-      bounds: 'bound bounds boundaries limits'
+      bounds: 'bound bounds boundaries limits',
+      tooManyColors: 'tooManyColors palette paletteMode optimizePalette enablePalette'
     });
     if (options.positions === null) options.positions = [];
+    if (options.tooManyColors != null) _this3.tooManyColors = options.tooManyColors;
 
     if (!group) {
       groups[i] = group = {
@@ -887,7 +889,7 @@ Scatter.prototype.updateColor = function (colors) {
   } // detect if too many colors in palette
 
 
-  if (!this.tooManyColors && palette.length > maxColors * maxColors * 4) this.tooManyColors = true; // limit max color
+  if (!this.tooManyColors && palette.length > maxColors * 4) this.tooManyColors = true; // limit max color
 
   this.updatePalette(palette); // keep static index for single-color property
 

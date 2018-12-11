@@ -1,6 +1,6 @@
 'use strict'
 
-const createScatter = require('./')
+const createScatter = require('../index')
 const t = require('tape')
 const load = require('image-pixels')
 const eq = require('image-equal')
@@ -49,7 +49,7 @@ t('colors/shapes', async t => {
 	})
 	scatter.draw()
 
-	t.ok(eq(await load('./baseline/mixed-markers-colors.png'), scatter.gl, .05))
+	t.ok(eq(await load('./test/img/mixed-markers-colors.png'), scatter.gl, .05))
 
 	regl.clear({color: [0,0,0,0]})
 
@@ -74,7 +74,26 @@ t('1e6 points', async t => {
 	})
 	scatter.draw()
 
-	t.ok(eq(scatter.gl, await load('./baseline/1e6.png'), .1))
+	t.ok(eq(scatter.gl, await load('./test/img/1e6.png'), .1))
+	regl.clear({color: [0,0,0,0]})
+
+	t.end()
+})
+
+t('Color palette interference (#3232)', async t => {
+	var passes = require('./3232.json')
+	passes[1].color.length = 4
+	passes[1].color = new Uint8Array(Array.from(passes[1].color))
+	passes[1].borderColor.length = 4
+	passes[1].borderColor = new Uint8Array(Array.from(passes[1].borderColor))
+
+	var scatter = createScatter(regl)
+
+	passes[1].range = [0,0,300,300]
+
+	scatter.update(passes)
+	scatter.render()
+	t.ok(eq(scatter.gl, await load('./test/img/3232.png'), {threshold: .1}))
 
 	t.end()
 })

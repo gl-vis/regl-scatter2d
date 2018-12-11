@@ -1,4 +1,4 @@
-# regl-scatter2d [![unstable](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)   [![Build Status](https://img.shields.io/travis/gl-vis/regl-scatter2d.svg)](https://travis-ci.org/gl-vis/regl-scatter2d)
+# regl-scatter2d [![unstable](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)  [![Build Status](https://img.shields.io/travis/gl-vis/regl-scatter2d.svg)](https://travis-ci.org/gl-vis/regl-scatter2d)
 
 Fast and precise 2d scatter plot for lots of points.
 

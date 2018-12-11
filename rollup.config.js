@@ -3,6 +3,7 @@ import commonjs from 'rollup-plugin-commonjs'
 import babel from 'rollup-plugin-babel'
 import tr from 'rollup-plugin-browserify-transform'
 import glslify from 'glslify'
+import resolve from 'rollup-plugin-node-resolve'
 
 export default {
   input: 'index.js',
@@ -11,6 +12,8 @@ export default {
     format: 'cjs'
   },
   plugins: [
+    tr(glslify),
+    resolve(),
     commonjs({
       sourceMap: false,
       include: ['index.js', 'scatter.js'],
@@ -30,7 +33,6 @@ export default {
         'parse-rect'
       ]
     }),
-    tr(glslify),
     babel({
       'presets': ['@babel/preset-env']
     })
