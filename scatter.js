@@ -817,7 +817,7 @@ Scatter.prototype.updateColor = function (colors) {
 	}
 
 	// detect if too many colors in palette
-	if (!this.tooManyColors && palette.length > maxColors * maxColors * 4) this.tooManyColors = true
+	if (!this.tooManyColors && palette.length > maxColors * 4) this.tooManyColors = true
 
 	// limit max color
 	this.updatePalette(palette)
