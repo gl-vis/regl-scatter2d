@@ -47,8 +47,7 @@ function Scatter (regl, options) {
 
 	// direct color buffer mode
 	// IE does not support palette anyways
- //	this.tooManyColors = ie
-	this.tooManyColors = true // Note: palette is disabled until a solution found for bugs similar to Plotly issue 3232
+ 	this.tooManyColors = ie
 
 	// texture with color palette
 	paletteTexture = regl.texture({
