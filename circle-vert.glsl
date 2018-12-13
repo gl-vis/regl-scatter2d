@@ -15,23 +15,15 @@ const float maxSize = 100.;
 varying vec4 fragColor, fragBorderColor;
 varying float fragBorderRadius, fragWidth;
 
-vec2 paletteCoord(float id) {
-  return vec2(
-    (mod(id, paletteSize.x) + .5) / paletteSize.x,
-    (floor(id / paletteSize.x) + .5) / paletteSize.y
-  );
-}
-vec2 paletteCoord(vec2 id) {
-  return vec2(
-    (id.x + .5) / paletteSize.x,
-    (id.y + .5) / paletteSize.y
-  );
-}
+bool isDirect = (paletteSize.x < 1.);
 
 vec4 getColor(vec4 id) {
-  // zero-palette means we deal with direct buffer
-  if (paletteSize.x == 0.) return id / 255.;
-  return texture2D(palette, paletteCoord(id.xy));
+  return isDirect ? id / 255. : texture2D(palette,
+    vec2(
+      (id.x + .5) / paletteSize.x,
+      (id.y + .5) / paletteSize.y
+    )
+  );
 }
 
 void main() {
