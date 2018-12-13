@@ -1,12 +1,12 @@
-# regl-scatter2d [![unstable](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)
+# regl-scatter2d [![unstable](https://img.shields.io/badge/stability-unstable-green.svg)](http://github.com/badges/stability-badges)  [![Build Status](https://img.shields.io/travis/gl-vis/regl-scatter2d.svg)](https://travis-ci.org/gl-vis/regl-scatter2d)
 
 Fast and precise 2d scatter plot for lots of points.
 
-![regl-scatter2d](https://github.com/dy/regl-scatter2d/blob/master/preview.png?raw=true)
+![regl-scatter2d](https://github.com/gl-vis/regl-scatter2d/blob/master/preview.png?raw=true)
 
 Remake on [gl-scatter2d](https://github.com/gl-vis/gl-scatter2d), covering other scatter-related components.
 
-[Demo](https://dy.github.io/regl-scatter2d).
+[Demo](https://gl-vis.github.io/regl-scatter2d).
 
 
 ## Usage
@@ -105,8 +105,8 @@ Dispose scatter instance and associated resources.
 
 ## Related
 
-* [regl-line2d](https://github.com/dy/regl-line2d)
-* [regl-error2d](https://github.com/dy/regl-error2d)
+* [regl-line2d](https://github.com/gl-vis/regl-line2d)
+* [regl-error2d](https://github.com/gl-vis/regl-error2d)
 
 ## Similar
 

@@ -1,12 +1,12 @@
 'use strict'
 
-let Scatter = require('./scatter')
-let extend = require('object-assign')
+var Scatter = require('./scatter')
+var extend = require('object-assign')
 
 module.exports = function (regl, options) {
-	let scatter = new Scatter(regl, options)
+	var scatter = new Scatter(regl, options)
 
-	let render = scatter.render.bind(scatter)
+	var render = scatter.render.bind(scatter)
 
 	// expose API
 	extend(render, {
