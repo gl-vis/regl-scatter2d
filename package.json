@@ -4,6 +4,7 @@
   "description": "Scatter2d plot built with regl",
   "main": "./bundle.js",
   "scripts": {
+    "postshrinkwrap": "chttps .",
     "test": "node test",
     "test-browser": "budo test -- -t glslify",
     "prepublishOnly": "npm run build",
@@ -46,6 +47,7 @@
     "@babel/core": "^7.1.6",
     "@babel/preset-env": "^7.1.6",
     "array-bounds": "^1.0.1",
+    "chttps": "^1.0.6",
     "fps-indicator": "^1.1.2",
     "gl": "^4.1.1",
     "image-equal": "^4.3.0",
