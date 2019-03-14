@@ -39,7 +39,7 @@ void main() {
   float size = size * maxSize / 255.;
   float borderSize = borderSize * maxSize / 255.;
 
-  gl_PointSize = (size + borderSize) * pixelRatio;
+  gl_PointSize = (size + borderSize) * 2.;
 
   vec2 pos = (position + translate) * scale
       + (positionFract + translateFract) * scale
