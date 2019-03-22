@@ -1,4 +1,4 @@
-precision mediump float;
+precision highp float;
 
 attribute float x, y, xFract, yFract;
 attribute float size, borderSize;
