@@ -1,4 +1,4 @@
-precision mediump float;
+precision highp float;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragWidth, fragBorderColorLevel, fragColorLevel;
