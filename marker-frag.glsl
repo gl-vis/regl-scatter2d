@@ -4,7 +4,7 @@ varying vec4 fragColor, fragBorderColor;
 varying float fragWidth, fragBorderColorLevel, fragColorLevel;
 
 uniform sampler2D marker;
-uniform float pixelRatio, opacity;
+uniform float opacity;
 
 float smoothStep(float x, float y) {
   return 1.0 / (1.0 + exp(50.0*(x - y)));

@@ -7,6 +7,7 @@ attribute float isActive;
 
 uniform vec2 scale, scaleFract, translate, translateFract, paletteSize;
 uniform float pixelRatio;
+uniform bool constPointSize;
 uniform sampler2D palette;
 
 const float maxSize = 100.;
@@ -14,6 +15,8 @@ const float borderLevel = .5;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragPointSize, fragBorderRadius, fragWidth, fragBorderColorLevel, fragColorLevel;
+
+float pointSizeScale = (constPointSize) ? 2. : pixelRatio;
 
 bool isDirect = (paletteSize.x < 1.);
 
@@ -27,6 +30,7 @@ vec4 getColor(vec4 id) {
 }
 
 void main() {
+  // ignore inactive points
   if (isActive == 0.) return;
 
   vec2 position = vec2(x, y);
@@ -38,7 +42,7 @@ void main() {
   float size = size * maxSize / 255.;
   float borderSize = borderSize * maxSize / 255.;
 
-  gl_PointSize = 2. * size * 2.;
+  gl_PointSize = 2. * size * pointSizeScale;
   fragPointSize = size * pixelRatio;
 
   vec2 pos = (position + translate) * scale
@@ -46,7 +50,7 @@ void main() {
       + (position + translate) * scaleFract
       + (positionFract + translateFract) * scaleFract;
 
-  gl_Position = vec4(pos * 2. - 1., 0, 1);
+  gl_Position = vec4(pos * 2. - 1., 0., 1.);
 
   fragColor = color;
   fragBorderColor = borderColor;

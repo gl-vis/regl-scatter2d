@@ -41,7 +41,7 @@ t('colors/shapes', async t => {
 	var scatter = createScatter(regl)
 	scatter.update({
 		positions: [0,0, 1,1, 2,2, 3,3, 4,4, 5,5, 6,6, 7,7],
-		size: 6,
+		size: 12,
 		color: ['red', 'green', 'blue', 'black', 'red', 'black', 'red', 'gray'],
 		marker: [null, null, null, null, dist, dist, dist, dist],
 		range: [-2,-2,10,10],
@@ -68,7 +68,7 @@ t('1e6 points', async t => {
 	var scatter = createScatter(regl)
 	scatter.update({
 		positions: positions,
-		size: 2,
+		size: 4,
 		color: [0,0,0,.1],
 		range: [-.1,-.1,1.1,1.1]
 	})
