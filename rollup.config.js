@@ -22,7 +22,7 @@ export default {
         'color-normalize',
         'array-bounds',
         'color-id',
-        'point-cluster',
+        '@plotly/point-cluster',
         'object-assign',
         'glslify',
         'pick-by-alias',

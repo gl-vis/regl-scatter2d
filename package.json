@@ -26,6 +26,7 @@
   },
   "homepage": "https://github.com/dy/regl-scatter2d#readme",
   "dependencies": {
+    "@plotly/point-cluster": "^3.1.9",
     "array-range": "^1.0.1",
     "array-rearrange": "^2.2.2",
     "clamp": "^1.0.1",
@@ -39,7 +40,6 @@
     "object-assign": "^4.1.1",
     "parse-rect": "^1.2.0",
     "pick-by-alias": "^1.2.0",
-    "point-cluster": "^3.1.8",
     "to-float32": "^1.0.1",
     "update-diff": "^1.1.0"
   },
