@@ -66,13 +66,17 @@ t('1e6 points', async t => {
 	}
 
 	var scatter = createScatter(regl)
+	console.time('update')
 	scatter.update({
 		positions: positions,
 		size: 4,
 		color: [0,0,0,.1],
 		range: [-.1,-.1,1.1,1.1]
 	})
+	console.timeEnd('update')
+	console.time('draw')
 	scatter.draw()
+	console.timeEnd('draw')
 
 	t.ok(eq(scatter.gl, await load('./test/img/1e6.png'), .1))
 	regl.clear({color: [0,0,0,0]})
@@ -94,6 +98,53 @@ t('Color palette interference (#3232)', async t => {
 	scatter.update(passes)
 	scatter.render()
 	t.ok(eq(scatter, await load('./test/img/3232.png'), {threshold: .1}))
+
+	regl.clear({color: [0,0,0,0]})
+	t.end()
+})
+
+
+t('missing points simple', async t => {
+	var scatter = createScatter(regl)
+
+	var data = []
+
+	for (let i = 0; i < 20; i++) {
+		data.push(+(new Date(i)), 0)
+	}
+
+	scatter.update([{
+		positions: data,
+		size: 4,
+		snap: true,
+		range: [0, -10, 20, 10]
+	}])
+	scatter.render()
+
+	t.ok(eq(scatter, await load('./test/img/missing-points-simple.png'), {threshold: .1}))
+
+	regl.clear({color: [0,0,0,0]})
+	t.end()
+})
+
+t('missing points #2334', async t => {
+	var scatter = createScatter(regl)
+
+	var data = []
+
+	for (let i = 0; i < 41111; i++) {
+		data.push(i, 0)
+	}
+
+	scatter.update([{
+		positions: data,
+		size: 3,
+		snap: true,
+		range: [0,-10,50,10]
+	}])
+	scatter.render()
+
+	t.ok(eq(scatter, await load('./test/img/missing-points-2334.png'), {threshold: .1}))
 
 	regl.clear({color: [0,0,0,0]})
 	t.end()
@@ -124,5 +175,4 @@ t('single point')
 t('no-boundaries')
 
 t('cluster with external buffer')
-
 

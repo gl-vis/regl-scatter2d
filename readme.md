@@ -54,7 +54,7 @@ Option | Default | Description
 `marker`, `markers` | `null` | Marker SDF image, should be a rectangular array with `0..1` 1-channel values of signed distance field. Use [bitmap-sdf](https://github.com/dy/bitmap-sdf) or [svg-path-sdf](https://github.com/dy/svg-path-sdf) to generate distance array from a canvas, image or svg. `.5` value of distance corresponds to the border line. If `null`, circular marker is used.
 `range`, `dataBox` | `null` | Data bounds limiting visible data as `[left, top, right, bottom]`. If `null`, the range is detected as `positions` boundaries.
 `viewport`, `viewBox` | `null` | Bounding box limiting visible area within the canvas in pixels, can be an array `[left, top, right, bottom]` or an object `{left, top, right, bottom}` or `{x, y, w, h}`.
-`snap` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/dy/point-cluster) tree instance.
+`snap` | `null` | A bool, number of points threshold to enable snapping or [point-cluster](https://github.com/plotly/point-cluster) tree instance.
 
 ### `scatter.update(optionsA, optionsB, ...rest)`
 

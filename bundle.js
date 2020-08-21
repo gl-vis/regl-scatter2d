@@ -64,7 +64,7 @@ var getBounds = require('array-bounds');
 
 var colorId = require('color-id');
 
-var cluster = require('point-cluster');
+var cluster = require('@plotly/point-cluster');
 
 var extend = require('object-assign');
 
