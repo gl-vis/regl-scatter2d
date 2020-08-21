@@ -81,6 +81,7 @@ function Scatter (regl, options) {
 	// common shader options
 	let shaderOptions = {
 		uniforms: {
+			constPointSize: !!options.constPointSize,
 			pixelRatio: regl.context('pixelRatio'),
 			palette: paletteTexture,
 			paletteSize: (ctx, prop) => [this.tooManyColors ? 0 : maxColors, paletteTexture.height],
