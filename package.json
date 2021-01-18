@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/dy/regl-scatter2d#readme",
   "dependencies": {
-    "@plotly/point-cluster": "git://github.com/plotly/point-cluster.git#47d99d990af3741ee30d74f42c83ba5d6d74b509",
+    "@plotly/point-cluster": "^4.0.0",
     "array-range": "^1.0.1",
     "array-rearrange": "^2.2.2",
     "clamp": "^1.0.1",
