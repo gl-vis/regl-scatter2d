@@ -566,12 +566,12 @@ Scatter.prototype.update = function (...args) {
 
 				// update position buffers
 				var float_data = f32.float32(positions)
-				state.positionBuffer({
+				positionBuffer({
 					data: float_data,
 					usage: 'dynamic'
 				})
 				var frac_data = f32.fract32(positions, float_data)
-				state.positionFractBuffer({
+				positionFractBuffer({
 					data: frac_data,
 					usage: 'dynamic'
 				})

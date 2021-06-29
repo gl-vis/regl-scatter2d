@@ -666,12 +666,12 @@ Scatter.prototype.update = function () {
 
 
         var float_data = f32.float32(_positions);
-        state.positionBuffer({
+        positionBuffer({
           data: float_data,
           usage: 'dynamic'
         });
         var frac_data = f32.fract32(_positions, float_data);
-        state.positionFractBuffer({
+        positionFractBuffer({
           data: frac_data,
           usage: 'dynamic'
         }); // expand selectionBuffer
