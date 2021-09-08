@@ -82,15 +82,15 @@ function Scatter (regl, options) {
 	let shaderOptions = {
 		uniforms: {
 			constPointSize: !!options.constPointSize,
-			pixelRatio: regl.context('pixelRatio'),
-			palette: paletteTexture,
+			opacity: regl.prop('opacity'),
 			paletteSize: (ctx, prop) => [this.tooManyColors ? 0 : maxColors, paletteTexture.height],
+			pixelRatio: regl.context('pixelRatio'),
 			scale: regl.prop('scale'),
 			scaleFract: regl.prop('scaleFract'),
 			translate: regl.prop('translate'),
 			translateFract: regl.prop('translateFract'),
-			opacity: regl.prop('opacity'),
-			marker: regl.prop('markerTexture'),
+			markerTexture: regl.prop('markerTexture'),
+			paletteTexture: paletteTexture,
 		},
 
 		attributes: {

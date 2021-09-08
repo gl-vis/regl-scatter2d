@@ -1,9 +1,9 @@
 precision highp float;
 
 varying vec4 fragColor, fragBorderColor;
+varying float fragBorderRadius, fragWidth;
 
 uniform float opacity;
-varying float fragBorderRadius, fragWidth;
 
 float smoothStep(float edge0, float edge1, float x) {
 	float t;

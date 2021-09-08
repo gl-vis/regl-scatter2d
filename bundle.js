@@ -161,17 +161,17 @@ function Scatter(regl, options) {
   var shaderOptions = {
     uniforms: {
       constPointSize: !!options.constPointSize,
-      pixelRatio: regl.context('pixelRatio'),
-      palette: paletteTexture,
+      opacity: regl.prop('opacity'),
       paletteSize: function paletteSize(ctx, prop) {
         return [_this.tooManyColors ? 0 : maxColors, paletteTexture.height];
       },
+      pixelRatio: regl.context('pixelRatio'),
       scale: regl.prop('scale'),
       scaleFract: regl.prop('scaleFract'),
       translate: regl.prop('translate'),
       translateFract: regl.prop('translateFract'),
-      opacity: regl.prop('opacity'),
-      marker: regl.prop('markerTexture')
+      markerTexture: regl.prop('markerTexture'),
+      paletteTexture: paletteTexture
     },
     attributes: {
       // FIXME: optimize these parts
@@ -280,13 +280,13 @@ function Scatter(regl, options) {
   }; // draw sdf-marker
 
   var markerOptions = extend({}, shaderOptions);
-  markerOptions.frag = glslify(["precision highp float;\n#define GLSLIFY 1\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragWidth, fragBorderColorLevel, fragColorLevel;\n\nuniform sampler2D marker;\nuniform float opacity;\n\nfloat smoothStep(float x, float y) {\n  return 1.0 / (1.0 + exp(50.0*(x - y)));\n}\n\nvoid main() {\n  float dist = texture2D(marker, gl_PointCoord).r, delta = fragWidth;\n\n  // max-distance alpha\n  if (dist < 0.003) discard;\n\n  // null-border case\n  if (fragBorderColorLevel == fragColorLevel || fragBorderColor.a == 0.) {\n    float colorAmt = smoothstep(.5 - delta, .5 + delta, dist);\n    gl_FragColor = vec4(fragColor.rgb, colorAmt * fragColor.a * opacity);\n  }\n  else {\n    float borderColorAmt = smoothstep(fragBorderColorLevel - delta, fragBorderColorLevel + delta, dist);\n    float colorAmt = smoothstep(fragColorLevel - delta, fragColorLevel + delta, dist);\n\n    vec4 color = fragBorderColor;\n    color.a *= borderColorAmt;\n    color = mix(color, fragColor, colorAmt);\n    color.a *= opacity;\n\n    gl_FragColor = color;\n  }\n\n}\n"]);
-  markerOptions.vert = glslify(["precision highp float;\n#define GLSLIFY 1\n\nattribute float x, y, xFract, yFract;\nattribute float size, borderSize;\nattribute vec4 colorId, borderColorId;\nattribute float isActive;\n\nuniform vec2 scale, scaleFract, translate, translateFract, paletteSize;\nuniform float pixelRatio;\nuniform bool constPointSize;\nuniform sampler2D palette;\n\nconst float maxSize = 100.;\nconst float borderLevel = .5;\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragPointSize, fragBorderRadius, fragWidth, fragBorderColorLevel, fragColorLevel;\n\nfloat pointSizeScale = (constPointSize) ? 2. : pixelRatio;\n\nbool isDirect = (paletteSize.x < 1.);\n\nvec4 getColor(vec4 id) {\n  return isDirect ? id / 255. : texture2D(palette,\n    vec2(\n      (id.x + .5) / paletteSize.x,\n      (id.y + .5) / paletteSize.y\n    )\n  );\n}\n\nvoid main() {\n  // ignore inactive points\n  if (isActive == 0.) return;\n\n  vec2 position = vec2(x, y);\n  vec2 positionFract = vec2(xFract, yFract);\n\n  vec4 color = getColor(colorId);\n  vec4 borderColor = getColor(borderColorId);\n\n  float size = size * maxSize / 255.;\n  float borderSize = borderSize * maxSize / 255.;\n\n  gl_PointSize = 2. * size * pointSizeScale;\n  fragPointSize = size * pixelRatio;\n\n  vec2 pos = (position + translate) * scale\n      + (positionFract + translateFract) * scale\n      + (position + translate) * scaleFract\n      + (positionFract + translateFract) * scaleFract;\n\n  gl_Position = vec4(pos * 2. - 1., 0., 1.);\n\n  fragColor = color;\n  fragBorderColor = borderColor;\n  fragWidth = 1. / gl_PointSize;\n\n  fragBorderColorLevel = clamp(borderLevel - borderLevel * borderSize / size, 0., 1.);\n  fragColorLevel = clamp(borderLevel + (1. - borderLevel) * borderSize / size, 0., 1.);\n}"]);
+  markerOptions.frag = glslify(["precision highp float;\n#define GLSLIFY 1\n\nuniform sampler2D markerTexture;\nuniform float opacity;\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragWidth, fragBorderColorLevel, fragColorLevel;\n\nfloat smoothStep(float x, float y) {\n  return 1.0 / (1.0 + exp(50.0*(x - y)));\n}\n\nvoid main() {\n  float dist = texture2D(markerTexture, gl_PointCoord).r, delta = fragWidth;\n\n  // max-distance alpha\n  if (dist < 0.003) discard;\n\n  // null-border case\n  if (fragBorderColorLevel == fragColorLevel || fragBorderColor.a == 0.) {\n    float colorAmt = smoothstep(.5 - delta, .5 + delta, dist);\n    gl_FragColor = vec4(fragColor.rgb, colorAmt * fragColor.a * opacity);\n  }\n  else {\n    float borderColorAmt = smoothstep(fragBorderColorLevel - delta, fragBorderColorLevel + delta, dist);\n    float colorAmt = smoothstep(fragColorLevel - delta, fragColorLevel + delta, dist);\n\n    vec4 color = fragBorderColor;\n    color.a *= borderColorAmt;\n    color = mix(color, fragColor, colorAmt);\n    color.a *= opacity;\n\n    gl_FragColor = color;\n  }\n\n}\n"]);
+  markerOptions.vert = glslify(["precision highp float;\n#define GLSLIFY 1\n\nattribute float x, y, xFract, yFract;\nattribute float size, borderSize;\nattribute vec4 colorId, borderColorId;\nattribute float isActive;\n\nuniform bool constPointSize;\nuniform float pixelRatio;\nuniform vec2 scale, scaleFract, translate, translateFract, paletteSize;\nuniform sampler2D paletteTexture;\n\nconst float maxSize = 100.;\nconst float borderLevel = .5;\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragPointSize, fragBorderRadius, fragWidth, fragBorderColorLevel, fragColorLevel;\n\nfloat pointSizeScale = (constPointSize) ? 2. : pixelRatio;\n\nbool isDirect = (paletteSize.x < 1.);\n\nvec4 getColor(vec4 id) {\n  return isDirect ? id / 255. : texture2D(paletteTexture,\n    vec2(\n      (id.x + .5) / paletteSize.x,\n      (id.y + .5) / paletteSize.y\n    )\n  );\n}\n\nvoid main() {\n  // ignore inactive points\n  if (isActive == 0.) return;\n\n  vec2 position = vec2(x, y);\n  vec2 positionFract = vec2(xFract, yFract);\n\n  vec4 color = getColor(colorId);\n  vec4 borderColor = getColor(borderColorId);\n\n  float size = size * maxSize / 255.;\n  float borderSize = borderSize * maxSize / 255.;\n\n  gl_PointSize = 2. * size * pointSizeScale;\n  fragPointSize = size * pixelRatio;\n\n  vec2 pos = (position + translate) * scale\n      + (positionFract + translateFract) * scale\n      + (position + translate) * scaleFract\n      + (positionFract + translateFract) * scaleFract;\n\n  gl_Position = vec4(pos * 2. - 1., 0., 1.);\n\n  fragColor = color;\n  fragBorderColor = borderColor;\n  fragWidth = 1. / gl_PointSize;\n\n  fragBorderColorLevel = clamp(borderLevel - borderLevel * borderSize / size, 0., 1.);\n  fragColorLevel = clamp(borderLevel + (1. - borderLevel) * borderSize / size, 0., 1.);\n}"]);
   this.drawMarker = regl(markerOptions); // draw circle
 
   var circleOptions = extend({}, shaderOptions);
-  circleOptions.frag = glslify(["precision highp float;\n#define GLSLIFY 1\n\nvarying vec4 fragColor, fragBorderColor;\n\nuniform float opacity;\nvarying float fragBorderRadius, fragWidth;\n\nfloat smoothStep(float edge0, float edge1, float x) {\n\tfloat t;\n\tt = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);\n\treturn t * t * (3.0 - 2.0 * t);\n}\n\nvoid main() {\n\tfloat radius, alpha = 1.0, delta = fragWidth;\n\n\tradius = length(2.0 * gl_PointCoord.xy - 1.0);\n\n\tif (radius > 1.0 + delta) {\n\t\tdiscard;\n\t}\n\n\talpha -= smoothstep(1.0 - delta, 1.0 + delta, radius);\n\n\tfloat borderRadius = fragBorderRadius;\n\tfloat ratio = smoothstep(borderRadius - delta, borderRadius + delta, radius);\n\tvec4 color = mix(fragColor, fragBorderColor, ratio);\n\tcolor.a *= alpha * opacity;\n\tgl_FragColor = color;\n}\n"]);
-  circleOptions.vert = glslify(["precision highp float;\n#define GLSLIFY 1\n\nattribute float x, y, xFract, yFract;\nattribute float size, borderSize;\nattribute vec4 colorId, borderColorId;\nattribute float isActive;\n\nuniform vec2 scale, scaleFract, translate, translateFract;\nuniform float pixelRatio;\nuniform bool constPointSize;\nuniform sampler2D palette;\nuniform vec2 paletteSize;\n\nconst float maxSize = 100.;\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragBorderRadius, fragWidth;\n\nfloat pointSizeScale = (constPointSize) ? 2. : pixelRatio;\n\nbool isDirect = (paletteSize.x < 1.);\n\nvec4 getColor(vec4 id) {\n  return isDirect ? id / 255. : texture2D(palette,\n    vec2(\n      (id.x + .5) / paletteSize.x,\n      (id.y + .5) / paletteSize.y\n    )\n  );\n}\n\nvoid main() {\n  // ignore inactive points\n  if (isActive == 0.) return;\n\n  vec2 position = vec2(x, y);\n  vec2 positionFract = vec2(xFract, yFract);\n\n  vec4 color = getColor(colorId);\n  vec4 borderColor = getColor(borderColorId);\n\n  float size = size * maxSize / 255.;\n  float borderSize = borderSize * maxSize / 255.;\n\n  gl_PointSize = (size + borderSize) * pointSizeScale;\n\n  vec2 pos = (position + translate) * scale\n      + (positionFract + translateFract) * scale\n      + (position + translate) * scaleFract\n      + (positionFract + translateFract) * scaleFract;\n\n  gl_Position = vec4(pos * 2. - 1., 0., 1.);\n\n  fragBorderRadius = 1. - 2. * borderSize / (size + borderSize);\n  fragColor = color;\n  fragBorderColor = borderColor.a == 0. || borderSize == 0. ? vec4(color.rgb, 0.) : borderColor;\n  fragWidth = 1. / gl_PointSize;\n}\n"]); // polyfill IE
+  circleOptions.frag = glslify(["precision highp float;\n#define GLSLIFY 1\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragBorderRadius, fragWidth;\n\nuniform float opacity;\n\nfloat smoothStep(float edge0, float edge1, float x) {\n\tfloat t;\n\tt = clamp((x - edge0) / (edge1 - edge0), 0.0, 1.0);\n\treturn t * t * (3.0 - 2.0 * t);\n}\n\nvoid main() {\n\tfloat radius, alpha = 1.0, delta = fragWidth;\n\n\tradius = length(2.0 * gl_PointCoord.xy - 1.0);\n\n\tif (radius > 1.0 + delta) {\n\t\tdiscard;\n\t}\n\n\talpha -= smoothstep(1.0 - delta, 1.0 + delta, radius);\n\n\tfloat borderRadius = fragBorderRadius;\n\tfloat ratio = smoothstep(borderRadius - delta, borderRadius + delta, radius);\n\tvec4 color = mix(fragColor, fragBorderColor, ratio);\n\tcolor.a *= alpha * opacity;\n\tgl_FragColor = color;\n}\n"]);
+  circleOptions.vert = glslify(["precision highp float;\n#define GLSLIFY 1\n\nattribute float x, y, xFract, yFract;\nattribute float size, borderSize;\nattribute vec4 colorId, borderColorId;\nattribute float isActive;\n\nuniform bool constPointSize;\nuniform float pixelRatio;\nuniform vec2 paletteSize, scale, scaleFract, translate, translateFract;\nuniform sampler2D paletteTexture;\n\nconst float maxSize = 100.;\n\nvarying vec4 fragColor, fragBorderColor;\nvarying float fragBorderRadius, fragWidth;\n\nfloat pointSizeScale = (constPointSize) ? 2. : pixelRatio;\n\nbool isDirect = (paletteSize.x < 1.);\n\nvec4 getColor(vec4 id) {\n  return isDirect ? id / 255. : texture2D(paletteTexture,\n    vec2(\n      (id.x + .5) / paletteSize.x,\n      (id.y + .5) / paletteSize.y\n    )\n  );\n}\n\nvoid main() {\n  // ignore inactive points\n  if (isActive == 0.) return;\n\n  vec2 position = vec2(x, y);\n  vec2 positionFract = vec2(xFract, yFract);\n\n  vec4 color = getColor(colorId);\n  vec4 borderColor = getColor(borderColorId);\n\n  float size = size * maxSize / 255.;\n  float borderSize = borderSize * maxSize / 255.;\n\n  gl_PointSize = (size + borderSize) * pointSizeScale;\n\n  vec2 pos = (position + translate) * scale\n      + (positionFract + translateFract) * scale\n      + (position + translate) * scaleFract\n      + (positionFract + translateFract) * scaleFract;\n\n  gl_Position = vec4(pos * 2. - 1., 0., 1.);\n\n  fragBorderRadius = 1. - 2. * borderSize / (size + borderSize);\n  fragColor = color;\n  fragBorderColor = borderColor.a == 0. || borderSize == 0. ? vec4(color.rgb, 0.) : borderColor;\n  fragWidth = 1. / gl_PointSize;\n}\n"]); // polyfill IE
 
   if (ie) {
     circleOptions.frag = circleOptions.frag.replace('smoothstep', 'smoothStep');
@@ -346,10 +346,10 @@ Scatter.prototype.draw = function () {
     }
   } // draw all passes
   else {
-      groups.forEach(function (group, i) {
-        _this2.drawItem(i);
-      });
-    }
+    groups.forEach(function (group, i) {
+      _this2.drawItem(i);
+    });
+  }
 
   return this;
 }; // draw specific scatter group
@@ -651,8 +651,8 @@ Scatter.prototype.update = function () {
           });
         } // existing tree instance
         else if (snap && snap.length) {
-            group.tree = snap;
-          }
+          group.tree = snap;
+        }
 
         if (group.tree) {
           var opts = {
@@ -699,33 +699,33 @@ Scatter.prototype.update = function () {
           activation[id] = true;
         } // per-point markers use mask buffers to enable markers in vert shader
         else {
-            var markerMasks = [];
+          var markerMasks = [];
 
-            for (var _i = 0, l = Math.min(markers.length, group.count); _i < l; _i++) {
-              var _id = _this3.addMarker(markers[_i]);
+          for (var _i = 0, l = Math.min(markers.length, group.count); _i < l; _i++) {
+            var _id = _this3.addMarker(markers[_i]);
 
-              if (!markerMasks[_id]) markerMasks[_id] = new Uint8Array(group.count); // enable marker by default
+            if (!markerMasks[_id]) markerMasks[_id] = new Uint8Array(group.count); // enable marker by default
 
-              markerMasks[_id][_i] = 1;
-            }
-
-            for (var _id2 = 0; _id2 < markerMasks.length; _id2++) {
-              if (!markerMasks[_id2]) continue;
-              var opts = {
-                data: markerMasks[_id2],
-                type: 'uint8',
-                usage: 'static'
-              };
-
-              if (!activation[_id2]) {
-                activation[_id2] = regl.buffer(opts);
-              } else {
-                activation[_id2](opts);
-              }
-
-              activation[_id2].data = markerMasks[_id2];
-            }
+            markerMasks[_id][_i] = 1;
           }
+
+          for (var _id2 = 0; _id2 < markerMasks.length; _id2++) {
+            if (!markerMasks[_id2]) continue;
+            var opts = {
+              data: markerMasks[_id2],
+              type: 'uint8',
+              usage: 'static'
+            };
+
+            if (!activation[_id2]) {
+              activation[_id2] = regl.buffer(opts);
+            } else {
+              activation[_id2](opts);
+            }
+
+            activation[_id2].data = markerMasks[_id2];
+          }
+        }
 
         return markers;
       },
@@ -799,24 +799,24 @@ Scatter.prototype.update = function () {
       } // if limited amount of colors - keep palette color picking
       // that saves significant memory
       else {
-          if (color.length || borderColor.length) {
-            // we need slight data increase by 2 due to vec4 borderId in shader
-            colors = new Uint8Array(_count * 4 + 2);
+        if (color.length || borderColor.length) {
+          // we need slight data increase by 2 due to vec4 borderId in shader
+          colors = new Uint8Array(_count * 4 + 2);
 
-            for (var _i4 = 0; _i4 < _count; _i4++) {
-              // put color coords in palette texture
-              if (color[_i4] != null) {
-                colors[_i4 * 4] = color[_i4] % maxColors;
-                colors[_i4 * 4 + 1] = Math.floor(color[_i4] / maxColors);
-              }
+          for (var _i4 = 0; _i4 < _count; _i4++) {
+            // put color coords in palette texture
+            if (color[_i4] != null) {
+              colors[_i4 * 4] = color[_i4] % maxColors;
+              colors[_i4 * 4 + 1] = Math.floor(color[_i4] / maxColors);
+            }
 
-              if (borderColor[_i4] != null) {
-                colors[_i4 * 4 + 2] = borderColor[_i4] % maxColors;
-                colors[_i4 * 4 + 3] = Math.floor(borderColor[_i4] / maxColors);
-              }
+            if (borderColor[_i4] != null) {
+              colors[_i4 * 4 + 2] = borderColor[_i4] % maxColors;
+              colors[_i4 * 4 + 3] = Math.floor(borderColor[_i4] / maxColors);
             }
           }
         }
+      }
 
       colorBuffer({
         data: colors || new Uint8Array(0),

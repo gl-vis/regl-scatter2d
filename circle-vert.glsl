@@ -5,11 +5,10 @@ attribute float size, borderSize;
 attribute vec4 colorId, borderColorId;
 attribute float isActive;
 
-uniform vec2 scale, scaleFract, translate, translateFract;
-uniform float pixelRatio;
 uniform bool constPointSize;
-uniform sampler2D palette;
-uniform vec2 paletteSize;
+uniform float pixelRatio;
+uniform vec2 paletteSize, scale, scaleFract, translate, translateFract;
+uniform sampler2D paletteTexture;
 
 const float maxSize = 100.;
 
@@ -21,7 +20,7 @@ float pointSizeScale = (constPointSize) ? 2. : pixelRatio;
 bool isDirect = (paletteSize.x < 1.);
 
 vec4 getColor(vec4 id) {
-  return isDirect ? id / 255. : texture2D(palette,
+  return isDirect ? id / 255. : texture2D(paletteTexture,
     vec2(
       (id.x + .5) / paletteSize.x,
       (id.y + .5) / paletteSize.y
