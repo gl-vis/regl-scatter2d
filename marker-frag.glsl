@@ -1,7 +1,7 @@
 precision highp float;
 
-uniform sampler2D markerTexture;
 uniform float opacity;
+uniform sampler2D markerTexture;
 
 varying vec4 fragColor, fragBorderColor;
 varying float fragWidth, fragBorderColorLevel, fragColorLevel;
