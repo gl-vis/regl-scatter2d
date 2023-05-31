@@ -4,7 +4,6 @@ const createScatter = require('../index')
 const t = require('tape')
 const load = require('image-pixels')
 const eq = require('image-equal')
-const out = require('image-output')
 const seed = require('seed-random')
 const regl = require('regl')({
 	gl: require('gl')(200, 200),
