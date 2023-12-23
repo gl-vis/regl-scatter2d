@@ -5,6 +5,12 @@ attribute float size, borderSize;
 attribute vec4 colorId, borderColorId;
 attribute float isActive;
 
+// `invariant` effectively turns off optimizations for the position.
+// We need this because -fast-math on M1 Macs is re-ordering
+// floating point operations in a way that causes floating point
+// precision limits to put points in the wrong locations.
+invariant gl_Position;
+
 uniform bool constPointSize;
 uniform float pixelRatio;
 uniform vec2 scale, scaleFract, translate, translateFract, paletteSize;

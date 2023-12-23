@@ -149,6 +149,37 @@ t('missing points #2334', async t => {
 	t.end()
 })
 
+t('large values precision M1 mac (plotly/plotly.js Issue #6820)', async t => {
+	var N = 1000
+	var positions = new Float64Array(2 * N)
+
+	// M1 macs have precision issues with large values near 1e9.
+	// -fast-math is causing a re-order of floating point operations and points are placed at the wrong location
+	var x_base = 1e9
+	// 1e17 is large enough that we're going to have precision issues on any platform.
+	var y_base = 1e17 + 555
+	for(var i=0; i<2*N; i += 2) {
+		positions[i] = x_base + i
+		positions[i + 1] = y_base + i
+	}
+
+	var scatter = createScatter(regl)
+	scatter.update([{
+		positions: positions,
+	}])
+	scatter.render()
+
+	// This is a regression test. To make a new test or update an existing one, you need to generate the expected image.
+	// Use this code to save the manually inspected image to become the expected output for the subsequent runs:
+	//   const output = require('image-output')
+	//   output(scatter.gl, './test/img/filename.png')
+
+	t.ok(eq(scatter.gl, await load('./test/img/large_values_precision_M1_mac.png'), .1))
+
+	regl.clear({color: [0,0,0,0]})
+	t.end()
+})
+
 t('unsnapped elements render')
 
 t('snapped elements render')
@@ -174,4 +205,3 @@ t('single point')
 t('no-boundaries')
 
 t('cluster with external buffer')
-
