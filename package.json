@@ -6,7 +6,7 @@
   "scripts": {
     "postshrinkwrap": "chttps .",
     "test": "node test",
-    "test-browser": "budo test -- -t glslify",
+    "test-browser": "budo test",
     "prepublishOnly": "npm run build",
     "build": "rollup -c rollup.config.js"
   },

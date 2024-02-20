@@ -2,7 +2,6 @@
 import commonjs from 'rollup-plugin-commonjs'
 import babel from 'rollup-plugin-babel'
 import tr from 'rollup-plugin-browserify-transform'
-import glslify from 'glslify'
 import resolve from 'rollup-plugin-node-resolve'
 
 export default {
@@ -12,7 +11,6 @@ export default {
     format: 'cjs'
   },
   plugins: [
-    tr(glslify),
     resolve(),
     commonjs({
       sourceMap: false,
@@ -24,7 +22,6 @@ export default {
         'color-id',
         '@plotly/point-cluster',
         'object-assign',
-        'glslify',
         'pick-by-alias',
         'update-diff',
         'flatten-vertex-data',
