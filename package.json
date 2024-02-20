@@ -34,7 +34,6 @@
     "color-normalize": "^1.5.0",
     "color-rgba": "^2.1.1",
     "flatten-vertex-data": "^1.0.2",
-    "glslify": "^7.0.0",
     "is-iexplorer": "^1.0.0",
     "object-assign": "^4.1.1",
     "parse-rect": "^1.2.0",
