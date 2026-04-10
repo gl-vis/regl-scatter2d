@@ -7,3 +7,5 @@ package-lock.json
 docs
 gh-pages
 dist
+.DS_Store
+bundle.js

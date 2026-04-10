@@ -1,7 +1,6 @@
 'use strict'
 
 var Scatter = require('./scatter')
-var extend = require('object-assign')
 
 module.exports = function (regl, options) {
 	var scatter = new Scatter(regl, options)
@@ -9,7 +8,7 @@ module.exports = function (regl, options) {
 	var render = scatter.render.bind(scatter)
 
 	// expose API
-	extend(render, {
+	Object.assign(render, {
 		render: render,
 		update: scatter.update.bind(scatter),
 		draw: scatter.draw.bind(scatter),

@@ -4,12 +4,10 @@ const rgba = require('color-normalize')
 const getBounds = require('array-bounds')
 const colorId = require('color-id')
 const cluster = require('@plotly/point-cluster')
-const extend = require('object-assign')
 const glslify = require('glslify')
 const pick = require('pick-by-alias')
 const updateDiff = require('update-diff')
 const flatten = require('flatten-vertex-data')
-const ie = require('is-iexplorer')
 const f32 = require('to-float32')
 const parseRect = require('parse-rect')
 
@@ -45,9 +43,7 @@ function Scatter (regl, options) {
 
 	const maxColors = 255, maxSize = 100
 
-	// direct color buffer mode
-	// IE does not support palette anyways
-	this.tooManyColors = ie
+	this.tooManyColors = false
 
 	// texture with color palette
 	paletteTexture = regl.texture({
@@ -62,7 +58,7 @@ function Scatter (regl, options) {
 		min: 'nearest'
 	})
 
-	extend(this, {
+	Object.assign(this, {
 		regl,
 		gl,
 		groups,
@@ -176,22 +172,16 @@ function Scatter (regl, options) {
 	}
 
 	// draw sdf-marker
-	let markerOptions = extend({}, shaderOptions)
+	let markerOptions = Object.assign({}, shaderOptions)
 	markerOptions.frag = glslify('./marker-frag.glsl')
 	markerOptions.vert = glslify('./marker-vert.glsl')
 
 	this.drawMarker = regl(markerOptions)
 
 	// draw circle
-	let circleOptions = extend({}, shaderOptions)
+	let circleOptions = Object.assign({}, shaderOptions)
 	circleOptions.frag = glslify('./circle-frag.glsl')
 	circleOptions.vert = glslify('./circle-vert.glsl')
-
-	// polyfill IE
-	if (ie) {
-		circleOptions.frag = circleOptions.frag.replace('smoothstep', 'smoothStep')
-		markerOptions.frag = markerOptions.frag.replace('smoothstep', 'smoothStep')
-	}
 
 	this.drawCircle = regl(circleOptions)
 }
@@ -303,7 +293,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 	if (!tree) {
 		// if elements array - draw unclustered points
 		if (elements) {
-			return [extend({}, group, {
+			return [Object.assign({}, group, {
 				markerTexture: this.markerTextures[markerId],
 				activation: activation[markerId],
 				count: elements.length,
@@ -312,7 +302,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 			})]
 		}
 
-		return [ extend({}, group, {
+		return [ Object.assign({}, group, {
 			markerTexture: this.markerTextures[markerId],
 			activation: activation[markerId],
 			offset: 0
@@ -342,7 +332,7 @@ Scatter.prototype.getMarkerDrawOptions = function(markerId, group, elements) {
 	for (let l = lod.length; l--;) {
 		let [from, to] = lod[l]
 
-		batch.push(extend({}, group, {
+		batch.push(Object.assign({}, group, {
 			markerTexture: this.markerTextures[markerId],
 			activation: elements ? selectionBuffer : activation[markerId],
 			offset: from,
@@ -432,7 +422,7 @@ Scatter.prototype.update = function (...args) {
 					type: 'float'
 				})
 			}
-			options = extend({}, Scatter.defaults, options)
+			options = Object.assign({}, Scatter.defaults, options)
 		}
 
 		// force update triggers
